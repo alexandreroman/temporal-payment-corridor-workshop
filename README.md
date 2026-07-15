@@ -22,7 +22,7 @@ local dev server.
   serves both Temporal SDK metrics (`temporal_*`) and application metrics
   (`corridor_*`).
 - **Progressive activation** — the full application ships up front;
-  workshop steps are enabled by uncommenting tagged `STEP` blocks.
+  workshop steps are enabled by uncommenting tagged `FEATURE` blocks.
 
 ## Prerequisites
 
@@ -77,6 +77,23 @@ metrics at http://localhost:9464/metrics; `make dev` also prints these URLs
 in its banner. The default anomaly matches a pre-seeded corridor-memory
 pattern, so it is corrected end-to-end with no API key. Run `make help` to
 list all targets (`infra-up`, `infra-down`, `worker`, `lint`, ...).
+
+## Workshop features
+
+The full application ships up front; individual capabilities stay dormant in
+tagged `# --- FEATURE: <name> ---` blocks until you enable them. Toggle them by
+name — no manual editing:
+
+```bash
+make feature-list                          # every feature and its state
+make feature-diff    NAME=agent-resilience # what enabling it changes
+make feature-enable  NAME=agent-resilience # turn it on (everywhere it appears)
+make feature-disable NAME=agent-resilience # revert
+```
+
+Enabling uncomments a feature's code; disabling re-comments it. A feature that
+replaces existing behavior pairs a `FEATURE` block with an inverse
+`FEATURE-DEFAULT` block, so the swap is reversible both ways.
 
 ## Usage
 
