@@ -92,10 +92,10 @@ All configuration comes from environment variables, loaded from a local
 | Variable               | Description                              | Default                       |
 | ---------------------- | ---------------------------------------- | ----------------------------- |
 | `TEMPORAL_ADDRESS`     | Temporal frontend address                | `localhost:7233`              |
-| `METRICS_BIND_ADDRESS` | Bind address for the `/metrics` endpoint | `0.0.0.0:9464`                |
+| `WORKER_METRICS_HOST`  | Host for the `/metrics` endpoint         | `0.0.0.0`                     |
+| `WORKER_METRICS_PORT`  | Port for the `/metrics` endpoint         | `9464`                        |
 | `CORRIDOR_MODEL`       | Pydantic AI model string for the agents  | `anthropic:claude-sonnet-4-5` |
 | `ANTHROPIC_API_KEY`    | Provider key matching `CORRIDOR_MODEL`   | (required to run the agents)  |
-| `LOGFIRE_TOKEN`        | Ships traces to Logfire when set         | (optional)                    |
 
 ## Architecture
 

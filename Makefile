@@ -35,8 +35,9 @@ METRICS_PORT       := $(shell sed -nE 's/.*"([0-9]+):9464".*/\1/p' compose.overr
 # above. Plain := (not `override`) still lets an explicit `make VAR=...` win.
 TEMPORAL_ADDRESS     := localhost:$(TEMPORAL_GRPC_PORT)
 WEBUI_PORT           := $(WEBUI_URL_PORT)
-METRICS_BIND_ADDRESS := 0.0.0.0:$(METRICS_PORT)
-export TEMPORAL_ADDRESS WEBUI_PORT METRICS_BIND_ADDRESS
+WORKER_METRICS_HOST  := 0.0.0.0
+WORKER_METRICS_PORT  := $(METRICS_PORT)
+export TEMPORAL_ADDRESS WEBUI_PORT WORKER_METRICS_HOST WORKER_METRICS_PORT
 else
 WEBUI_URL_PORT     := 8000
 TEMPORAL_UI_PORT   := 8233
