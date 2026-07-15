@@ -44,9 +44,9 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     return reference
 
 
-# --- STEP: saga-compensation ---
+# --- FEATURE: saga-compensation ---
 # @activity.defn
 # async def revert_correction(reference: str) -> None:
 #     """Undo a previously applied correction (saga compensation)."""
 #     activity.logger.warning("Reverting correction %s", reference)
-# --- END STEP: saga-compensation ---
+# --- END FEATURE: saga-compensation ---

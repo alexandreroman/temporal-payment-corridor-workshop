@@ -3,7 +3,7 @@
 A small FastAPI application that serves the payment-corridor landing page.
 This is the foundation only: a static, temporal.io-styled page plus a health
 check. Interactive, Temporal-facing actions are added later as progressive
-`# --- STEP: <name> ---` blocks.
+`# --- FEATURE: <name> ---` blocks.
 
 The server startup lives in ``webui/main.py``; this module defines the
 ``app`` object, imported as ``webui.app:app`` by uvicorn. Logfire is

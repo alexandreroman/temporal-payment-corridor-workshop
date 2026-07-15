@@ -74,12 +74,12 @@ async def _propose(
             source=CorrectionSource.MEMORY,
         )
 
-    # --- STEP: agent-resilience ---
+    # --- FEATURE: agent-resilience ---
     # Tune how the durable agent's model/tool activities retry and time out
     # by passing config to `agent.run(...)`, e.g.:
     #   from pydantic_ai.durable_exec.temporal import AgentRunConfig
     #   result = await agent.run(_prompt(anomaly), ...)
-    # --- END STEP: agent-resilience ---
+    # --- END FEATURE: agent-resilience ---
     result = await agent.run(_prompt(anomaly))
     correction: AgentCorrection = result.output
     return CorrectionProposal(
@@ -120,17 +120,17 @@ class PaymentCorrectionCoordinator:
 
     def __init__(self) -> None:
         self._decision: ApprovalDecision | None = None
-        # --- STEP: saga-compensation ---
+        # --- FEATURE: saga-compensation ---
         # self._compensations: list[CorrectionProposal] = []
-        # --- END STEP: saga-compensation ---
+        # --- END FEATURE: saga-compensation ---
 
     @workflow.run
     async def run(self, anomaly: PaymentAnomaly) -> CorrectionOutcome:
-        # --- STEP: search-attributes ---
+        # --- FEATURE: search-attributes ---
         # workflow.upsert_search_attributes(
         #     {"corridor": [anomaly.corridor], "anomalyType": [anomaly.anomaly_type]}
         # )
-        # --- END STEP: search-attributes ---
+        # --- END FEATURE: search-attributes ---
 
         # Fan out to the specialized agents, each as its own child workflow.
         base_id = workflow.info().workflow_id
@@ -146,7 +146,7 @@ class PaymentCorrectionCoordinator:
 
         # Human oversight when confidence is low.
         if best.confidence < CONFIDENCE_THRESHOLD:
-            # --- STEP: human-approval-signal ---
+            # --- FEATURE: human-approval-signal ---
             # workflow.logger.info("Low confidence, awaiting human approval")
             # await workflow.wait_condition(lambda: self._decision is not None)
             # assert self._decision is not None
@@ -158,7 +158,7 @@ class PaymentCorrectionCoordinator:
             #         decision=self._decision,
             #         message="Correction rejected by reviewer.",
             #     )
-            # --- END STEP: human-approval-signal ---
+            # --- END FEATURE: human-approval-signal ---
 
             # Starting point (no oversight wired yet): refuse low-confidence
             # fixes outright.
@@ -175,9 +175,9 @@ class PaymentCorrectionCoordinator:
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
-        # --- STEP: saga-compensation ---
+        # --- FEATURE: saga-compensation ---
         # self._compensations.append(best)
-        # --- END STEP: saga-compensation ---
+        # --- END FEATURE: saga-compensation ---
 
         return CorrectionOutcome(
             payment_id=anomaly.payment_id,
@@ -187,7 +187,7 @@ class PaymentCorrectionCoordinator:
             message=f"Correction applied (reference {reference}).",
         )
 
-    # --- STEP: human-approval-signal ---
+    # --- FEATURE: human-approval-signal ---
     # @workflow.signal
     # async def approve_correction(self, decision: ApprovalDecision) -> None:
     #     """Human reviewer's verdict on a low-confidence proposal."""
@@ -196,9 +196,9 @@ class PaymentCorrectionCoordinator:
     # @workflow.query
     # def decision(self) -> ApprovalDecision | None:
     #     return self._decision
-    # --- END STEP: human-approval-signal ---
+    # --- END FEATURE: human-approval-signal ---
 
-    # --- STEP: human-approval-update ---
+    # --- FEATURE: human-approval-update ---
     # # Update is the request/response alternative to a fire-and-forget
     # # Signal: the caller gets a validated, synchronous acknowledgement.
     # @workflow.update
@@ -210,4 +210,4 @@ class PaymentCorrectionCoordinator:
     # def _validate(self, decision: ApprovalDecision) -> None:
     #     if not decision.approver:
     #         raise ValueError("approver is required")
-    # --- END STEP: human-approval-update ---
+    # --- END FEATURE: human-approval-update ---

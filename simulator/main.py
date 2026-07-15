@@ -59,7 +59,7 @@ async def main() -> None:
             f"(confidence {p.confidence:.2f}, via {p.source} / {p.agent_name})"
         )
 
-    # --- STEP: human-approval-signal ---
+    # --- FEATURE: human-approval-signal ---
     # When a proposal needs human sign-off, the coordinator waits for a
     # decision. Send it from a second client (or here, after starting the
     # workflow without awaiting its result):
@@ -70,7 +70,7 @@ async def main() -> None:
     #     PaymentCorrectionCoordinator.approve_correction,
     #     ApprovalDecision(approved=True, approver="ops@bank.example"),
     # )
-    # --- END STEP: human-approval-signal ---
+    # --- END FEATURE: human-approval-signal ---
 
 
 def cli() -> None:

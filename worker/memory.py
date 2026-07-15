@@ -58,7 +58,7 @@ async def read_corridor_memory(
         activity.logger.info("Corridor-memory hit for %s/%s", corridor, anomaly_type)
     return pattern
 
-    # --- STEP: corridor-memory-workflow ---
+    # --- FEATURE: corridor-memory-workflow ---
     # Route reads through the long-running corridor-memory workflow instead
     # of the in-process dict. The activity queries the workflow.
     #
@@ -69,7 +69,7 @@ async def read_corridor_memory(
     # return await handle.query(
     #     CorridorMemoryWorkflow.lookup, args=[corridor, anomaly_type]
     # )
-    # --- END STEP: corridor-memory-workflow ---
+    # --- END FEATURE: corridor-memory-workflow ---
 
 
 @activity.defn
@@ -82,7 +82,7 @@ async def write_corridor_memory(pattern: CorridorPattern) -> None:
         pattern.anomaly_type,
     )
 
-    # --- STEP: corridor-memory-workflow ---
+    # --- FEATURE: corridor-memory-workflow ---
     # Persist the pattern by signalling the corridor-memory workflow instead.
     #
     # from temporalio.client import Client
@@ -90,7 +90,7 @@ async def write_corridor_memory(pattern: CorridorPattern) -> None:
     # client: Client = activity.client()
     # handle = client.get_workflow_handle(CorridorMemoryWorkflow.WORKFLOW_ID)
     # await handle.signal(CorridorMemoryWorkflow.remember, pattern)
-    # --- END STEP: corridor-memory-workflow ---
+    # --- END FEATURE: corridor-memory-workflow ---
 
 
 @workflow.defn
