@@ -47,6 +47,18 @@ plugin) for all code tasks:
 - **code-reviewer** — for read-only code review before merging or when
   investigating issues.
 
+## Memory
+
+- For ANY request to remember, note, or recall project context, use the
+  `skillbox:project-memory` skill.
+- Project memory lives in `.claude/project-memory/`
+  (version-controlled). Never write project memory to the user-level
+  `~/.claude/projects/.../memory/` directory.
+- Proactively save decisions, workflow preferences, and corrective
+  feedback there — don't wait to be asked.
+- At the start of a task that may benefit from prior context, read
+  `.claude/project-memory/MEMORY.md` and the notes it references.
+
 ## Conventions
 
 - **Progressive activation** — the full application ships up front.

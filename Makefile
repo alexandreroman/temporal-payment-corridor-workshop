@@ -44,6 +44,10 @@ worker: ## Run the Temporal worker on the host with hot reload
 simulator: ## Simulate an incoming payment anomaly
 	uv run simulator
 
+.PHONY: webui
+webui: ## Run the web UI on the host with hot reload
+	uv run webui
+
 .PHONY: dev
 dev: .venv infra-up ## Start Temporal, then run the worker on the host with hot reload
 	$(show_urls)
