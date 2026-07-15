@@ -53,6 +53,13 @@ define show_urls
 	@echo "  Worker metrics     http://localhost:$(METRICS_PORT)/metrics"
 endef
 
+##@ Setup
+
+.PHONY: setup
+setup: ## Enable the local ruff pre-commit hook (run once after cloning)
+	git config core.hooksPath .githooks
+	@echo "Git hooks enabled: ruff runs before every commit (.githooks)."
+
 ##@ Infra
 
 .PHONY: infra-up

@@ -43,6 +43,14 @@ uv sync
 cp .env.example .env   # optional: adjust configuration
 ```
 
+Contributors should enable the local pre-commit hook once. It runs ruff
+formatting and lint before each commit, so a slip is caught locally
+instead of only by CI:
+
+```bash
+make setup       # enable the local ruff pre-commit hook
+```
+
 Start the Temporal dev server and the worker (with hot reload) in one go:
 
 ```bash

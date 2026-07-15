@@ -1,0 +1,14 @@
+#!/bin/sh
+# Local pre-commit gate: run ruff formatting and lint before every commit.
+# Mirrors the CI "Check formatting" + lint steps so a formatting or lint slip
+# is caught here, never for the first time in CI. Enable it with `make setup`.
+set -e
+
+if ! uv run ruff format --check .; then
+	echo ""
+	echo "Formatting check failed. Run 'make format', re-stage your changes,"
+	echo "then commit again."
+	exit 1
+fi
+
+uv run ruff check .
