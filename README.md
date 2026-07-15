@@ -51,10 +51,11 @@ instead of only by CI:
 make setup       # enable the local ruff pre-commit hook
 ```
 
-Start the Temporal dev server and the worker (with hot reload) in one go:
+Start the Temporal dev server, then the worker and the web UI (all with hot
+reload) in one go. The command prints the reachable URLs in a banner:
 
 ```bash
-make dev       # docker compose up temporal, then run the worker on the host
+make dev       # Temporal dev server, then worker + web UI on the host
 ```
 
 Then, in another terminal, fire a payment anomaly:
@@ -63,17 +64,19 @@ Then, in another terminal, fire a payment anomaly:
 make simulator   # simulate an incoming payment anomaly
 ```
 
-Serve the web UI (a temporal.io-styled landing page) with hot reload:
+`make dev` already serves the web UI (a temporal.io-styled landing page).
+Use `make webui` to run only the web UI — for example when iterating on the
+frontend against an already-running worker:
 
 ```bash
 make webui       # http://localhost:8000
 ```
 
-The Temporal Web UI is at http://localhost:8233 and the worker metrics at
-http://localhost:9464/metrics. The default anomaly matches a pre-seeded
-corridor-memory pattern, so it is corrected end-to-end with no API key.
-Run `make help` to list all targets (`infra-up`, `infra-down`, `worker`,
-`lint`, ...).
+By default the Temporal Web UI is at http://localhost:8233 and the worker
+metrics at http://localhost:9464/metrics; `make dev` also prints these URLs
+in its banner. The default anomaly matches a pre-seeded corridor-memory
+pattern, so it is corrected end-to-end with no API key. Run `make help` to
+list all targets (`infra-up`, `infra-down`, `worker`, `lint`, ...).
 
 ## Usage
 
