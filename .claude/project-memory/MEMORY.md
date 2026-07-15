@@ -17,4 +17,5 @@
 - [Never reference company names](references/feedback_no_company_names.md) — no company/organization name may appear in code, docs, commits, memory, or prose; refer generically.
 - [Workshop content must be timeless](references/feedback_timeless_content.md) — no dates, times, headcounts, locations, or scheduling in any artifact; keep material reusable and undated.
 - [Code must be abundantly commented, with sources](references/feedback_code_comments.md) — thorough comments explaining important/production choices, each with a source link; the code is the teaching surface.
+- [Design specs are intentionally not version-controlled](references/reference_specs_local_only.md) — `docs/` is gitignored on purpose; specs stay local, their absence from git is normal.
 - [Workshop audience and scope](references/project_workshop_audience.md) — Python-strong audience who completed Temporal 101 and 102, in cross-border payments; format 3×2h hands-on; emphasis: durable agents, encryption, light metrics, search attributes, tests.
