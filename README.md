@@ -111,14 +111,15 @@ graph TD
     C -.->|low confidence| H[Human approval signal]
 ```
 
-| Module          | Description                                                    |
-| --------------- | ------------------------------------------------------------- |
-| `models.py`     | Shared Pydantic models exchanged across the Temporal boundary |
-| `agents.py`     | Pydantic AI agents wrapped as durable `TemporalAgent`s        |
-| `workflows.py`  | Coordinator, agent child workflows, and corridor memory       |
-| `activities.py` | Corridor-memory read/write and applying the correction        |
-| `worker.py`     | Worker entrypoint: runtime, metrics, Logfire, registration    |
-| `simulator.py`  | Client that simulates an incoming payment anomaly             |
+| Module               | Description                                                          |
+| -------------------- | -------------------------------------------------------------------- |
+| `models.py`          | Shared Pydantic models exchanged across the Temporal boundary        |
+| `agents.py`          | Pydantic AI agents wrapped as durable `TemporalAgent`s               |
+| `workflows.py`       | Coordinator and agent child workflows                                |
+| `activities.py`      | Applying the correction                                              |
+| `memory.py`          | Passive corridor memory: store, read/write activities, and workflow  |
+| `worker.py`          | Worker entrypoint: runtime, metrics, Logfire, registration           |
+| `simulator.py`       | Client that simulates an incoming payment anomaly                    |
 
 ## License
 

@@ -27,8 +27,10 @@ make check         # lint + tests
 
 - `models.py` — shared Pydantic models exchanged across the Temporal boundary
 - `agents.py` — Pydantic AI agents wrapped as durable `TemporalAgent`s
-- `workflows.py` — coordinator, agent child workflows, and corridor memory
-- `activities.py` — corridor-memory read/write and applying the correction
+- `workflows.py` — coordinator and agent child workflows
+- `activities.py` — applying the correction
+- `memory.py` — passive corridor memory: in-process store, the
+  read/write activities, and the long-running `CorridorMemoryWorkflow`
 - `worker.py` — worker entrypoint: runtime, metrics, Logfire, registration
 - `simulator.py` — client that simulates an incoming payment anomaly
 
