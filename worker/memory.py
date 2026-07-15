@@ -10,7 +10,7 @@ the feature is easy to find and to swap out:
 
 Because this file is loaded as a workflow module inside the Temporal sandbox,
 models are imported through the sandbox passthrough exactly like
-``workflows.py`` does.
+``worker/workflows.py`` does.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from __future__ import annotations
 from temporalio import activity, workflow
 
 with workflow.unsafe.imports_passed_through():
-    from models import AnomalyType, CorridorPattern
+    from shared.models import AnomalyType, CorridorPattern
 
 # ---------------------------------------------------------------------------
 # Passive corridor memory

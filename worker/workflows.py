@@ -18,14 +18,15 @@ from temporalio.common import RetryPolicy
 with workflow.unsafe.imports_passed_through():
     from pydantic_ai.durable_exec.temporal import PydanticAIWorkflow
 
-    from activities import apply_correction
-    from agents import (
+    from worker.activities import apply_correction
+    from worker.agents import (
         AgentCorrection,
         compliance_temporal_agent,
         instruction_temporal_agent,
     )
-    from memory import read_corridor_memory
-    from models import (
+    from worker.memory import read_corridor_memory
+
+    from shared.models import (
         ApprovalDecision,
         CorrectionOutcome,
         CorrectionProposal,

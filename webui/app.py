@@ -1,21 +1,21 @@
-"""Web UI entrypoint.
+"""Web UI application definition.
 
 A small FastAPI application that serves the payment-corridor landing page.
 This is the foundation only: a static, temporal.io-styled page plus a health
 check. Interactive, Temporal-facing actions are added later as progressive
 `# --- STEP: <name> ---` blocks.
 
-Run with:  ``uv run webui``    (dev server with hot reload) or
-           ``python webui.py``  (production, no reload).
+The server startup lives in ``webui/main.py``; this module defines the
+``app`` object, imported as ``webui.app:app`` by uvicorn. Logfire is
+configured here (not in ``main.py``) because uvicorn's reload runs the app in
+a fresh subprocess that imports this module directly, never ``main.py``.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import logfire
-import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -23,17 +23,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 # All configuration comes from environment variables, loaded from a local
-# .env file when present (see .env.example). Load before reading any getenv.
+# .env file when present (see .env.example). Load before configuring Logfire so
+# LOGFIRE_TOKEN and friends are visible in this (serving) process.
 load_dotenv()
-
-WEBUI_HOST = os.getenv("WEBUI_HOST", "0.0.0.0")
-WEBUI_PORT = int(os.getenv("WEBUI_PORT", "8000"))
-
-# Resolve asset directories relative to this file so the app runs the same
-# regardless of the current working directory.
-_BASE_DIR = Path(__file__).parent
-_STATIC_DIR = _BASE_DIR / "static"
-_TEMPLATES_DIR = _BASE_DIR / "templates"
 
 
 def setup_logfire() -> logfire.Logfire:
@@ -49,7 +41,15 @@ def setup_logfire() -> logfire.Logfire:
     )
 
 
+# Configure Logfire before instrumenting the app, in the process that serves
+# requests (the uvicorn reload subprocess imports this module, not main.py).
 setup_logfire()
+
+# Resolve asset directories relative to this file so the app runs the same
+# regardless of the current working directory.
+_BASE_DIR = Path(__file__).parent
+_STATIC_DIR = _BASE_DIR / "static"
+_TEMPLATES_DIR = _BASE_DIR / "templates"
 
 app = FastAPI(title="Payment Corridor")
 app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
@@ -70,26 +70,3 @@ async def index(request: Request) -> HTMLResponse:
 async def healthz() -> dict[str, str]:
     """Liveness probe."""
     return {"status": "ok"}
-
-
-def dev() -> None:
-    """Console-script entry point (`uv run webui`): run with hot reload.
-
-    Uvicorn's ``reload`` watches source files (via watchfiles, already a
-    dependency) and restarts the server on change. The app is passed as an
-    import string because reload runs it in a fresh subprocess.
-    """
-    uvicorn.run("webui:app", host=WEBUI_HOST, port=WEBUI_PORT, reload=True)
-
-
-def run() -> None:
-    """Production entry point (`python webui.py`): serve without hot reload.
-
-    Used as the container CMD. Reload is intentionally off so the container
-    runs a single, stable process; the ``app`` object is passed directly.
-    """
-    uvicorn.run(app, host=WEBUI_HOST, port=WEBUI_PORT)
-
-
-if __name__ == "__main__":
-    run()

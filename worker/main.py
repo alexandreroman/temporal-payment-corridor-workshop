@@ -9,7 +9,7 @@ single ``/metrics`` endpoint serves both:
   * Temporal SDK / worker metrics  -> ``temporal_*``
   * Application metrics             -> ``corridor_*``
 
-Run with:  ``uv run worker.py``  (needs ``temporal server start-dev`` up).
+Run with:  ``uv run worker``  (needs ``temporal server start-dev`` up).
 """
 
 from __future__ import annotations
@@ -21,7 +21,6 @@ import logfire
 from dotenv import load_dotenv
 from temporalio.client import Client
 from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
-from temporalio.worker import Worker
 
 from pydantic_ai.durable_exec.temporal import LogfirePlugin, PydanticAIPlugin
 
@@ -30,19 +29,9 @@ from pydantic_ai.durable_exec.temporal import LogfirePlugin, PydanticAIPlugin
 load_dotenv()
 
 # Imported after load_dotenv() so .env values (e.g. CORRIDOR_MODEL) are in
-# place before agents.py reads them at import time.
-from activities import apply_correction  # noqa: E402
-from memory import (  # noqa: E402
-    CorridorMemoryWorkflow,
-    read_corridor_memory,
-    write_corridor_memory,
-)
-from workflows import (  # noqa: E402
-    TASK_QUEUE,
-    ComplianceAgentWorkflow,
-    InstructionAgentWorkflow,
-    PaymentCorrectionCoordinator,
-)
+# place before agents.py reads them at import time (via the worker.workflows
+# -> worker.agents import chain that build_worker pulls in).
+from worker.worker import build_worker  # noqa: E402
 
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
 METRICS_BIND_ADDRESS = os.getenv("METRICS_BIND_ADDRESS", "0.0.0.0:9464")
@@ -95,23 +84,9 @@ async def main() -> None:
         ],
     )
 
-    worker = Worker(
-        client,
-        task_queue=TASK_QUEUE,
-        workflows=[
-            PaymentCorrectionCoordinator,
-            InstructionAgentWorkflow,
-            ComplianceAgentWorkflow,
-            CorridorMemoryWorkflow,
-        ],
-        activities=[
-            read_corridor_memory,
-            write_corridor_memory,
-            apply_correction,
-        ],
-    )
+    worker = build_worker(client)
 
-    print(f"Worker polling '{TASK_QUEUE}' — metrics on http://{METRICS_BIND_ADDRESS}/metrics")
+    print(f"Worker polling '{worker.task_queue}' — metrics on http://{METRICS_BIND_ADDRESS}/metrics")
     await worker.run()
 
 
