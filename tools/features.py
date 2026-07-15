@@ -25,8 +25,12 @@ See the Temporal workshop convention in CLAUDE.md.
 
 from __future__ import annotations
 
+import difflib
 import re
+import subprocess
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 # Marker grammar. `FEATURE-DEFAULT` must come before `FEATURE` in the
 # alternation so the longer token wins.
@@ -169,3 +173,91 @@ def set_feature_in_text(text: str, name: str, enable: bool) -> str:
         transform = _comment if want_commented else _uncomment
         lines[r.start + 1 : r.end] = [transform(ln, r.indent) for ln in r.body]
     return "\n".join(lines)
+
+
+ROOTS: tuple[str, ...] = ("shared", "worker", "webui", "simulator")
+
+
+def iter_source_files(root_dir: Path) -> list[Path]:
+    """All ``.py`` files under the scanned application packages, sorted."""
+    files: list[Path] = []
+    for name in ROOTS:
+        base = root_dir / name
+        if base.is_dir():
+            files.extend(sorted(base.rglob("*.py")))
+    return files
+
+
+def collect(root_dir: Path) -> dict[str, list[tuple[Path, Region]]]:
+    """Map each feature name to its (file, region) occurrences across the repo."""
+    result: dict[str, list[tuple[Path, Region]]] = {}
+    for path in iter_source_files(root_dir):
+        for r in parse_regions(path.read_text(encoding="utf-8")):
+            result.setdefault(r.name, []).append((path, r))
+    return result
+
+
+def _files_with_feature(root_dir: Path, name: str) -> list[Path]:
+    return [
+        path
+        for path in iter_source_files(root_dir)
+        if any(r.name == name for r in parse_regions(path.read_text(encoding="utf-8")))
+    ]
+
+
+def set_feature(
+    root_dir: Path,
+    name: str,
+    enable: bool,
+    *,
+    dry_run: bool,
+    do_format: bool = True,
+) -> list[Path]:
+    """Set feature ``name`` across the repo. Returns the files that changed.
+
+    With ``dry_run`` the planned unified diff is printed and no file is written.
+    Otherwise changed files are re-formatted with ruff so uncommented code lands
+    clean (see the Temporal Python style guidance).
+    """
+    changed: list[Path] = []
+    for path in _files_with_feature(root_dir, name):
+        text = path.read_text(encoding="utf-8")
+        new = set_feature_in_text(text, name, enable)
+        if new == text:
+            continue
+        changed.append(path)
+        if dry_run:
+            sys.stdout.writelines(
+                difflib.unified_diff(
+                    text.splitlines(keepends=True),
+                    new.splitlines(keepends=True),
+                    fromfile=str(path),
+                    tofile=str(path),
+                )
+            )
+        else:
+            path.write_text(new, encoding="utf-8")
+    if changed and not dry_run and do_format:
+        subprocess.run(
+            ["uv", "run", "ruff", "format", *(str(p) for p in changed)], check=False
+        )
+    return changed
+
+
+def feature_diff(root_dir: Path, name: str) -> str:
+    """Return a unified diff of the disabled→enabled change ``name`` introduces."""
+    out: list[str] = []
+    for path in _files_with_feature(root_dir, name):
+        text = path.read_text(encoding="utf-8")
+        disabled = set_feature_in_text(text, name, enable=False)
+        enabled = set_feature_in_text(text, name, enable=True)
+        if disabled != enabled:
+            out.extend(
+                difflib.unified_diff(
+                    disabled.splitlines(keepends=True),
+                    enabled.splitlines(keepends=True),
+                    fromfile=f"{path} (disabled)",
+                    tofile=f"{path} (enabled)",
+                )
+            )
+    return "".join(out)

@@ -1,8 +1,14 @@
+from pathlib import Path
+
 from tools.features import (
     MalformedError,
+    collect,
+    feature_diff,
     feature_state,
+    iter_source_files,
     parse_regions,
     region_state,
+    set_feature,
     set_feature_in_text,
 )
 
@@ -77,3 +83,66 @@ def test_set_feature_rejects_body_line_less_indented_than_marker():
     text = "    # --- FEATURE: demo ---\nx = 1\n    # --- END FEATURE: demo ---\n"
     with pytest.raises(MalformedError):
         set_feature_in_text(text, "demo", enable=False)
+
+
+CROSS_FILE_A = """\
+class C:
+    def __init__(self):
+        # --- FEATURE: multi ---
+        # self.on = True
+        # --- END FEATURE: multi ---
+        pass
+"""
+
+CROSS_FILE_B = """\
+def helper():
+    # --- FEATURE: multi ---
+    # return 1
+    # --- END FEATURE: multi ---
+    return 0
+"""
+
+
+def _make_repo(root: Path) -> None:
+    (root / "worker").mkdir()
+    (root / "worker" / "a.py").write_text(CROSS_FILE_A, encoding="utf-8")
+    (root / "worker" / "b.py").write_text(CROSS_FILE_B, encoding="utf-8")
+
+
+def test_iter_source_files_scans_only_known_roots(tmp_path):
+    _make_repo(tmp_path)
+    (tmp_path / "notes.py").write_text("# ignored\n", encoding="utf-8")  # not in ROOTS
+    files = iter_source_files(tmp_path)
+    assert [p.name for p in files] == ["a.py", "b.py"]
+
+
+def test_collect_groups_a_feature_across_files(tmp_path):
+    _make_repo(tmp_path)
+    features = collect(tmp_path)
+    assert set(features) == {"multi"}
+    assert len(features["multi"]) == 2
+
+
+def test_set_feature_enables_across_files_and_reverts(tmp_path):
+    _make_repo(tmp_path)
+    changed = set_feature(
+        tmp_path, "multi", enable=True, dry_run=False, do_format=False
+    )
+    assert len(changed) == 2
+    assert "self.on = True" in (tmp_path / "worker" / "a.py").read_text()
+    set_feature(tmp_path, "multi", enable=False, dry_run=False, do_format=False)
+    assert (tmp_path / "worker" / "a.py").read_text() == CROSS_FILE_A
+
+
+def test_set_feature_dry_run_writes_nothing(tmp_path):
+    _make_repo(tmp_path)
+    changed = set_feature(tmp_path, "multi", enable=True, dry_run=True, do_format=False)
+    assert len(changed) == 2  # would-change files reported
+    assert (tmp_path / "worker" / "a.py").read_text() == CROSS_FILE_A  # untouched
+
+
+def test_feature_diff_shows_the_change(tmp_path):
+    _make_repo(tmp_path)
+    diff = feature_diff(tmp_path, "multi")
+    assert "+        self.on = True" in diff
+    assert "-        # self.on = True" in diff
