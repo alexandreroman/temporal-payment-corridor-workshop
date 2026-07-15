@@ -34,18 +34,21 @@ load_dotenv()
 from worker.worker import build_worker  # noqa: E402
 
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
-METRICS_BIND_ADDRESS = os.getenv("METRICS_BIND_ADDRESS", "0.0.0.0:9464")
+WORKER_METRICS_HOST = os.getenv("WORKER_METRICS_HOST", "0.0.0.0")
+WORKER_METRICS_PORT = int(os.getenv("WORKER_METRICS_PORT", "9464"))
+WORKER_METRICS_BIND = f"{WORKER_METRICS_HOST}:{WORKER_METRICS_PORT}"
 
 
 def build_runtime() -> Runtime:
     """Create the Temporal runtime with a Prometheus metrics endpoint.
 
     Must be called before connecting any client. The exporter serves
-    OpenMetrics/Prometheus at ``http://<METRICS_BIND_ADDRESS>/metrics``.
+    OpenMetrics/Prometheus at
+    ``http://<WORKER_METRICS_HOST>:<WORKER_METRICS_PORT>/metrics``.
     """
     return Runtime(
         telemetry=TelemetryConfig(
-            metrics=PrometheusConfig(bind_address=METRICS_BIND_ADDRESS),
+            metrics=PrometheusConfig(bind_address=WORKER_METRICS_BIND),
         )
     )
 
@@ -54,14 +57,13 @@ def setup_logfire() -> logfire.Logfire:
     """Configure Logfire + Pydantic AI instrumentation.
 
     Passed to ``LogfirePlugin`` so the plugin uses this configuration
-    instead of its default ``logfire.configure()`` (which would fail with
-    no token). ``send_to_logfire='if-token-present'`` keeps the workshop
-    offline-friendly: with no ``LOGFIRE_TOKEN`` set, spans are still
-    produced locally but nothing is shipped to the Logfire backend.
+    instead of its default ``logfire.configure()``. ``send_to_logfire=False``
+    keeps Logfire local-only: spans are produced locally for instrumentation
+    but nothing is shipped to any backend.
     """
     instance = logfire.configure(
         service_name="payment-corridor",
-        send_to_logfire="if-token-present",
+        send_to_logfire=False,
     )
     instance.instrument_pydantic_ai()
     return instance
@@ -86,7 +88,8 @@ async def main() -> None:
 
     worker = build_worker(client)
 
-    print(f"Worker polling '{worker.task_queue}' — metrics on http://{METRICS_BIND_ADDRESS}/metrics")
+    metrics_url = f"http://{WORKER_METRICS_BIND}/metrics"
+    print(f"Worker polling '{worker.task_queue}' — metrics on {metrics_url}")
     await worker.run()
 
 

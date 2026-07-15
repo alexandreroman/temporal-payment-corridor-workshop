@@ -24,20 +24,19 @@ from fastapi.templating import Jinja2Templates
 
 # All configuration comes from environment variables, loaded from a local
 # .env file when present (see .env.example). Load before configuring Logfire so
-# LOGFIRE_TOKEN and friends are visible in this (serving) process.
+# its environment is visible in this (serving) process.
 load_dotenv()
 
 
 def setup_logfire() -> logfire.Logfire:
-    """Configure Logfire the same guarded way the worker does.
+    """Configure Logfire the same local-only way the worker does.
 
-    ``send_to_logfire='if-token-present'`` keeps the workshop offline-friendly:
-    with no ``LOGFIRE_TOKEN`` set, spans are still produced locally but nothing
-    is shipped to the Logfire backend.
+    ``send_to_logfire=False`` keeps Logfire local-only: spans are produced
+    locally for instrumentation but nothing is shipped to any backend.
     """
     return logfire.configure(
         service_name="payment-corridor",
-        send_to_logfire="if-token-present",
+        send_to_logfire=False,
     )
 
 
