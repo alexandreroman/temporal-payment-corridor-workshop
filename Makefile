@@ -1,7 +1,14 @@
 # Developer task runner. Run `make` (or `make help`) to list the targets.
 #
-# Infra (the Temporal dev server) runs in a container via `make infra-up`;
-# the worker and simulator run on the host via uv. `make dev` ties it together.
+# Two ways to run the stack:
+#   * `make dev`    — Temporal in a container; worker + web UI on the host
+#                     with hot reload (fast inner loop).
+#   * `make app-up` — the full stack (Temporal + worker + web UI) in
+#                     containers.
+#
+# CASPER_PORT: when set (Casper workspaces), `make worktree-ports` writes a
+# compose.override.yaml that remaps every published host port off CASPER_PORT
+# so parallel workspaces never collide.
 
 .DEFAULT_GOAL := dev
 
@@ -12,12 +19,34 @@ include .env
 export
 endif
 
+# compose.override.yaml (auto-merged by docker compose) may remap the published
+# host ports so parallel workspaces don't collide. It is the source of truth:
+# when present, read the actual published ports straight from it so the banner
+# and the host-side `make dev` flow can never diverge from what docker binds.
+# Otherwise fall back to the conventional defaults.
+ifneq (,$(wildcard compose.override.yaml))
+WEBUI_URL_PORT     := $(shell sed -nE 's/.*"([0-9]+):8000".*/\1/p' compose.override.yaml | head -n1)
+TEMPORAL_UI_PORT   := $(shell sed -nE 's/.*"([0-9]+):8233".*/\1/p' compose.override.yaml | head -n1)
+TEMPORAL_GRPC_PORT := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.override.yaml | head -n1)
+METRICS_PORT       := $(shell sed -nE 's/.*"([0-9]+):9464".*/\1/p' compose.override.yaml | head -n1)
+# Point the host-side dev flow (uv run worker/webui) at the remapped ports.
+TEMPORAL_ADDRESS     ?= localhost:$(TEMPORAL_GRPC_PORT)
+WEBUI_PORT           ?= $(WEBUI_URL_PORT)
+METRICS_BIND_ADDRESS ?= 0.0.0.0:$(METRICS_PORT)
+export TEMPORAL_ADDRESS WEBUI_PORT METRICS_BIND_ADDRESS
+else
+WEBUI_URL_PORT     := 8000
+TEMPORAL_UI_PORT   := 8233
+METRICS_PORT       := 9464
+endif
+
 # Banner listing where to reach the running components.
 define show_urls
 	@echo ""
 	@echo "The stack is up. Open:"
-	@echo "  Temporal dashboard http://localhost:8233"
-	@echo "  Worker metrics     http://localhost:9464/metrics"
+	@echo "  Web UI             http://localhost:$(WEBUI_URL_PORT)"
+	@echo "  Temporal dashboard http://localhost:$(TEMPORAL_UI_PORT)"
+	@echo "  Worker metrics     http://localhost:$(METRICS_PORT)/metrics"
 endef
 
 ##@ Infra
@@ -34,7 +63,7 @@ infra-down: ## Stop the Temporal dev server (keeps container around)
 infra-logs: ## Follow logs from the Temporal dev server
 	docker compose logs -f temporal
 
-##@ App
+##@ App (host, hot reload)
 
 .PHONY: worker
 worker: ## Run the Temporal worker on the host with hot reload
@@ -49,13 +78,38 @@ webui: ## Run the web UI on the host with hot reload
 	uv run webui
 
 .PHONY: dev
-dev: .venv infra-up ## Start Temporal, then run the worker on the host with hot reload
+dev: .venv infra-up ## Start Temporal, then run worker + web UI on the host with hot reload
 	$(show_urls)
-	@$(MAKE) worker
+	@$(MAKE) -j worker webui
 
 .venv: pyproject.toml uv.lock
 	uv sync
 	@touch .venv
+
+##@ Stack (containers)
+
+.PHONY: app-up
+app-up: ## Bring up the full stack in containers (temporal + worker + web UI)
+	docker compose up -d
+	$(show_urls)
+
+.PHONY: app-down
+app-down: ## Tear down the full stack (removes containers and network)
+	docker compose down
+
+.PHONY: app-logs
+app-logs: ## Follow logs from every stack container
+	docker compose logs -f
+
+##@ Worktree
+
+.PHONY: worktree-ports
+worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
+	@if [ -n "$$CASPER_PORT" ]; then \
+		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n      - "%s:8233"\n  worker:\n    ports: !override\n      - "%s:9464"\n  webui:\n    ports: !override\n      - "%s:8000"\n' \
+			$$((CASPER_PORT + 1)) $$((CASPER_PORT + 2)) $$((CASPER_PORT + 3)) "$$CASPER_PORT" > compose.override.yaml; \
+		echo "Wrote compose.override.yaml (CASPER_PORT=$$CASPER_PORT)"; \
+	fi
 
 ##@ Quality
 

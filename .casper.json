@@ -1,0 +1,12 @@
+{
+  "workspace": {
+    "copyFiles": [".env"],
+    "scripts": {
+      "setup": "make worktree-ports",
+      "run": "make app-up",
+      "dev": "make dev",
+      "stop": "make app-down",
+      "teardown": "make app-down"
+    }
+  }
+}
