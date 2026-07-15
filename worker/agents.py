@@ -67,7 +67,6 @@ instruction_agent = Agent(
         "consistent BIC. Be conservative and report an honest confidence."
     ),
 )
-instruction_temporal_agent = TemporalAgent(instruction_agent)
 
 
 # --- ComplianceAgent ---------------------------------------------------
@@ -85,4 +84,33 @@ compliance_agent = Agent(
         "confidence and explain the compliance rationale briefly."
     ),
 )
+
+
+# By default the durable agents use Pydantic AI's default activity settings
+# for their model/tool calls.
+# --- FEATURE-DEFAULT: agent-resilience ---
+instruction_temporal_agent = TemporalAgent(instruction_agent)
 compliance_temporal_agent = TemporalAgent(compliance_agent)
+# --- END FEATURE-DEFAULT: agent-resilience ---
+
+# --- FEATURE: agent-resilience ---
+# # Tune how the durable agents' model activities retry and time out. Pydantic
+# # AI runs each model request as a Temporal activity; `model_activity_config`
+# # sets that activity's timeout and RetryPolicy so slow/rate-limited model
+# # calls are retried durably instead of failing the workflow.
+# # Source: https://ai.pydantic.dev/durable_execution/temporal/#activity-configuration
+# from datetime import timedelta
+#
+# from temporalio.common import RetryPolicy
+#
+# _MODEL_ACTIVITY_CONFIG = {
+#     "start_to_close_timeout": timedelta(seconds=60),
+#     "retry_policy": RetryPolicy(maximum_attempts=5),
+# }
+# instruction_temporal_agent = TemporalAgent(
+#     instruction_agent, model_activity_config=_MODEL_ACTIVITY_CONFIG
+# )
+# compliance_temporal_agent = TemporalAgent(
+#     compliance_agent, model_activity_config=_MODEL_ACTIVITY_CONFIG
+# )
+# --- END FEATURE: agent-resilience ---
