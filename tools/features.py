@@ -83,3 +83,80 @@ def parse_regions(text: str) -> list[Region]:
         _, oname, _, ostart = open_stack[-1]
         raise MalformedError(f"line {ostart + 1}: region '{oname}' is never closed")
     return regions
+
+
+def _is_commented(line: str, indent: str) -> bool:
+    """True if ``line`` is blank or a comment at the region's base indent."""
+    if line.strip() == "":
+        return True
+    return line.startswith(indent) and line[len(indent) :].startswith("#")
+
+
+def region_state(region: Region) -> str:
+    """Return "disabled" (body commented out), "enabled" (live), or "empty"."""
+    non_blank = [ln for ln in region.body if ln.strip() != ""]
+    if not non_blank:
+        return "empty"
+    if all(_is_commented(ln, region.indent) for ln in non_blank):
+        return "disabled"
+    return "enabled"
+
+
+def _comment(line: str, indent: str) -> str:
+    if line.strip() == "":
+        return indent + "#"
+    return indent + "# " + line[len(indent) :]
+
+
+def _uncomment(line: str, indent: str) -> str:
+    if line.strip() in ("", "#"):
+        return ""
+    rest = line[len(indent) :]
+    if rest.startswith("# "):
+        return indent + rest[2:]
+    if rest.startswith("#"):
+        return indent + rest[1:]
+    return line
+
+
+def feature_state(regions: list[Region]) -> str:
+    """Aggregate the state of all regions sharing a name.
+
+    A feature is enabled when every FEATURE region is live and every
+    FEATURE-DEFAULT region is commented; disabled when the inverse holds;
+    otherwise the regions are out of sync ("inconsistent").
+    """
+    feats = [r for r in regions if r.kind == "feature"]
+    defs = [r for r in regions if r.kind == "default"]
+    if not feats and not defs:
+        return "empty"
+    is_enabled = all(region_state(r) == "enabled" for r in feats) and all(
+        region_state(r) == "disabled" for r in defs
+    )
+    is_disabled = all(region_state(r) == "disabled" for r in feats) and all(
+        region_state(r) == "enabled" for r in defs
+    )
+    if is_enabled and not is_disabled:
+        return "enabled"
+    if is_disabled and not is_enabled:
+        return "disabled"
+    return "inconsistent"
+
+
+def set_feature_in_text(text: str, name: str, enable: bool) -> str:
+    """Return ``text`` with feature ``name`` set to the requested state.
+
+    FEATURE regions follow ``enable``; FEATURE-DEFAULT regions are the inverse.
+    Bodies are transformed 1:1, so line indices stay valid; a region already in
+    the target state is left untouched (idempotent).
+    """
+    lines = text.split("\n")
+    regions = [r for r in parse_regions(text) if r.name == name]
+    for r in sorted(regions, key=lambda r: r.start, reverse=True):
+        want_commented = (not enable) if r.kind == "feature" else enable
+        already_commented = region_state(r) == "disabled"
+        if already_commented == want_commented:
+            continue
+        transform = _comment if want_commented else _uncomment
+        lines[r.start + 1 : r.end] = [transform(ln, r.indent) for ln in r.body]
+    return "\n".join(lines)
