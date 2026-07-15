@@ -31,15 +31,15 @@ load_dotenv()
 
 # Imported after load_dotenv() so .env values (e.g. CORRIDOR_MODEL) are in
 # place before agents.py reads them at import time.
-from activities import (  # noqa: E402
-    apply_correction,
+from activities import apply_correction  # noqa: E402
+from memory import (  # noqa: E402
+    CorridorMemoryWorkflow,
     read_corridor_memory,
     write_corridor_memory,
 )
 from workflows import (  # noqa: E402
     TASK_QUEUE,
     ComplianceAgentWorkflow,
-    CorridorMemoryWorkflow,
     InstructionAgentWorkflow,
     PaymentCorrectionCoordinator,
 )

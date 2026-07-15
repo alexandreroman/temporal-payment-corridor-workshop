@@ -1,4 +1,4 @@
-"""Workflows: the coordinator, the agent child workflows, and corridor memory.
+"""Workflows: the coordinator and the agent child workflows.
 
 Determinism rules apply here — no wall-clock, no network, no randomness in
 workflow code. All I/O happens in activities or inside the durable agents.
@@ -18,19 +18,18 @@ from temporalio.common import RetryPolicy
 with workflow.unsafe.imports_passed_through():
     from pydantic_ai.durable_exec.temporal import PydanticAIWorkflow
 
-    from activities import apply_correction, read_corridor_memory
+    from activities import apply_correction
     from agents import (
         AgentCorrection,
         compliance_temporal_agent,
         instruction_temporal_agent,
     )
+    from memory import read_corridor_memory
     from models import (
-        AnomalyType,
         ApprovalDecision,
         CorrectionOutcome,
         CorrectionProposal,
         CorrectionSource,
-        CorridorPattern,
         PaymentAnomaly,
     )
 
@@ -211,44 +210,3 @@ class PaymentCorrectionCoordinator:
     #     if not decision.approver:
     #         raise ValueError("approver is required")
     # --- END STEP: human-approval-update ---
-
-
-@workflow.defn
-class CorridorMemoryWorkflow:
-    """Long-running passive corridor memory, bounded via continue-as-new.
-
-    Holds known correction patterns in workflow state. Agents (through the
-    ``read_corridor_memory`` activity) query it before calling a model, and
-    learned patterns are added via the ``remember`` signal. History is kept
-    small by continuing-as-new after a fixed number of updates.
-    """
-
-    WORKFLOW_ID = "corridor-memory"
-    MAX_UPDATES_BEFORE_CONTINUE = 100
-
-    def __init__(self) -> None:
-        self._patterns: dict[str, CorridorPattern] = {}
-        self._updates = 0
-
-    @staticmethod
-    def _key(corridor: str, anomaly_type: AnomalyType) -> str:
-        return f"{corridor}|{anomaly_type}"
-
-    @workflow.run
-    async def run(self, initial: dict[str, CorridorPattern] | None = None) -> None:
-        self._patterns = dict(initial or {})
-        await workflow.wait_condition(
-            lambda: self._updates >= self.MAX_UPDATES_BEFORE_CONTINUE
-        )
-        workflow.continue_as_new(args=[self._patterns])
-
-    @workflow.signal
-    async def remember(self, pattern: CorridorPattern) -> None:
-        self._patterns[self._key(pattern.corridor, pattern.anomaly_type)] = pattern
-        self._updates += 1
-
-    @workflow.query
-    def lookup(
-        self, corridor: str, anomaly_type: AnomalyType
-    ) -> CorridorPattern | None:
-        return self._patterns.get(self._key(corridor, anomaly_type))
