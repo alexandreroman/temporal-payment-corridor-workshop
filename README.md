@@ -55,6 +55,12 @@ Then, in another terminal, fire a payment anomaly:
 make simulator   # simulate an incoming payment anomaly
 ```
 
+Serve the web UI (a temporal.io-styled landing page) with hot reload:
+
+```bash
+make webui       # http://localhost:8000
+```
+
 The Temporal Web UI is at http://localhost:8233 and the worker metrics at
 http://localhost:9464/metrics. The default anomaly matches a pre-seeded
 corridor-memory pattern, so it is corrected end-to-end with no API key.
@@ -120,6 +126,7 @@ graph TD
 | `memory.py`          | Passive corridor memory: store, read/write activities, and workflow  |
 | `worker.py`          | Worker entrypoint: runtime, metrics, Logfire, registration           |
 | `simulator.py`       | Client that simulates an incoming payment anomaly                    |
+| `webui.py`           | FastAPI web UI: serves the temporal.io-styled landing page           |
 
 ## License
 
