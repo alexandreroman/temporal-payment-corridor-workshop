@@ -161,6 +161,12 @@ feature-enable: ## Enable a feature everywhere (NAME=<name>, DRY_RUN=1 to previe
 feature-disable: ## Disable a feature everywhere (NAME=<name>, DRY_RUN=1 to preview)
 	uv run python -m tools.features disable $(NAME) $(if $(DRY_RUN),--dry-run,)
 
+##@ Session 3
+
+.PHONY: codec-server
+codec-server: ## Run the codec server for the Temporal UI (decrypts payloads for display)
+	uv run python -m codec_server.main
+
 ##@ Helpers
 
 .PHONY: help

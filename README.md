@@ -95,6 +95,25 @@ Enabling uncomments a feature's code; disabling re-comments it. A feature that
 replaces existing behavior pairs a `FEATURE` block with an inverse
 `FEATURE-DEFAULT` block, so the swap is reversible both ways.
 
+### Decrypting payloads in the Web UI (codec server)
+
+Once `payload-encryption` is enabled (`make feature-enable
+NAME=payload-encryption`) the worker encrypts every payload on the wire, so
+the Temporal Web UI shows raw ciphertext in Event History. Start the codec
+server to fix that:
+
+```bash
+make codec-server   # http://localhost:8081
+```
+
+It is a small HTTP service that reuses the same encryption key
+(`CORRIDOR_ENCRYPTION_KEY`, so set it first) to decrypt payloads on demand.
+Point the Web UI at it from the Web UI's own settings (the "Codec Server"
+endpoint field, `http://localhost:8081`). The dev server in `compose.yaml`
+runs `temporal server start-dev` without a codec endpoint; to wire it in at
+startup instead, add `--ui-codec-endpoint http://localhost:8081` to that
+command. The Web UI then displays decrypted payloads instead of ciphertext.
+
 ## Usage
 
 `make simulator` starts a `PaymentCorrectionCoordinator` execution and prints
@@ -156,6 +175,8 @@ graph TD
 | `worker/main.py`       | Worker entrypoint: runtime, metrics, Logfire, hot reload             |
 | `webui/app.py`         | FastAPI web UI: routes, Logfire, temporal.io-styled landing page     |
 | `webui/main.py`        | Web UI entrypoint: uvicorn with hot reload                           |
+| `codec_server/app.py`  | FastAPI codec server: decrypts payloads for the Temporal Web UI      |
+| `codec_server/main.py` | Codec server entrypoint: uvicorn without reload                      |
 | `simulator/main.py`    | Client that simulates an incoming payment anomaly                    |
 
 ## License
