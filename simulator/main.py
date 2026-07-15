@@ -62,7 +62,7 @@ async def main() -> None:
     # decision. Send it from a second client (or here, after starting the
     # workflow without awaiting its result):
     #
-    # from models import ApprovalDecision
+    # from shared.models import ApprovalDecision
     # handle = client.get_workflow_handle("correction-...")
     # await handle.signal(
     #     PaymentCorrectionCoordinator.approve_correction,

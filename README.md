@@ -122,12 +122,12 @@ graph TD
 | `shared/models.py`     | Shared Pydantic models exchanged across the Temporal boundary        |
 | `worker/agents.py`     | Pydantic AI agents wrapped as durable `TemporalAgent`s               |
 | `worker/workflows.py`  | Coordinator and agent child workflows                                |
-| `worker/activities.py` | Applying the correction                                             |
+| `worker/activities.py` | Applying the correction                                              |
 | `worker/memory.py`     | Passive corridor memory: store, read/write activities, and workflow  |
 | `worker/worker.py`     | Builds the `Worker`: task queue + workflow/activity registration     |
 | `worker/main.py`       | Worker entrypoint: runtime, metrics, Logfire, hot reload             |
-| `webui/app.py`         | FastAPI web UI: serves the temporal.io-styled landing page           |
-| `webui/main.py`        | Web UI entrypoint: Logfire + uvicorn with hot reload                 |
+| `webui/app.py`         | FastAPI web UI: routes, Logfire, temporal.io-styled landing page     |
+| `webui/main.py`        | Web UI entrypoint: uvicorn with hot reload                           |
 | `simulator/main.py`    | Client that simulates an incoming payment anomaly                    |
 
 ## License
