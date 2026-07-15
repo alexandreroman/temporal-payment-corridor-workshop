@@ -14,5 +14,8 @@ __pycache__/
 # Docker / compose local overrides
 compose.override.yaml
 
+# Editor / IDE
+.vscode/
+
 # Local design docs / specs (never commit)
 docs/
