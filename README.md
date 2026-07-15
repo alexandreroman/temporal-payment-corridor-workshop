@@ -85,10 +85,10 @@ tagged `# --- FEATURE: <name> ---` blocks until you enable them. Toggle them by
 name — no manual editing:
 
 ```bash
-make feature-list                          # every feature and its state
-make feature-diff    NAME=agent-resilience # what enabling it changes
-make feature-enable  NAME=agent-resilience # turn it on (everywhere it appears)
-make feature-disable NAME=agent-resilience # revert
+make feature-list                           # every feature and its state
+make feature-diff    NAME=search-attributes # what enabling it changes
+make feature-enable  NAME=search-attributes # turn it on (everywhere it appears)
+make feature-disable NAME=search-attributes # revert
 ```
 
 Enabling uncomments a feature's code; disabling re-comments it. A feature that
