@@ -69,3 +69,11 @@ def test_enable_is_idempotent():
     once = set_feature_in_text(PAIRED, "swap", enable=True)
     twice = set_feature_in_text(once, "swap", enable=True)
     assert once == twice
+
+
+def test_set_feature_rejects_body_line_less_indented_than_marker():
+    import pytest
+
+    text = "    # --- FEATURE: demo ---\nx = 1\n    # --- END FEATURE: demo ---\n"
+    with pytest.raises(MalformedError):
+        set_feature_in_text(text, "demo", enable=False)

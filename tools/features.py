@@ -157,6 +157,15 @@ def set_feature_in_text(text: str, name: str, enable: bool) -> str:
         already_commented = region_state(r) == "disabled"
         if already_commented == want_commented:
             continue
+        # Validate that every non-blank body line has proper indentation.
+        # A line under-indented from the marker's base indent would be corrupted
+        # during transformation (characters would be silently dropped).
+        for body_line in r.body:
+            if body_line.strip() != "" and not body_line.startswith(r.indent):
+                raise MalformedError(
+                    f"region '{r.name}': body line at column 0 is under-indented "
+                    f"from marker's base indent {len(r.indent)}"
+                )
         transform = _comment if want_commented else _uncomment
         lines[r.start + 1 : r.end] = [transform(ln, r.indent) for ln in r.body]
     return "\n".join(lines)
