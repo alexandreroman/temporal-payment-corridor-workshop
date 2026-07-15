@@ -25,7 +25,9 @@ See the Temporal workshop convention in CLAUDE.md.
 
 from __future__ import annotations
 
+import argparse
 import difflib
+import os
 import re
 import subprocess
 import sys
@@ -261,3 +263,64 @@ def feature_diff(root_dir: Path, name: str) -> str:
                 )
             )
     return "".join(out)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="features", description="Toggle workshop feature blocks by name."
+    )
+    sub = parser.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("list", help="list every feature and its state")
+    for cmd in ("status", "diff", "enable", "disable"):
+        p = sub.add_parser(cmd)
+        p.add_argument("name")
+        if cmd in ("enable", "disable"):
+            p.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+
+    root = Path.cwd()
+    try:
+        features = collect(root)
+    except MalformedError as exc:
+        print(f"malformed feature markers: {exc}", file=sys.stderr)
+        return 2
+
+    if args.cmd == "list":
+        for name in sorted(features):
+            state = feature_state([r for _, r in features[name]])
+            print(f"{state:<12} {name}")
+        return 0
+
+    if args.name not in features:
+        known = ", ".join(sorted(features)) or "(none)"
+        print(f"unknown feature '{args.name}'. Known: {known}", file=sys.stderr)
+        return 2
+
+    if args.cmd == "status":
+        for path, r in features[args.name]:
+            print(f"{region_state(r):<9} {r.kind:<8} {path}:{r.start + 1}-{r.end + 1}")
+        return 0
+
+    if args.cmd == "diff":
+        sys.stdout.write(feature_diff(root, args.name))
+        return 0
+
+    enable = args.cmd == "enable"
+    changed = set_feature(
+        root,
+        args.name,
+        enable,
+        dry_run=args.dry_run,
+        do_format=os.environ.get("FEATURES_NO_FORMAT") != "1",
+    )
+    verb = "enable" if enable else "disable"
+    if not changed:
+        print(f"'{args.name}' already {verb}d; nothing to do.")
+    elif not args.dry_run:
+        joined = ", ".join(str(p) for p in changed)
+        print(f"{verb}d '{args.name}' in {len(changed)} file(s): {joined}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

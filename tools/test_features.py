@@ -6,6 +6,7 @@ from tools.features import (
     feature_diff,
     feature_state,
     iter_source_files,
+    main,
     parse_regions,
     region_state,
     set_feature,
@@ -146,3 +147,25 @@ def test_feature_diff_shows_the_change(tmp_path):
     diff = feature_diff(tmp_path, "multi")
     assert "+        self.on = True" in diff
     assert "-        # self.on = True" in diff
+
+
+def test_cli_list_prints_state_and_name(tmp_path, capsys, monkeypatch):
+    _make_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert main(["list"]) == 0
+    assert "disabled" in capsys.readouterr().out.replace("  ", " ")
+
+
+def test_cli_unknown_name_exits_2(tmp_path, capsys, monkeypatch):
+    _make_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert main(["enable", "nope"]) == 2
+    assert "unknown feature 'nope'" in capsys.readouterr().err
+
+
+def test_cli_enable_reports_changed_files(tmp_path, capsys, monkeypatch):
+    _make_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("FEATURES_NO_FORMAT", "1")  # skip ruff in tests
+    assert main(["enable", "multi"]) == 0
+    assert "enabled 'multi'" in capsys.readouterr().out
