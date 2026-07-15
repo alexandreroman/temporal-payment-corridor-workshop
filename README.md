@@ -1,4 +1,4 @@
-# temporal-payment-corridor-workshop
+# Temporal Payment Corridor Workshop
 
 Repairs cross-border payments that arrive with an anomaly — a wrong IBAN,
 a missing intermediary bank, a currency mismatch — by coordinating

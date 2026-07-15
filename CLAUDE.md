@@ -1,4 +1,4 @@
-# temporal-payment-corridor-workshop
+# Temporal Payment Corridor Workshop
 
 Reference application and hands-on workshop that repairs anomalous
 cross-border payments with durable Temporal workflows and Pydantic AI
@@ -52,9 +52,6 @@ plugin) for all code tasks:
   attendees uncomment them following an external guide. Keep this
   structure intact: add new workshop features as tagged STEP blocks
   rather than deleting or rewriting existing code.
-- **No proprietary names** — the passive agent memory is referred to
-  only by generic terms (corridor memory); do not introduce vendor or
-  product code names.
 - **Determinism** — workflow code must stay deterministic; all I/O lives
   in activities or inside the durable agents.
 - **Config via environment** — read configuration from environment
