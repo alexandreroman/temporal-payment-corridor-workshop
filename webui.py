@@ -5,7 +5,8 @@ This is the foundation only: a static, temporal.io-styled page plus a health
 check. Interactive, Temporal-facing actions are added later as progressive
 `# --- STEP: <name> ---` blocks.
 
-Run with:  ``uv run webui``  (dev server with hot reload).
+Run with:  ``uv run webui``    (dev server with hot reload) or
+           ``python webui.py``  (production, no reload).
 """
 
 from __future__ import annotations
@@ -81,5 +82,14 @@ def dev() -> None:
     uvicorn.run("webui:app", host=WEBUI_HOST, port=WEBUI_PORT, reload=True)
 
 
+def run() -> None:
+    """Production entry point (`python webui.py`): serve without hot reload.
+
+    Used as the container CMD. Reload is intentionally off so the container
+    runs a single, stable process; the ``app`` object is passed directly.
+    """
+    uvicorn.run(app, host=WEBUI_HOST, port=WEBUI_PORT)
+
+
 if __name__ == "__main__":
-    dev()
+    run()
