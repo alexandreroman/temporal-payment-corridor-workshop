@@ -40,6 +40,23 @@ CONFIDENCE_THRESHOLD = 0.75
 TASK_QUEUE = "payment-corridor"
 
 
+def _select_best(
+    results: list[CorrectionProposal | BaseException],
+) -> CorrectionProposal | None:
+    """Pick the highest-confidence proposal, tolerating agent failures.
+
+    The coordinator fans out to agent child workflows concurrently. One agent
+    failing must not sink the whole correction, so we gather with
+    ``return_exceptions=True`` and select among the proposals that DID come
+    back. Returns ``None`` only if every agent failed.
+    Source: https://docs.temporal.io/develop/python/child-workflows
+    """
+    proposals = [r for r in results if isinstance(r, CorrectionProposal)]
+    if not proposals:
+        return None
+    return max(proposals, key=lambda p: p.confidence)
+
+
 def _prompt(anomaly: PaymentAnomaly) -> str:
     """Render an anomaly into a prompt for a correction agent."""
     return (
@@ -74,12 +91,6 @@ async def _propose(
             source=CorrectionSource.MEMORY,
         )
 
-    # --- FEATURE: agent-resilience ---
-    # Tune how the durable agent's model/tool activities retry and time out
-    # by passing config to `agent.run(...)`, e.g.:
-    #   from pydantic_ai.durable_exec.temporal import AgentRunConfig
-    #   result = await agent.run(_prompt(anomaly), ...)
-    # --- END FEATURE: agent-resilience ---
     result = await agent.run(_prompt(anomaly))
     correction: AgentCorrection = result.output
     return CorrectionProposal(
@@ -133,16 +144,34 @@ class PaymentCorrectionCoordinator:
         # --- END FEATURE: search-attributes ---
 
         # Fan out to the specialized agents, each as its own child workflow.
+        # gather(return_exceptions=True) makes the fan-out resilient: a single
+        # agent failing degrades gracefully instead of failing the whole
+        # correction. Each child gets an explicit execution timeout so a hung
+        # agent cannot stall the coordinator indefinitely.
+        # Source: https://docs.temporal.io/develop/python/child-workflows
         base_id = workflow.info().workflow_id
-        instruction, compliance = await asyncio.gather(
+        results = await asyncio.gather(
             workflow.execute_child_workflow(
-                InstructionAgentWorkflow.run, anomaly, id=f"{base_id}-instruction"
+                InstructionAgentWorkflow.run,
+                anomaly,
+                id=f"{base_id}-instruction",
+                execution_timeout=timedelta(minutes=2),
             ),
             workflow.execute_child_workflow(
-                ComplianceAgentWorkflow.run, anomaly, id=f"{base_id}-compliance"
+                ComplianceAgentWorkflow.run,
+                anomaly,
+                id=f"{base_id}-compliance",
+                execution_timeout=timedelta(minutes=2),
             ),
+            return_exceptions=True,
         )
-        best = max([instruction, compliance], key=lambda p: p.confidence)
+        best = _select_best(results)
+        if best is None:
+            return CorrectionOutcome(
+                payment_id=anomaly.payment_id,
+                applied=False,
+                message="All correction agents failed; no proposal to apply.",
+            )
 
         # Human oversight when confidence is low.
         if best.confidence < CONFIDENCE_THRESHOLD:
