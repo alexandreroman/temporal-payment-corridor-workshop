@@ -54,8 +54,10 @@ async def main() -> None:
     print(f"message : {outcome.message}")
     if outcome.proposal is not None:
         p = outcome.proposal
-        print(f"proposal: {p.field_to_fix}={p.proposed_value} "
-              f"(confidence {p.confidence:.2f}, via {p.source} / {p.agent_name})")
+        print(
+            f"proposal: {p.field_to_fix}={p.proposed_value} "
+            f"(confidence {p.confidence:.2f}, via {p.source} / {p.agent_name})"
+        )
 
     # --- STEP: human-approval-signal ---
     # When a proposal needs human sign-off, the coordinator waits for a

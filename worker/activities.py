@@ -32,9 +32,14 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     applied.add(1, {"field": proposal.field_to_fix, "source": proposal.source})
     confidence.record(proposal.confidence, {"source": proposal.source})
 
-    reference = f"corr-{proposal.field_to_fix}-{abs(hash(proposal.proposed_value)) % 100000}"
+    reference = (
+        f"corr-{proposal.field_to_fix}-{abs(hash(proposal.proposed_value)) % 100000}"
+    )
     activity.logger.info(
-        "Applied %s=%s (ref %s)", proposal.field_to_fix, proposal.proposed_value, reference
+        "Applied %s=%s (ref %s)",
+        proposal.field_to_fix,
+        proposal.proposed_value,
+        reference,
     )
     return reference
 
