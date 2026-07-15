@@ -30,9 +30,12 @@ TEMPORAL_UI_PORT   := $(shell sed -nE 's/.*"([0-9]+):8233".*/\1/p' compose.overr
 TEMPORAL_GRPC_PORT := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.override.yaml | head -n1)
 METRICS_PORT       := $(shell sed -nE 's/.*"([0-9]+):9464".*/\1/p' compose.override.yaml | head -n1)
 # Point the host-side dev flow (uv run worker/webui) at the remapped ports.
-TEMPORAL_ADDRESS     ?= localhost:$(TEMPORAL_GRPC_PORT)
-WEBUI_PORT           ?= $(WEBUI_URL_PORT)
-METRICS_BIND_ADDRESS ?= 0.0.0.0:$(METRICS_PORT)
+# Assign unconditionally (:=, not ?=): the override file is the source of truth
+# for published ports, so these must beat the .env baseline already exported
+# above. Plain := (not `override`) still lets an explicit `make VAR=...` win.
+TEMPORAL_ADDRESS     := localhost:$(TEMPORAL_GRPC_PORT)
+WEBUI_PORT           := $(WEBUI_URL_PORT)
+METRICS_BIND_ADDRESS := 0.0.0.0:$(METRICS_PORT)
 export TEMPORAL_ADDRESS WEBUI_PORT METRICS_BIND_ADDRESS
 else
 WEBUI_URL_PORT     := 8000
