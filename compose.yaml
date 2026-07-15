@@ -1,0 +1,27 @@
+# Local development infrastructure — NOT for production.
+#
+# Runs the Temporal dev server (server, built-in database and Web UI in a
+# single process) as a container. The worker and starter run on the host
+# via uv and connect to localhost:7233. Manage this with `make infra-up`.
+
+services:
+  temporal:
+    image: temporalio/temporal:latest
+    command:
+      - server
+      - start-dev
+      - --ip
+      - 0.0.0.0
+    ports:
+      - "7233:7233"  # gRPC endpoint for workers and clients
+      - "8233:8233"  # Web UI — http://localhost:8233
+    healthcheck:
+      test: ["CMD-SHELL", "temporal operator cluster health"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped

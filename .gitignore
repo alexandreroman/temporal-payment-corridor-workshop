@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# uv / virtualenv
+.venv/
+
+# Local environment configuration (never commit)
+.env
+
+# Docker / compose local overrides
+compose.override.yaml

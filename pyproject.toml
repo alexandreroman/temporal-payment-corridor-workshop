@@ -1,0 +1,31 @@
+[project]
+name = "temporal-payment-corridor-workshop"
+version = "0.1.0"
+description = "Reference app and workshop: repairing anomalous cross-border payments with durable Temporal workflows and Pydantic AI agents."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = [
+    "logfire>=4.37.0",
+    "pydantic-ai[temporal]>=2.10.0",
+    "python-dotenv>=1.2.2",
+    "watchfiles>=1.2.0",
+]
+
+[project.scripts]
+worker = "worker:dev"
+simulator = "simulator:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.15.21",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Flat layout: ship the top-level modules as the package payload.
+include = ["*.py"]
