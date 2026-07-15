@@ -25,14 +25,21 @@ make check         # lint + tests
 
 ## Modules
 
-- `models.py` — shared Pydantic models exchanged across the Temporal boundary
-- `agents.py` — Pydantic AI agents wrapped as durable `TemporalAgent`s
-- `workflows.py` — coordinator and agent child workflows
-- `activities.py` — applying the correction
-- `memory.py` — passive corridor memory: in-process store, the
-  read/write activities, and the long-running `CorridorMemoryWorkflow`
-- `worker.py` — worker entrypoint: runtime, metrics, Logfire, registration
-- `simulator.py` — client that simulates an incoming payment anomaly
+Each functional domain is a Python package; imports are absolute
+(`from shared.models import …`). Every executable module has a thin
+`main.py` bootstrap (infra init + logs + entry point), with the
+component definition isolated in its own file.
+
+- `shared/models.py` — shared Pydantic models exchanged across the
+  Temporal boundary
+- `worker/` — Temporal worker. `main.py` bootstraps infra (runtime,
+  metrics, Logfire, client, hot reload); `worker.py` builds the `Worker`
+  (task queue + workflow/activity registration); `agents.py`,
+  `activities.py`, `workflows.py`, `memory.py` hold the durable logic
+- `webui/` — FastAPI web UI. `main.py` bootstraps infra + uvicorn;
+  `app.py` defines the app and routes; `templates/` and `static/` hold
+  the HTML/CSS
+- `simulator/main.py` — client that simulates an incoming payment anomaly
 
 ## Agents
 

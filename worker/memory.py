@@ -18,7 +18,7 @@ from __future__ import annotations
 from temporalio import activity, workflow
 
 with workflow.unsafe.imports_passed_through():
-    from models import AnomalyType, CorridorPattern
+    from shared.models import AnomalyType, CorridorPattern
 
 # ---------------------------------------------------------------------------
 # Passive corridor memory

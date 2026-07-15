@@ -18,8 +18,8 @@ from temporalio.client import Client
 
 from pydantic_ai.durable_exec.temporal import PydanticAIPlugin
 
-from models import AnomalyType, PaymentAnomaly
-from workflows import TASK_QUEUE, PaymentCorrectionCoordinator
+from shared.models import AnomalyType, PaymentAnomaly
+from worker.workflows import TASK_QUEUE, PaymentCorrectionCoordinator
 
 # Configuration from environment / local .env (see .env.example).
 load_dotenv()

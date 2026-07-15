@@ -7,8 +7,9 @@ MCP traffic) to Temporal *activities*, so the agent can be driven from
 inside a deterministic workflow and replayed safely.
 
 The wrapped agents are referenced by the agent child workflows in
-``workflows.py`` (via ``__pydantic_ai_agents__``) and their activities are
-registered automatically by the ``PydanticAIPlugin`` in ``worker.py``.
+``worker/workflows.py`` (via ``__pydantic_ai_agents__``) and their
+activities are registered automatically by the ``PydanticAIPlugin`` in
+``worker/main.py``.
 """
 
 from __future__ import annotations

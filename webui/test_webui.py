@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from webui import app
+from webui.app import app
 
 client = TestClient(app)
 
