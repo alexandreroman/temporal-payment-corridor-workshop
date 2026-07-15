@@ -16,9 +16,18 @@ from __future__ import annotations
 
 import os
 
+# --- FEATURE: agent-resilience ---
+# from datetime import timedelta
+#
+# --- END FEATURE: agent-resilience ---
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.durable_exec.temporal import TemporalAgent
+
+# --- FEATURE: agent-resilience ---
+# from temporalio.common import RetryPolicy
+#
+# --- END FEATURE: agent-resilience ---
 
 # Model is resolved at import time from the environment so attendees can
 # switch providers without touching code. Any Pydantic AI model string
@@ -99,10 +108,6 @@ compliance_temporal_agent = TemporalAgent(compliance_agent)
 # # sets that activity's timeout and RetryPolicy so slow/rate-limited model
 # # calls are retried durably instead of failing the workflow.
 # # Source: https://ai.pydantic.dev/durable_execution/temporal/#activity-configuration
-# from datetime import timedelta
-#
-# from temporalio.common import RetryPolicy
-#
 # _MODEL_ACTIVITY_CONFIG = {
 #     "start_to_close_timeout": timedelta(seconds=60),
 #     "retry_policy": RetryPolicy(maximum_attempts=5),
