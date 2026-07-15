@@ -21,3 +21,4 @@
 - [Default to subagent-driven implementation](references/feedback_subagent_driven_default.md) — execute approved plans with subagent-driven development by default; source edits via skillbox:code-writer.
 - [Design specs are intentionally not version-controlled](references/reference_specs_local_only.md) — `docs/` is gitignored on purpose; specs stay local, their absence from git is normal.
 - [Workshop audience and scope](references/project_workshop_audience.md) — Python-strong audience who completed Temporal 101 and 102, in cross-border payments; format 3×2h hands-on; emphasis: durable agents, encryption, light metrics, search attributes, tests.
+- [Testing TemporalAgent-based workflows under start_local](references/reference_temporal_agent_testing.md) — Agent.override(model=...) doesn't reach the model activity; register a TestModel stand-in under the real workflow name instead. Fernet import needs imports_passed_through() too.
