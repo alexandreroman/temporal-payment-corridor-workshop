@@ -142,6 +142,26 @@ def test_set_feature_dry_run_writes_nothing(tmp_path):
     assert (tmp_path / "worker" / "a.py").read_text() == CROSS_FILE_A  # untouched
 
 
+def test_set_feature_reverts_when_enable_yields_invalid_python(tmp_path):
+    import pytest
+
+    from tools.features import MalformedError, set_feature
+
+    (tmp_path / "worker").mkdir()
+    f = tmp_path / "worker" / "prose.py"
+    original = (
+        "def run():\n"
+        "    # --- FEATURE: docs-only ---\n"
+        "    # This is prose, not code: agent's notes, e.g. stuff.\n"
+        "    # --- END FEATURE: docs-only ---\n"
+        "    return 0\n"
+    )
+    f.write_text(original, encoding="utf-8")
+    with pytest.raises(MalformedError):
+        set_feature(tmp_path, "docs-only", enable=True, dry_run=False, do_format=False)
+    assert f.read_text(encoding="utf-8") == original  # reverted, tree intact
+
+
 def test_feature_diff_shows_the_change(tmp_path):
     _make_repo(tmp_path)
     diff = feature_diff(tmp_path, "multi")

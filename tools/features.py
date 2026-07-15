@@ -38,7 +38,7 @@ from pathlib import Path
 # alternation so the longer token wins.
 MARKER_RE = re.compile(
     r"^(?P<indent>[ \t]*)# --- (?P<end>END )?"
-    r"(?P<kind>FEATURE-DEFAULT|FEATURE): (?P<name>[a-z0-9][a-z0-9-]*) ---[ \t]*$"
+    r"(?P<kind>FEATURE-DEFAULT|FEATURE): (?P<name>[a-z0-9]+(?:-[a-z0-9]+)*) ---[ \t]*$"
 )
 
 
@@ -222,6 +222,8 @@ def set_feature(
     clean (see the Temporal Python style guidance).
     """
     changed: list[Path] = []
+    originals: dict[Path, str] = {}  # pre-change text, for rollback
+    new_texts: dict[Path, str] = {}  # post-change text, for validation
     for path in _files_with_feature(root_dir, name):
         text = path.read_text(encoding="utf-8")
         new = set_feature_in_text(text, name, enable)
@@ -238,11 +240,33 @@ def set_feature(
                 )
             )
         else:
+            originals[path] = text
+            new_texts[path] = new
             path.write_text(new, encoding="utf-8")
-    if changed and not dry_run and do_format:
-        subprocess.run(
+
+    if dry_run or not changed:
+        return changed
+
+    # Validate every rewritten file parses as Python. A feature body may be
+    # prose that only looks like code once uncommented; if any file no longer
+    # compiles, roll the whole tree back so no file is left corrupted.
+    for path in changed:
+        try:
+            compile(new_texts[path], str(path), "exec")
+        except SyntaxError as exc:
+            for restore_path in changed:
+                restore_path.write_text(originals[restore_path], encoding="utf-8")
+            raise MalformedError(
+                f"feature '{name}': enabling it produced invalid Python in "
+                f"{path}: {exc}"
+            ) from exc
+
+    if do_format:
+        result = subprocess.run(
             ["uv", "run", "ruff", "format", *(str(p) for p in changed)], check=False
         )
+        if result.returncode != 0:
+            print(f"warning: ruff format exited {result.returncode}", file=sys.stderr)
     return changed
 
 
