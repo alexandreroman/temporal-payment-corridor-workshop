@@ -9,4 +9,5 @@
 > no tool calls, no file writes — until confirmed.
 
 - [Dev workflow: hot reload and HTML preview](references/feedback_dev_workflow.md) — use `make dev`/`make webui` for hot reload; preview HTML via Casper Browser when available.
-- [Docker images run modules from source](references/project_docker_build.md) — images install deps only and run `python worker.py`/`webui.py`; never build the wheel (readme field breaks the build).
+- [Docker images run modules from source](references/project_docker_build.md) — images install deps only and run `python -m worker.main`/`webui.main`; never build the wheel (readme field breaks the build).
+- [Module layout: packages per domain with thin main.py](references/project_module_layout.md) — package-per-domain, thin main.py + isolated definition; Logfire config lives in webui/app.py (reload subprocess), not main.py.
