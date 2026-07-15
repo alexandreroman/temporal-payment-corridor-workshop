@@ -7,7 +7,9 @@ referenced as an import string so hot reload can run it in a fresh subprocess.
 Logfire is configured in ``webui/app.py`` (not here) because uvicorn's reload
 imports the app module directly in that subprocess, never this bootstrap.
 
-Run with:  ``uv run webui``  (dev server with hot reload).
+Run with:
+  * ``uv run webui``        — dev server with hot reload.
+  * ``python -m webui.main`` — production server, no reload (container entry).
 """
 
 from __future__ import annotations
@@ -35,5 +37,20 @@ def dev() -> None:
     uvicorn.run("webui.app:app", host=WEBUI_HOST, port=WEBUI_PORT, reload=True)
 
 
+def run() -> None:
+    """Container entry point (`python -m webui.main`): run without reload.
+
+    Reload is intentionally off so the container runs a single stable process.
+    The app object is passed directly (not as an import string) since there is
+    no reload subprocess to spawn. The import is deferred to here so the common
+    ``dev()`` / ``uv run webui`` path never imports the app module in the
+    supervisor process; importing ``webui.app`` also configures Logfire
+    in-process, which is correct in production where there is no subprocess.
+    """
+    from webui.app import app
+
+    uvicorn.run(app, host=WEBUI_HOST, port=WEBUI_PORT)
+
+
 if __name__ == "__main__":
-    dev()
+    run()
