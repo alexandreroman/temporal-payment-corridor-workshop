@@ -138,14 +138,25 @@ def _gate(
     return GateDecision.APPLY, ""
 
 
-def _prompt(anomaly: PaymentAnomaly) -> str:
-    """Render an anomaly into a prompt for a correction agent."""
+def _anomaly_context(anomaly: PaymentAnomaly) -> str:
+    """Render the shared anomaly context both agent prompts start from."""
     return (
         f"Corridor: {anomaly.corridor}\n"
         f"Anomaly: {anomaly.anomaly_type}\n"
         f"Amount: {anomaly.amount} {anomaly.currency}\n"
         f"Details: {anomaly.details}\n"
-        "Propose the single best correction."
+    )
+
+
+def _prompt(anomaly: PaymentAnomaly) -> str:
+    """Prompt the instruction agent to propose a correction."""
+    return _anomaly_context(anomaly) + "Propose the single best correction."
+
+
+def _compliance_prompt(anomaly: PaymentAnomaly) -> str:
+    """Prompt the compliance agent to return a verdict, not a correction."""
+    return _anomaly_context(anomaly) + (
+        "Validate whether a compliant correction is possible and return a verdict."
     )
 
 
@@ -184,6 +195,37 @@ async def _propose(
     )
 
 
+async def _verify_compliance(agent, anomaly: PaymentAnomaly) -> ComplianceVerdict:
+    """Memory-first compliance check for the compliance child workflow.
+
+    NOTE: A known high-confidence corridor pattern is presumed compliant
+    without a model call, mirroring _propose. This is what keeps the seeded
+    happy path (US->IN / WRONG_BIC) fully offline: neither agent calls the
+    model. On a miss, the durable compliance agent produces the verdict.
+    """
+    pattern = await workflow.execute_activity(
+        read_corridor_memory,
+        args=[anomaly.corridor, anomaly.anomaly_type],
+        start_to_close_timeout=timedelta(seconds=10),
+    )
+    if pattern is not None and pattern.confidence >= CONFIDENCE_THRESHOLD:
+        return ComplianceVerdict(
+            compliant=True,
+            violations=[],
+            confidence=pattern.confidence,
+            source=CorrectionSource.MEMORY,
+        )
+
+    result = await agent.run(_compliance_prompt(anomaly))
+    verdict: ComplianceVerdict = result.output
+    return ComplianceVerdict(
+        compliant=verdict.compliant,
+        violations=verdict.violations,
+        confidence=verdict.confidence,
+        source=CorrectionSource.LLM,
+    )
+
+
 @workflow.defn
 class InstructionAgentWorkflow(PydanticAIWorkflow):
     """Child workflow driving the instruction-fixing agent."""
@@ -202,8 +244,8 @@ class ComplianceAgentWorkflow(PydanticAIWorkflow):
     __pydantic_ai_agents__ = [compliance_temporal_agent]
 
     @workflow.run
-    async def run(self, anomaly: PaymentAnomaly) -> CorrectionProposal:
-        return await _propose(compliance_temporal_agent, "compliance_agent", anomaly)
+    async def run(self, anomaly: PaymentAnomaly) -> ComplianceVerdict:
+        return await _verify_compliance(compliance_temporal_agent, anomaly)
 
 
 @workflow.defn
@@ -261,18 +303,24 @@ class PaymentCorrectionCoordinator:
             ),
             return_exceptions=True,
         )
-        # NOTE: _select_best was replaced by the _gate/GateDecision pair above, but
-        # `run` is rewired to use them in a follow-up step; kept as-is here on purpose.
-        best = _select_best(results)  # noqa: F821
-        if best is None:
+        # NOTE: Compliance is now a gate over the instruction fix, not a rival
+        # proposal. results[0] is the instruction child, results[1] the
+        # compliance child (gather preserves order); either may be an exception.
+        proposal = results[0] if isinstance(results[0], CorrectionProposal) else None
+        verdict = results[1] if isinstance(results[1], ComplianceVerdict) else None
+        decision, message = _gate(proposal, verdict)
+
+        if decision is GateDecision.NO_PROPOSAL:
             return CorrectionOutcome(
                 payment_id=anomaly.payment_id,
                 applied=False,
-                message="All correction agents failed; no proposal to apply.",
+                verdict=verdict,
+                message=message,
             )
 
-        # Human oversight when confidence is low.
-        if best.confidence < CONFIDENCE_THRESHOLD:
+        # Human oversight when the gate withholds automatic apply: a compliance
+        # violation, a missing verdict (fail-closed), or low confidence.
+        if decision is GateDecision.REVIEW:
             # region FEATURE-ON: human-approval-signal
             # workflow.logger.info("Low confidence, awaiting human approval")
             # # NOTE: Publish the awaiting state through both listing seams: the
@@ -293,7 +341,8 @@ class PaymentCorrectionCoordinator:
             #     return CorrectionOutcome(
             #         payment_id=anomaly.payment_id,
             #         applied=False,
-            #         proposal=best,
+            #         proposal=proposal,
+            #         verdict=verdict,
             #         message="No decision within the approval window; auto-rejected.",
             #     )
             # finally:
@@ -304,26 +353,28 @@ class PaymentCorrectionCoordinator:
             #     return CorrectionOutcome(
             #         payment_id=anomaly.payment_id,
             #         applied=False,
-            #         proposal=best,
+            #         proposal=proposal,
+            #         verdict=verdict,
             #         decision=self._decision,
             #         message="Correction rejected by reviewer.",
             #     )
             # endregion FEATURE-ON: human-approval-signal
 
             # region FEATURE-OFF: human-approval-signal
-            # Starting point (no oversight wired yet): refuse low-confidence
-            # fixes outright.
+            # Starting point (no oversight wired yet): refuse a held correction
+            # outright, surfacing the gate's reason.
             return CorrectionOutcome(
                 payment_id=anomaly.payment_id,
                 applied=False,
-                proposal=best,
-                message="Confidence below threshold; human approval required.",
+                proposal=proposal,
+                verdict=verdict,
+                message=message,
             )
             # endregion FEATURE-OFF: human-approval-signal
 
         reference = await workflow.execute_activity(
             apply_correction,
-            best,
+            proposal,
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
@@ -358,7 +409,8 @@ class PaymentCorrectionCoordinator:
         # return CorrectionOutcome(
         #     payment_id=anomaly.payment_id,
         #     applied=True,
-        #     proposal=best,
+        #     proposal=proposal,
+        #     verdict=verdict,
         #     decision=self._decision,
         #     settlement=settlement,
         #     message=f"Correction applied (reference {reference}).",
@@ -369,7 +421,8 @@ class PaymentCorrectionCoordinator:
         return CorrectionOutcome(
             payment_id=anomaly.payment_id,
             applied=True,
-            proposal=best,
+            proposal=proposal,
+            verdict=verdict,
             decision=self._decision,
             message=f"Correction applied (reference {reference}).",
         )

@@ -68,6 +68,7 @@ with workflow.unsafe.imports_passed_through():
     from shared.encryption import EncryptionCodec, build_data_converter
     from shared.models import (
         AnomalyType,
+        ComplianceVerdict,
         CorrectionOutcome,
         CorrectionProposal,
         CorrectionSource,
@@ -89,8 +90,10 @@ with workflow.unsafe.imports_passed_through():
     from payments.agents import AgentCorrection
     from payments.workflows import (
         ComplianceAgentWorkflow,
+        InstructionAgentWorkflow,
         PaymentCorrectionCoordinator,
         _propose,
+        _verify_compliance,
     )
 
 TASK_QUEUE = "payment-corridor-test"
@@ -151,15 +154,6 @@ class _FakeInstructionAgentWorkflow:
         )
 
 
-@workflow.defn(name="InstructionAgentWorkflow")
-class _FailingInstructionAgentWorkflow:
-    """Always fails, to exercise the coordinator's resilient fan-out."""
-
-    @workflow.run
-    async def run(self, anomaly: PaymentAnomaly) -> CorrectionProposal:
-        raise ApplicationError("Simulated instruction-agent outage")
-
-
 # A TestModel-backed compliance double, registered under the real compliance
 # workflow's type name. Paired with the instruction double, it lets the
 # coordinator reach a genuine low-confidence outcome (TestModel returns
@@ -167,7 +161,7 @@ class _FailingInstructionAgentWorkflow:
 _test_compliance_agent = Agent(
     TestModel(),
     name="compliance_agent",
-    output_type=AgentCorrection,
+    output_type=ComplianceVerdict,
     instructions="Test double; TestModel never reads this.",
 )
 _test_compliance_temporal_agent = TemporalAgent(_test_compliance_agent)
@@ -175,15 +169,22 @@ _test_compliance_temporal_agent = TemporalAgent(_test_compliance_agent)
 
 @workflow.defn(name="ComplianceAgentWorkflow")
 class _FakeComplianceAgentWorkflow:
-    """Runs the real memory-first flow, but against a TestModel agent."""
+    """Runs the real memory-first compliance flow, but against a TestModel."""
 
     __pydantic_ai_agents__ = [_test_compliance_temporal_agent]
 
     @workflow.run
-    async def run(self, anomaly: PaymentAnomaly) -> CorrectionProposal:
-        return await _propose(
-            _test_compliance_temporal_agent, "compliance_agent", anomaly
-        )
+    async def run(self, anomaly: PaymentAnomaly) -> ComplianceVerdict:
+        return await _verify_compliance(_test_compliance_temporal_agent, anomaly)
+
+
+@workflow.defn(name="ComplianceAgentWorkflow")
+class _FailingComplianceAgentWorkflow:
+    """Always fails, to exercise the fail-closed compliance gate."""
+
+    @workflow.run
+    async def run(self, anomaly: PaymentAnomaly) -> ComplianceVerdict:
+        raise ApplicationError("Simulated compliance-agent outage")
 
 
 async def _local_env_client(env: WorkflowEnvironment) -> Client:
@@ -250,14 +251,13 @@ def test_instruction_agent_returns_llm_proposal_on_memory_miss():
     asyncio.run(scenario())
 
 
-def test_coordinator_survives_one_failing_agent():
-    """The coordinator still applies a correction when one agent fails.
+def test_coordinator_holds_when_compliance_fails():
+    """Fail-closed: a failed compliance agent never lets a fix auto-apply.
 
-    The instruction agent is replaced with a stand-in that always raises.
-    The compliance agent runs unmodified, but the anomaly is the seeded
-    memory hit (US->IN / WRONG_BIC), so it also never calls a model — the
-    whole scenario stays offline while still exercising the real
-    PaymentCorrectionCoordinator, its fan-out, and _select_best.
+    The instruction agent hits the seeded memory (US->IN / WRONG_BIC), so it
+    returns a confident proposal offline. The compliance agent fails, so there
+    is no clearance -- the coordinator holds instead of applying. With human
+    oversight not yet wired (baseline), a held correction is refused.
     """
 
     async def scenario() -> None:
@@ -273,20 +273,17 @@ def test_coordinator_survives_one_failing_agent():
                 task_queue=TASK_QUEUE,
                 workflows=[
                     PaymentCorrectionCoordinator,
-                    _FailingInstructionAgentWorkflow,
-                    ComplianceAgentWorkflow,
+                    InstructionAgentWorkflow,
+                    _FailingComplianceAgentWorkflow,
                 ],
                 activities=[
                     read_corridor_memory,
                     write_corridor_memory,
                     apply_correction,
-                    # region FEATURE-ON: settlement-confirmation
-                    # confirm_settlement,
-                    # endregion FEATURE-ON: settlement-confirmation
                 ],
             ):
                 anomaly = PaymentAnomaly(
-                    payment_id="pay-resilience-1",
+                    payment_id="pay-holds-1",
                     corridor="US->IN",
                     amount=500.0,
                     currency="INR",
@@ -296,17 +293,71 @@ def test_coordinator_survives_one_failing_agent():
                 outcome: CorrectionOutcome = await client.execute_workflow(
                     PaymentCorrectionCoordinator.run,
                     anomaly,
-                    id="test-coordinator-survives-failure",
+                    id="test-coordinator-holds-when-compliance-fails",
+                    task_queue=TASK_QUEUE,
+                    execution_timeout=timedelta(seconds=30),
+                )
+
+        assert outcome.applied is False
+        assert outcome.proposal is not None
+        assert outcome.proposal.agent_name == "instruction_agent"
+        assert outcome.verdict is None  # compliance failed -> no verdict recorded
+
+    asyncio.run(scenario())
+
+
+def test_coordinator_applies_when_compliant_and_confident():
+    """Happy path: both agents hit the seeded memory, offline, and apply.
+
+    Instruction returns a confident memory proposal; compliance returns a
+    memory-derived compliant verdict. The gate clears and the correction is
+    applied without any human oversight.
+    """
+
+    async def scenario() -> None:
+        async with await WorkflowEnvironment.start_local(
+            search_attributes=[
+                SearchAttributeKey.for_keyword("corridor"),
+                SearchAttributeKey.for_keyword("anomalyType"),
+            ],
+        ) as env:
+            client = await _local_env_client(env)
+            async with Worker(
+                client,
+                task_queue=TASK_QUEUE,
+                workflows=[
+                    PaymentCorrectionCoordinator,
+                    InstructionAgentWorkflow,
+                    ComplianceAgentWorkflow,
+                ],
+                activities=[
+                    read_corridor_memory,
+                    write_corridor_memory,
+                    apply_correction,
+                ],
+            ):
+                anomaly = PaymentAnomaly(
+                    payment_id="pay-applies-1",
+                    corridor="US->IN",
+                    amount=500.0,
+                    currency="INR",
+                    anomaly_type=AnomalyType.WRONG_BIC,
+                    details={"bic": "WRONG"},
+                )
+                outcome: CorrectionOutcome = await client.execute_workflow(
+                    PaymentCorrectionCoordinator.run,
+                    anomaly,
+                    id="test-coordinator-applies-when-compliant",
                     task_queue=TASK_QUEUE,
                     execution_timeout=timedelta(seconds=30),
                 )
 
         assert outcome.applied is True
         assert outcome.proposal is not None
-        # The surviving proposal came from the compliance agent's memory hit,
-        # not from the failed instruction agent.
-        assert outcome.proposal.agent_name == "compliance_agent"
-        assert outcome.proposal.source == CorrectionSource.MEMORY
+        assert outcome.proposal.agent_name == "instruction_agent"
+        assert outcome.proposal.field_to_fix == "bic"
+        assert outcome.verdict is not None
+        assert outcome.verdict.compliant is True
 
     asyncio.run(scenario())
 
@@ -348,7 +399,7 @@ def test_payload_encryption_encrypts_history():
                 workflows=[
                     PaymentCorrectionCoordinator,
                     ComplianceAgentWorkflow,
-                    _FailingInstructionAgentWorkflow,
+                    InstructionAgentWorkflow,
                 ],
                 activities=[
                     read_corridor_memory,
@@ -437,9 +488,10 @@ def test_coordinator_exposes_listing_query_surface():
                     # endregion FEATURE-ON: settlement-confirmation
                 ],
             ):
-                # "US->GB" / WRONG_BIC misses the seeded memory, so both agents
-                # fall through to their TestModel doubles, which return
-                # confidence 0.0 — a guaranteed low-confidence correction.
+                # "US->GB" / WRONG_BIC misses the seeded memory, so both doubles
+                # fall through to TestModel. The compliance verdict comes back
+                # compliant=False (TestModel's generated bool), so the gate holds
+                # for review -- the awaiting state the API listing surfaces.
                 anomaly = PaymentAnomaly(
                     payment_id="pay-query-surface-1",
                     corridor="US->GB",
