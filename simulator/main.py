@@ -18,10 +18,10 @@ from temporalio.client import Client
 
 from pydantic_ai.durable_exec.temporal import PydanticAIPlugin
 
-# --- FEATURE: payload-encryption ---
+# region FEATURE-ON: payload-encryption
 # from shared.encryption import EncryptionCodec, build_data_converter, load_key
 #
-# --- END FEATURE: payload-encryption ---
+# endregion FEATURE-ON: payload-encryption
 from shared.models import AnomalyType, PaymentAnomaly
 from worker.workflows import TASK_QUEUE, PaymentCorrectionCoordinator
 
@@ -32,14 +32,14 @@ TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
 
 
 async def main() -> None:
-    # --- FEATURE-DEFAULT: payload-encryption ---
+    # region FEATURE-OFF: payload-encryption
     client = await Client.connect(
         TEMPORAL_ADDRESS,
         # Same data converter as the worker, so Pydantic models round-trip.
         plugins=[PydanticAIPlugin()],
     )
-    # --- END FEATURE-DEFAULT: payload-encryption ---
-    # --- FEATURE: payload-encryption ---
+    # endregion FEATURE-OFF: payload-encryption
+    # region FEATURE-ON: payload-encryption
     # # NOTE: Encrypt payloads across the Temporal boundary, matching the worker's
     # # data converter. PydanticAIPlugin only installs its own data converter
     # # when the caller doesn't pass one, so keeping the plugin alongside an
@@ -55,7 +55,7 @@ async def main() -> None:
     #     data_converter=build_data_converter(EncryptionCodec(key)),
     #     plugins=[PydanticAIPlugin()],
     # )
-    # --- END FEATURE: payload-encryption ---
+    # endregion FEATURE-ON: payload-encryption
 
     anomaly = PaymentAnomaly(
         payment_id=f"pmt-{uuid.uuid4().hex[:8]}",

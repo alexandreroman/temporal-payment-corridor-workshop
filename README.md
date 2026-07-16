@@ -22,7 +22,7 @@ local dev server.
   serves both Temporal SDK metrics (`temporal_*`) and application metrics
   (`corridor_*`).
 - **Progressive activation** — the full application ships up front;
-  workshop steps are enabled by uncommenting tagged `FEATURE` blocks.
+  workshop steps are enabled by uncommenting tagged `FEATURE-ON` blocks.
 
 ## Prerequisites
 
@@ -81,8 +81,8 @@ list all targets (`infra-up`, `infra-down`, `worker`, `lint`, ...).
 ## Workshop features
 
 The full application ships up front; individual capabilities stay dormant in
-tagged `# --- FEATURE: <name> ---` blocks until you enable them. Toggle them by
-name — no manual editing:
+tagged `# region FEATURE-ON: <name>` blocks until you enable them. Toggle
+them by name — no manual editing:
 
 ```bash
 make feature-list                           # every feature and its state
@@ -92,8 +92,15 @@ make feature-disable NAME=search-attributes # revert
 ```
 
 Enabling uncomments a feature's code; disabling re-comments it. A feature that
-replaces existing behavior pairs a `FEATURE` block with an inverse
-`FEATURE-DEFAULT` block, so the swap is reversible both ways.
+replaces existing behavior pairs a `# region FEATURE-ON: <name>` block with an
+inverse `# region FEATURE-OFF: <name>` block, so the swap is reversible
+both ways.
+
+These blocks use VS Code folding-region markers. On open (with the
+recommended `zokugun.explicit-folding` extension installed), VS Code folds
+the dormant `# region FEATURE-ON:` regions while the base implementation
+(the `# region FEATURE-OFF:` / live code) stays visible. Expand a folded
+`FEATURE-ON` region to study it.
 
 ### Decrypting payloads in the Web UI (codec server)
 

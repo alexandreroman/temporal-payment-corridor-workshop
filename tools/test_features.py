@@ -17,20 +17,20 @@ from tools.features import (
 
 FEATURE_SAMPLE = """\
 x = 1
-    # --- FEATURE: demo ---
+    # region FEATURE-ON: demo
     # y = 2
-    # --- END FEATURE: demo ---
+    # endregion FEATURE-ON: demo
 z = 3
 """
 
 PAIRED = """\
 def run():
-    # --- FEATURE-DEFAULT: swap ---
+    # region FEATURE-OFF: swap
     return "old"
-    # --- END FEATURE-DEFAULT: swap ---
-    # --- FEATURE: swap ---
+    # endregion FEATURE-OFF: swap
+    # region FEATURE-ON: swap
     # return "new"
-    # --- END FEATURE: swap ---
+    # endregion FEATURE-ON: swap
 """
 
 
@@ -48,7 +48,7 @@ def test_parse_regions_flags_unclosed_region():
     import pytest
 
     with pytest.raises(MalformedError):
-        parse_regions("    # --- FEATURE: demo ---\n    # y = 2\n")
+        parse_regions("    # region FEATURE-ON: demo\n    # y = 2\n")
 
 
 def test_region_state_reads_commented_and_live_bodies():
@@ -83,7 +83,7 @@ def test_enable_is_idempotent():
 def test_set_feature_rejects_body_line_less_indented_than_marker():
     import pytest
 
-    text = "    # --- FEATURE: demo ---\nx = 1\n    # --- END FEATURE: demo ---\n"
+    text = "    # region FEATURE-ON: demo\nx = 1\n    # endregion FEATURE-ON: demo\n"
     with pytest.raises(MalformedError):
         set_feature_in_text(text, "demo", enable=False)
 
@@ -91,17 +91,17 @@ def test_set_feature_rejects_body_line_less_indented_than_marker():
 CROSS_FILE_A = """\
 class C:
     def __init__(self):
-        # --- FEATURE: multi ---
+        # region FEATURE-ON: multi
         # self.on = True
-        # --- END FEATURE: multi ---
+        # endregion FEATURE-ON: multi
         pass
 """
 
 CROSS_FILE_B = """\
 def helper():
-    # --- FEATURE: multi ---
+    # region FEATURE-ON: multi
     # return 1
-    # --- END FEATURE: multi ---
+    # endregion FEATURE-ON: multi
     return 0
 """
 
@@ -153,9 +153,9 @@ def test_set_feature_reverts_when_enable_yields_invalid_python(tmp_path):
     f = tmp_path / "worker" / "prose.py"
     original = (
         "def run():\n"
-        "    # --- FEATURE: docs-only ---\n"
+        "    # region FEATURE-ON: docs-only\n"
         "    # This is prose, not code: agent's notes, e.g. stuff.\n"
-        "    # --- END FEATURE: docs-only ---\n"
+        "    # endregion FEATURE-ON: docs-only\n"
         "    return 0\n"
     )
     f.write_text(original, encoding="utf-8")
@@ -193,7 +193,7 @@ def test_cli_enable_reports_changed_files(tmp_path, capsys, monkeypatch):
     assert "enabled 'multi'" in capsys.readouterr().out
 
 
-# --- Regression guard against prose (or otherwise non-code) inside a FEATURE
+# Regression guard against prose (or otherwise non-code) inside a FEATURE
 # block. Feature bodies ship commented out, so a body that is not valid Python
 # stays hidden until a learner enables the feature and it uncomments into a
 # SyntaxError. These cases toggle every feature in the *real* repository, so

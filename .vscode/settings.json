@@ -3,5 +3,28 @@
   // ${workspaceFolder} resolves to whichever worktree is open, so this
   // stays correct across multiple checkouts.
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-  "python.terminal.activateEnvironment": true
+  "python.terminal.activateEnvironment": true,
+  // Fold the workshop's feature regions on open (needs the recommended
+  // zokugun.explicit-folding extension). The dormant `# region FEATURE-ON:`
+  // blocks fold away, while `# region FEATURE-OFF:` (the live base code)
+  // stays expanded so learners see the base app. Either rule can still be
+  // folded/unfolded manually.
+  "[python]": {
+    // Global "none" is required: without it the extension auto-folds every
+    // region it detects (including FEATURE-OFF). With it, only the rule
+    // that opts in via "autoFold": true folds on open.
+    "explicitFolding.autoFold": "none",
+    "explicitFolding.rules": [
+      {
+        "beginRegex": "#\\s*region\\s+FEATURE-ON:",
+        "endRegex": "#\\s*endregion\\s+FEATURE-ON:",
+        "autoFold": true
+      },
+      {
+        "beginRegex": "#\\s*region\\s+FEATURE-OFF:",
+        "endRegex": "#\\s*endregion\\s+FEATURE-OFF:",
+        "autoFold": false
+      }
+    ]
+  }
 }

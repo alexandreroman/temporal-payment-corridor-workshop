@@ -16,18 +16,18 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-# --- FEATURE: search-attributes ---
+# region FEATURE-ON: search-attributes
 # from temporalio.common import SearchAttributeKey
-# --- END FEATURE: search-attributes ---
+# endregion FEATURE-ON: search-attributes
 
 with workflow.unsafe.imports_passed_through():
     from pydantic_ai.durable_exec.temporal import PydanticAIWorkflow
 
     from worker.activities import apply_correction
 
-    # --- FEATURE: settlement-confirmation ---
+    # region FEATURE-ON: settlement-confirmation
     # from worker.activities import confirm_settlement
-    # --- END FEATURE: settlement-confirmation ---
+    # endregion FEATURE-ON: settlement-confirmation
 
     from worker.agents import (
         AgentCorrection,
@@ -49,20 +49,20 @@ CONFIDENCE_THRESHOLD = 0.75
 
 TASK_QUEUE = "payment-corridor"
 
-# --- FEATURE-DEFAULT: approval-timeout ---
+# region FEATURE-OFF: approval-timeout
 # How long the coordinator waits for a human decision. None = wait forever.
 _APPROVAL_TIMEOUT: timedelta | None = None
-# --- END FEATURE-DEFAULT: approval-timeout ---
-# --- FEATURE: approval-timeout ---
+# endregion FEATURE-OFF: approval-timeout
+# region FEATURE-ON: approval-timeout
 # # NOTE: Bounded human-in-the-loop: if no decision arrives within this window the
 # # coordinator stops waiting and auto-rejects. This is a *durable timer* —
 # # workflow.wait_condition(timeout=...) raises asyncio.TimeoutError when the
 # # deadline elapses, and the timer survives worker restarts like any other
 # # workflow state. Source: https://docs.temporal.io/develop/python/timers
 # _APPROVAL_TIMEOUT: timedelta | None = timedelta(minutes=5)
-# --- END FEATURE: approval-timeout ---
+# endregion FEATURE-ON: approval-timeout
 
-# --- FEATURE: search-attributes ---
+# region FEATURE-ON: search-attributes
 # # NOTE: Typed Search Attribute keys used by PaymentCorrectionCoordinator below to
 # # tag each workflow execution with its corridor and anomaly type. This makes
 # # executions filterable and listable (in the Web UI, the `temporal workflow
@@ -74,7 +74,7 @@ _APPROVAL_TIMEOUT: timedelta | None = None
 # #   temporal operator search-attribute create --name anomalyType --type Keyword
 # _CORRIDOR_SA = SearchAttributeKey.for_keyword("corridor")
 # _ANOMALY_TYPE_SA = SearchAttributeKey.for_keyword("anomalyType")
-# --- END FEATURE: search-attributes ---
+# endregion FEATURE-ON: search-attributes
 
 
 def _select_best(
@@ -171,7 +171,7 @@ class PaymentCorrectionCoordinator:
 
     @workflow.run
     async def run(self, anomaly: PaymentAnomaly) -> CorrectionOutcome:
-        # --- FEATURE: search-attributes ---
+        # region FEATURE-ON: search-attributes
         # # NOTE: Tag this execution with typed Search Attributes so it can be
         # # filtered/listed by corridor and anomaly type. This replaces the
         # # deprecated dict form of upsert_search_attributes. anomaly.anomaly_type
@@ -185,7 +185,7 @@ class PaymentCorrectionCoordinator:
         #         _ANOMALY_TYPE_SA.value_set(str(anomaly.anomaly_type)),
         #     ]
         # )
-        # --- END FEATURE: search-attributes ---
+        # endregion FEATURE-ON: search-attributes
 
         # NOTE: Fan out to the specialized agents, each as its own child workflow.
         # gather(return_exceptions=True) makes the fan-out resilient: a single
@@ -219,7 +219,7 @@ class PaymentCorrectionCoordinator:
 
         # Human oversight when confidence is low.
         if best.confidence < CONFIDENCE_THRESHOLD:
-            # --- FEATURE: human-approval-signal ---
+            # region FEATURE-ON: human-approval-signal
             # workflow.logger.info("Low confidence, awaiting human approval")
             # # _APPROVAL_TIMEOUT defaults to None (wait forever); enabling the
             # # `approval-timeout` feature turns this into a real auto-reject deadline.
@@ -243,9 +243,9 @@ class PaymentCorrectionCoordinator:
             #         decision=self._decision,
             #         message="Correction rejected by reviewer.",
             #     )
-            # --- END FEATURE: human-approval-signal ---
+            # endregion FEATURE-ON: human-approval-signal
 
-            # --- FEATURE-DEFAULT: human-approval-signal ---
+            # region FEATURE-OFF: human-approval-signal
             # Starting point (no oversight wired yet): refuse low-confidence
             # fixes outright.
             return CorrectionOutcome(
@@ -254,7 +254,7 @@ class PaymentCorrectionCoordinator:
                 proposal=best,
                 message="Confidence below threshold; human approval required.",
             )
-            # --- END FEATURE-DEFAULT: human-approval-signal ---
+            # endregion FEATURE-OFF: human-approval-signal
 
         reference = await workflow.execute_activity(
             apply_correction,
@@ -263,7 +263,7 @@ class PaymentCorrectionCoordinator:
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
 
-        # --- FEATURE: settlement-confirmation ---
+        # region FEATURE-ON: settlement-confirmation
         # # Once the correction is applied, wait for the downstream rail to
         # # actually settle. confirm_settlement is a long-running, heartbeating
         # # activity that polls the rail; from the workflow's point of view it is
@@ -298,9 +298,9 @@ class PaymentCorrectionCoordinator:
         #     settlement=settlement,
         #     message=f"Correction applied (reference {reference}).",
         # )
-        # --- END FEATURE: settlement-confirmation ---
+        # endregion FEATURE-ON: settlement-confirmation
 
-        # --- FEATURE-DEFAULT: settlement-confirmation ---
+        # region FEATURE-OFF: settlement-confirmation
         return CorrectionOutcome(
             payment_id=anomaly.payment_id,
             applied=True,
@@ -308,9 +308,9 @@ class PaymentCorrectionCoordinator:
             decision=self._decision,
             message=f"Correction applied (reference {reference}).",
         )
-        # --- END FEATURE-DEFAULT: settlement-confirmation ---
+        # endregion FEATURE-OFF: settlement-confirmation
 
-    # --- FEATURE: human-approval-signal ---
+    # region FEATURE-ON: human-approval-signal
     # @workflow.signal
     # async def approve_correction(self, decision: ApprovalDecision) -> None:
     #     """Human reviewer's verdict on a low-confidence proposal."""
@@ -320,4 +320,4 @@ class PaymentCorrectionCoordinator:
     # def decision(self) -> ApprovalDecision | None:
     #     return self._decision
     #
-    # --- END FEATURE: human-approval-signal ---
+    # endregion FEATURE-ON: human-approval-signal

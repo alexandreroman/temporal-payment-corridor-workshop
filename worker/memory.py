@@ -28,8 +28,8 @@ with workflow.unsafe.imports_passed_through():
 # matching anomaly hits the cache and never calls an LLM). A later step
 # swaps this backing store for the long-running corridor-memory *workflow*:
 # enabling the `corridor-memory-workflow` feature comments out the
-# FEATURE-DEFAULT in-process-dict paths in read_corridor_memory /
-# write_corridor_memory and activates the paired FEATURE blocks, which query
+# FEATURE-OFF in-process-dict paths in read_corridor_memory /
+# write_corridor_memory and activates the paired FEATURE-ON blocks, which query
 # and signal CorridorMemoryWorkflow instead (see both activities below).
 # ---------------------------------------------------------------------------
 _MEMORY: dict[tuple[str, AnomalyType], CorridorPattern] = {
@@ -48,10 +48,10 @@ async def read_corridor_memory(
     corridor: str, anomaly_type: AnomalyType
 ) -> CorridorPattern | None:
     """Look up a known correction pattern for a corridor + anomaly type."""
-    # --- FEATURE-DEFAULT: corridor-memory-workflow ---
+    # region FEATURE-OFF: corridor-memory-workflow
     pattern = _MEMORY.get((corridor, anomaly_type))
-    # --- END FEATURE-DEFAULT: corridor-memory-workflow ---
-    # --- FEATURE: corridor-memory-workflow ---
+    # endregion FEATURE-OFF: corridor-memory-workflow
+    # region FEATURE-ON: corridor-memory-workflow
     # # NOTE: Route reads through the long-running corridor-memory workflow instead
     # # of the in-process dict. The activity asks the worker's client for a
     # # handle to the memory workflow and queries its current state; queries
@@ -62,7 +62,7 @@ async def read_corridor_memory(
     # pattern = await handle.query(
     #     CorridorMemoryWorkflow.lookup, args=[corridor, anomaly_type]
     # )
-    # --- END FEATURE: corridor-memory-workflow ---
+    # endregion FEATURE-ON: corridor-memory-workflow
 
     # Shared tail: runs identically whichever backing store produced `pattern`.
     meter = activity.metric_meter()
@@ -80,10 +80,10 @@ async def read_corridor_memory(
 @activity.defn
 async def write_corridor_memory(pattern: CorridorPattern) -> None:
     """Remember a newly learned correction pattern."""
-    # --- FEATURE-DEFAULT: corridor-memory-workflow ---
+    # region FEATURE-OFF: corridor-memory-workflow
     _MEMORY[(pattern.corridor, pattern.anomaly_type)] = pattern
-    # --- END FEATURE-DEFAULT: corridor-memory-workflow ---
-    # --- FEATURE: corridor-memory-workflow ---
+    # endregion FEATURE-OFF: corridor-memory-workflow
+    # region FEATURE-ON: corridor-memory-workflow
     # # NOTE: Persist the pattern by signalling the long-running corridor-memory
     # # workflow instead of mutating the in-process dict. Signals are durably
     # # recorded in the workflow's history and its handler applies them in
@@ -92,7 +92,7 @@ async def write_corridor_memory(pattern: CorridorPattern) -> None:
     # client = activity.client()
     # handle = client.get_workflow_handle(CorridorMemoryWorkflow.WORKFLOW_ID)
     # await handle.signal(CorridorMemoryWorkflow.remember, pattern)
-    # --- END FEATURE: corridor-memory-workflow ---
+    # endregion FEATURE-ON: corridor-memory-workflow
 
     # Shared tail: the learned pattern is logged regardless of backing store.
     activity.logger.info(

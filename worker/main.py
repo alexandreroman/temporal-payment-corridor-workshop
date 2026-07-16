@@ -24,10 +24,10 @@ from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 
 from pydantic_ai.durable_exec.temporal import LogfirePlugin, PydanticAIPlugin
 
-# --- FEATURE: payload-encryption ---
+# region FEATURE-ON: payload-encryption
 # from shared.encryption import EncryptionCodec, build_data_converter, load_key
 #
-# --- END FEATURE: payload-encryption ---
+# endregion FEATURE-ON: payload-encryption
 # All configuration comes from environment variables, loaded from a local
 # .env file when present (see .env.example). Load before reading any getenv.
 load_dotenv()
@@ -76,7 +76,7 @@ def setup_logfire() -> logfire.Logfire:
 async def main() -> None:
     runtime = build_runtime()
 
-    # --- FEATURE-DEFAULT: payload-encryption ---
+    # region FEATURE-OFF: payload-encryption
     client = await Client.connect(
         TEMPORAL_ADDRESS,
         runtime=runtime,
@@ -90,8 +90,8 @@ async def main() -> None:
             LogfirePlugin(setup_logfire=setup_logfire, metrics=False),
         ],
     )
-    # --- END FEATURE-DEFAULT: payload-encryption ---
-    # --- FEATURE: payload-encryption ---
+    # endregion FEATURE-OFF: payload-encryption
+    # region FEATURE-ON: payload-encryption
     # # NOTE: Encrypt every payload crossing the Temporal boundary with a codec-
     # # enabled data converter. PydanticAIPlugin only installs its own data
     # # converter when the caller doesn't pass one, so keeping the plugin
@@ -111,11 +111,11 @@ async def main() -> None:
     #         LogfirePlugin(setup_logfire=setup_logfire, metrics=False),
     #     ],
     # )
-    # --- END FEATURE: payload-encryption ---
+    # endregion FEATURE-ON: payload-encryption
 
     worker = build_worker(client)
 
-    # --- FEATURE: corridor-memory-workflow ---
+    # region FEATURE-ON: corridor-memory-workflow
     # # NOTE: Start and seed the long-running corridor-memory workflow so the offline
     # # demo still finds the pre-seeded US->IN pattern once reads are routed
     # # through the workflow instead of the in-process dict. The seed is the
@@ -136,7 +136,7 @@ async def main() -> None:
     #     task_queue=TASK_QUEUE,
     #     id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
     # )
-    # --- END FEATURE: corridor-memory-workflow ---
+    # endregion FEATURE-ON: corridor-memory-workflow
 
     metrics_url = f"http://{WORKER_METRICS_BIND}/metrics"
     print(f"Worker polling '{worker.task_queue}' — metrics on {metrics_url}")

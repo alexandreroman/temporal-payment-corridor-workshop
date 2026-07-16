@@ -2,21 +2,27 @@
 
 Feature blocks let the full application ship up front while individual
 capabilities stay dormant until a learner enables them. A block is delimited
-by marker comments:
+by VS Code folding-region marker comments:
 
-    # --- FEATURE: <name> ---
+    # region FEATURE-ON: <name>
     # <commented-out code>
-    # --- END FEATURE: <name> ---
+    # endregion FEATURE-ON: <name>
 
-Enabling a FEATURE region uncomments its body; disabling re-comments it. An
-optional inverse pairs with it:
+Enabling a FEATURE-ON region uncomments its body (the code that goes live when
+the feature is on); disabling re-comments it. An optional inverse pairs with
+it:
 
-    # --- FEATURE-DEFAULT: <name> ---
+    # region FEATURE-OFF: <name>
     <live starting-point code>
-    # --- END FEATURE-DEFAULT: <name> ---
+    # endregion FEATURE-OFF: <name>
 
-which is commented out on enable and restored on disable, so a feature that
-*replaces* live code swaps cleanly both ways.
+which is the base code active while the feature is off: commented out on enable
+and restored on disable, so a feature that *replaces* live code swaps cleanly
+both ways.
+
+VS Code recognizes ``# region`` / ``# endregion`` as folding markers, so a
+learner sees the base application with every feature block folded away and
+expands a region to study it.
 
 Design note: parsing is deliberately line-based over the marker grammar, not a
 Python parse, so it works on commented code that is not (yet) valid Python.
@@ -34,11 +40,11 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-# Marker grammar. `FEATURE-DEFAULT` must come before `FEATURE` in the
-# alternation so the longer token wins.
+# Marker grammar. `FEATURE-ON` and `FEATURE-OFF` diverge at ON vs OFF, so
+# neither is a prefix of the other and alternation order does not matter.
 MARKER_RE = re.compile(
-    r"^(?P<indent>[ \t]*)# --- (?P<end>END )?"
-    r"(?P<kind>FEATURE-DEFAULT|FEATURE): (?P<name>[a-z0-9]+(?:-[a-z0-9]+)*) ---[ \t]*$"
+    r"^(?P<indent>[ \t]*)# (?P<end>end)?region "
+    r"(?P<kind>FEATURE-ON|FEATURE-OFF): (?P<name>[a-z0-9]+(?:-[a-z0-9]+)*)[ \t]*$"
 )
 
 
@@ -70,7 +76,7 @@ def parse_regions(text: str) -> list[Region]:
         m = MARKER_RE.match(line)
         if not m:
             continue
-        kind = "default" if m["kind"] == "FEATURE-DEFAULT" else "feature"
+        kind = "default" if m["kind"] == "FEATURE-OFF" else "feature"
         name = m["name"]
         if m["end"]:
             if not open_stack:
@@ -128,8 +134,8 @@ def _uncomment(line: str, indent: str) -> str:
 def feature_state(regions: list[Region]) -> str:
     """Aggregate the state of all regions sharing a name.
 
-    A feature is enabled when every FEATURE region is live and every
-    FEATURE-DEFAULT region is commented; disabled when the inverse holds;
+    A feature is enabled when every FEATURE-ON region is live and every
+    FEATURE-OFF region is commented; disabled when the inverse holds;
     otherwise the regions are out of sync ("inconsistent").
     """
     feats = [r for r in regions if r.kind == "feature"]
@@ -152,7 +158,7 @@ def feature_state(regions: list[Region]) -> str:
 def set_feature_in_text(text: str, name: str, enable: bool) -> str:
     """Return ``text`` with feature ``name`` set to the requested state.
 
-    FEATURE regions follow ``enable``; FEATURE-DEFAULT regions are the inverse.
+    FEATURE-ON regions follow ``enable``; FEATURE-OFF regions are the inverse.
     Bodies are transformed 1:1, so line indices stay valid; a region already in
     the target state is left untouched (idempotent).
     """
