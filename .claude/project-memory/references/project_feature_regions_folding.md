@@ -8,8 +8,7 @@ type: project
 
 Workshop feature markers are VS Code folding regions —
 `# region FEATURE-ON: <name>` / `# endregion FEATURE-ON: <name>`
-(and the `FEATURE-OFF` inverse for the live base code) — not the
-former `# --- FEATURE: <name> ---` delimiters. Both kinds are
+(and the `FEATURE-OFF` inverse for the live base code). Both kinds are
 regions, but they fold differently on open: `.vscode/settings.json`
 carries two `[python]` `explicitFolding.rules` — `FEATURE-ON:`
 regions `autoFold: true` (collapsed), `FEATURE-OFF:` regions

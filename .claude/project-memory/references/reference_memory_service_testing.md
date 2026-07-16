@@ -10,8 +10,8 @@ The `memory/` service tests and the `payments/` HTTP-client activity tests
 must pass with the `memory-workflow` FEATURE both OFF and ON. Enabling the
 FEATURE rewrites the route bodies in `memory/app.py`: reads/writes stop
 calling `memory.store` directly and instead go through
-`app.state.temporal_client` (a Temporal query / update). Three gotchas were
-learned making every test green in both states.
+`app.state.temporal_client` (a Temporal query / update). Three gotchas
+govern keeping every test green in both states.
 
 ## HTTP-level tests need a store-backed client stub to be toggle-robust
 
@@ -19,14 +19,16 @@ learned making every test green in both states.
 in-process via httpx `ASGITransport` (no sockets; `ASGITransport` does not run
 lifespan events, so `app.state.temporal_client` is never populated). With the
 FEATURE OFF the routes call `store` directly. With the FEATURE ON they read
-`app.state.temporal_client`, which is unset — the routes raise `AttributeError`.
+`app.state.temporal_client`, which is unset, so the routes raise
+`AttributeError`.
 
 Fix: an autouse fixture sets `app.state.temporal_client` to a tiny stub whose
 `get_workflow_handle(...).query(...)` / `.execute_update(...)` delegate to
 `memory.store`. The stub is unused in the baseline and harmless there; with the
 FEATURE ON it makes the routes resolve to the same in-memory store, so the exact
-same HTTP-contract tests pass in both states with no live Temporal server. The
-real workflow query/update path is covered separately by `memory/test_workflow.py`.
+same HTTP-contract tests pass in both states with no live Temporal server.
+The real workflow query/update path is covered separately by
+`memory/test_workflow.py`.
 
 ## MemoryWorkflow tests run under UnsandboxedWorkflowRunner
 
@@ -49,8 +51,8 @@ arguments as `run` and is guaranteed to complete before any update/signal
 handler executes. An `execute_update` fired immediately after `start_workflow`
 therefore cannot be lost.
 
-Previously `run` did the seeding, which was subject to a lost-write race: an
-update delivered in the *same* first workflow task could be applied before the
-seeding assignment and then clobbered by it. Tests worked around this with a
-barrier query after starting and before any update. That workaround has been
-removed now that seeding lives in `@workflow.init` — do not reintroduce it.
+Seeding must stay in `@workflow.init`, never in `run`. Seeding inside `run`
+is subject to a lost-write race: an update delivered in the *same* first
+workflow task can be applied before the seeding assignment and then
+clobbered by it. Do not move seeding into `run`, and do not add a barrier
+query after starting to work around such a race.
