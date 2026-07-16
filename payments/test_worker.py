@@ -1,6 +1,13 @@
-from shared.models import ComplianceVerdict, CorrectionProposal, CorrectionSource
+from shared.models import (
+    AnomalyType,
+    ComplianceVerdict,
+    CorrectionOutcome,
+    CorrectionProposal,
+    CorrectionSource,
+    PaymentAnomaly,
+)
 from payments.activities import _correction_reference
-from payments.workflows import GateDecision, _gate
+from payments.workflows import GateDecision, _gate, _learned_pattern
 
 
 def test_correction_reference_is_stable_for_same_inputs():
@@ -14,14 +21,16 @@ def test_correction_reference_varies_by_workflow_and_field():
     assert _correction_reference("bic", "wf-1") != _correction_reference("iban", "wf-1")
 
 
-def _p(name: str, conf: float) -> CorrectionProposal:
+def _p(
+    name: str, conf: float, source: CorrectionSource = CorrectionSource.MEMORY
+) -> CorrectionProposal:
     return CorrectionProposal(
         agent_name=name,
         field_to_fix="bic",
         proposed_value="HDFCINBBXXX",
         rationale="test",
         confidence=conf,
-        source=CorrectionSource.MEMORY,
+        source=source,
     )
 
 
@@ -63,8 +72,6 @@ def test_gate_no_proposal_when_instruction_missing():
 
 
 def test_compliance_verdict_and_outcome_carry_a_verdict():
-    from shared.models import ComplianceVerdict, CorrectionOutcome, CorrectionSource
-
     verdict = ComplianceVerdict(
         compliant=False,
         violations=["currency mismatch"],
@@ -76,3 +83,33 @@ def test_compliance_verdict_and_outcome_carry_a_verdict():
     assert outcome.verdict is verdict
     # Default is None so existing callers are unaffected.
     assert CorrectionOutcome(payment_id="pay-2", applied=True).verdict is None
+
+
+def test_learned_pattern_captures_an_llm_reasoned_fix():
+    anomaly = PaymentAnomaly(
+        payment_id="pay-1",
+        corridor="US->GB",
+        amount=100.0,
+        currency="GBP",
+        anomaly_type=AnomalyType.WRONG_BIC,
+    )
+    pattern = _learned_pattern(
+        anomaly, _p("instruction_agent", 0.9, CorrectionSource.LLM)
+    )
+    assert pattern is not None
+    assert pattern.corridor == "US->GB"
+    assert pattern.anomaly_type is AnomalyType.WRONG_BIC
+    assert pattern.field_to_fix == "bic"
+    assert pattern.proposed_value == "HDFCINBBXXX"
+    assert pattern.confidence == 0.9
+
+
+def test_learned_pattern_skips_memory_sourced_proposals():
+    anomaly = PaymentAnomaly(
+        payment_id="pay-2",
+        corridor="US->IN",
+        amount=500.0,
+        currency="INR",
+        anomaly_type=AnomalyType.WRONG_BIC,
+    )
+    assert _learned_pattern(anomaly, _p("instruction_agent", 0.95)) is None

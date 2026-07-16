@@ -1,8 +1,9 @@
 # Developer task runner. Run `make` (or `make help`) to list the targets.
 #
 # Two ways to run the stack:
-#   * `make dev`    — Temporal in a container; payments + web UI on the host
-#                     with hot reload (fast inner loop).
+#   * `make dev`    — Temporal in a container; payments worker + API,
+#                     web UI + memory service on the host with hot reload
+#                     (fast inner loop).
 #   * `make app-up` — the full stack (Temporal + payments + web UI) in
 #                     containers.
 #
@@ -121,7 +122,7 @@ memory: ## Run the corridor memory service on the host with hot reload
 	uv run memory
 
 .PHONY: dev
-dev: .venv infra-up ## Start Temporal, then run payments + web UI on the host with hot reload
+dev: .venv infra-up ## Start Temporal, then run payments worker + API, web UI, memory on the host (hot reload)
 	$(show_urls)
 	@$(MAKE) -j payments payments-api webui memory
 

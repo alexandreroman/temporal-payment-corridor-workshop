@@ -20,7 +20,6 @@ from datetime import timedelta
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.durable_exec.temporal import TemporalAgent
-from shared.models import ComplianceVerdict
 from temporalio.common import RetryPolicy
 
 # Model is resolved at import time from the environment so attendees can
@@ -55,6 +54,23 @@ class AgentCorrection(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0, description="0=guess, 1=certain.")
 
 
+class ComplianceCheck(BaseModel):
+    """Structured output the compliance agent must return.
+
+    Mirrors AgentCorrection: a dedicated LLM-facing model that omits the
+    transport-only `source` field. _verify_compliance adds `source` when it
+    builds the cross-boundary ComplianceVerdict, so the model is never asked
+    to decide a value it has no business choosing.
+    """
+
+    compliant: bool = Field(description="True when no violation blocks a fix.")
+    violations: list[str] = Field(
+        default_factory=list,
+        description="Human-readable violations; empty when compliant.",
+    )
+    confidence: float = Field(ge=0.0, le=1.0, description="0=guess, 1=certain.")
+
+
 # --- InstructionAgent --------------------------------------------------
 # Fixes the *payment instruction* itself: a malformed BIC/SWIFT code, a missing
 # intermediary/correspondent bank, an inconsistent routing detail, etc.
@@ -79,7 +95,7 @@ instruction_agent = Agent(
 compliance_agent = Agent(
     MODEL,
     name="compliance_agent",
-    output_type=ComplianceVerdict,
+    output_type=ComplianceCheck,
     instructions=(
         "You are a payments compliance officer. Given a payment anomaly on a "
         "corridor, do NOT propose a correction. Validate whether a compliant "

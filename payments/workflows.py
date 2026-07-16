@@ -15,6 +15,7 @@ from enum import StrEnum
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
+from temporalio.exceptions import ActivityError
 
 # region FEATURE-ON: search-attributes
 # from temporalio.common import SearchAttributeKey
@@ -31,10 +32,11 @@ with workflow.unsafe.imports_passed_through():
 
     from payments.agents import (
         AgentCorrection,
+        ComplianceCheck,
         compliance_temporal_agent,
         instruction_temporal_agent,
     )
-    from payments.memory import read_corridor_memory
+    from payments.memory import read_corridor_memory, write_corridor_memory
 
     from shared.models import (
         ApprovalDecision,
@@ -42,6 +44,7 @@ with workflow.unsafe.imports_passed_through():
         CorrectionOutcome,
         CorrectionProposal,
         CorrectionSource,
+        CorridorPattern,
         PaymentAnomaly,
     )
 
@@ -138,6 +141,29 @@ def _gate(
     return GateDecision.APPLY, ""
 
 
+def _learned_pattern(
+    anomaly: PaymentAnomaly, proposal: CorrectionProposal
+) -> CorridorPattern | None:
+    """The pattern worth remembering after an applied correction, if any.
+
+    NOTE: Only an LLM-reasoned fix teaches the passive memory something new.
+    A MEMORY-sourced proposal already came from a stored pattern, so writing
+    it back would just echo what we read; return None so the coordinator
+    skips the write entirely. This also keeps the seeded, fully-offline happy
+    path (US->IN / WRONG_BIC) from adding an extra activity, so the committed
+    replay fixture stays valid.
+    """
+    if proposal.source is not CorrectionSource.LLM:
+        return None
+    return CorridorPattern(
+        corridor=anomaly.corridor,
+        anomaly_type=anomaly.anomaly_type,
+        field_to_fix=proposal.field_to_fix,
+        proposed_value=proposal.proposed_value,
+        confidence=proposal.confidence,
+    )
+
+
 def _anomaly_context(anomaly: PaymentAnomaly) -> str:
     """Render the shared anomaly context both agent prompts start from."""
     return (
@@ -217,7 +243,7 @@ async def _verify_compliance(agent, anomaly: PaymentAnomaly) -> ComplianceVerdic
         )
 
     result = await agent.run(_compliance_prompt(anomaly))
-    verdict: ComplianceVerdict = result.output
+    verdict: ComplianceCheck = result.output
     return ComplianceVerdict(
         compliant=verdict.compliant,
         violations=verdict.violations,
@@ -378,6 +404,26 @@ class PaymentCorrectionCoordinator:
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
+
+        # Passive learning: once a correction the agents *reasoned out* -- not
+        # one already recalled from memory -- is applied, remember it so the
+        # next matching anomaly on this corridor short-circuits the model.
+        # Best-effort by design: the correction is already applied, so a
+        # memory-service hiccup must never fail the workflow.
+        # Source: https://docs.temporal.io/develop/python/failure-detection
+        learned = _learned_pattern(anomaly, proposal)
+        if learned is not None:
+            try:
+                await workflow.execute_activity(
+                    write_corridor_memory,
+                    learned,
+                    start_to_close_timeout=timedelta(seconds=10),
+                    retry_policy=RetryPolicy(maximum_attempts=3),
+                )
+            except ActivityError:
+                workflow.logger.warning(
+                    "Corridor-memory write-back failed; correction still applied"
+                )
 
         # region FEATURE-ON: settlement-confirmation
         # # Once the correction is applied, wait for the downstream rail to
