@@ -284,7 +284,13 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
             # blocked on a human decision").
             if awaiting_approval:
                 continue
-            outcome: CorrectionOutcome = await handle.result()
+            # NOTE: The Pydantic data converter needs an explicit target type to
+            # rebuild a CorrectionOutcome; without one, result() returns a plain
+            # dict at runtime (unlike the _StubHandle used in tests, which
+            # returns a real CorrectionOutcome). model_validate() normalizes
+            # either shape into a CorrectionOutcome, so this line works against
+            # both the live server and the tests.
+            outcome = CorrectionOutcome.model_validate(await handle.result())
             seen += 1
             summaries.append(
                 AnomalySummary(
@@ -376,7 +382,13 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     #         # per-row skip for readability.
     #         if awaiting_approval:
     #             continue
-    #         outcome: CorrectionOutcome = await handle.result()
+    #         # NOTE: The Pydantic data converter needs an explicit target type to
+    #         # rebuild a CorrectionOutcome; without one, result() returns a plain
+    #         # dict at runtime (unlike the _StubHandle used in tests, which
+    #         # returns a real CorrectionOutcome). model_validate() normalizes
+    #         # either shape into a CorrectionOutcome, so this line works against
+    #         # both the live server and the tests.
+    #         outcome = CorrectionOutcome.model_validate(await handle.result())
     #         seen += 1
     #         summaries.append(
     #             AnomalySummary(
