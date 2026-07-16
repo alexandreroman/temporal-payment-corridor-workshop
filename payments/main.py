@@ -42,9 +42,9 @@ TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
 # distinct from the memory service's namespace (MEMORY_TEMPORAL_NAMESPACE). The
 # two bounded contexts never share a namespace.
 PAYMENTS_TEMPORAL_NAMESPACE = os.getenv("PAYMENTS_TEMPORAL_NAMESPACE", "payments")
-WORKER_METRICS_HOST = os.getenv("WORKER_METRICS_HOST", "0.0.0.0")
-WORKER_METRICS_PORT = int(os.getenv("WORKER_METRICS_PORT", "9464"))
-WORKER_METRICS_BIND = f"{WORKER_METRICS_HOST}:{WORKER_METRICS_PORT}"
+PAYMENTS_METRICS_HOST = os.getenv("PAYMENTS_METRICS_HOST", "0.0.0.0")
+PAYMENTS_METRICS_PORT = int(os.getenv("PAYMENTS_METRICS_PORT", "9464"))
+PAYMENTS_METRICS_BIND = f"{PAYMENTS_METRICS_HOST}:{PAYMENTS_METRICS_PORT}"
 
 
 def build_runtime() -> Runtime:
@@ -52,11 +52,11 @@ def build_runtime() -> Runtime:
 
     Must be called before connecting any client. The exporter serves
     OpenMetrics/Prometheus at
-    ``http://<WORKER_METRICS_HOST>:<WORKER_METRICS_PORT>/metrics``.
+    ``http://<PAYMENTS_METRICS_HOST>:<PAYMENTS_METRICS_PORT>/metrics``.
     """
     return Runtime(
         telemetry=TelemetryConfig(
-            metrics=PrometheusConfig(bind_address=WORKER_METRICS_BIND),
+            metrics=PrometheusConfig(bind_address=PAYMENTS_METRICS_BIND),
         )
     )
 
@@ -121,7 +121,7 @@ async def main() -> None:
 
     worker = build_worker(client)
 
-    metrics_url = f"http://{WORKER_METRICS_BIND}/metrics"
+    metrics_url = f"http://{PAYMENTS_METRICS_BIND}/metrics"
     print(f"Worker polling '{worker.task_queue}' — metrics on {metrics_url}")
     await worker.run()
 

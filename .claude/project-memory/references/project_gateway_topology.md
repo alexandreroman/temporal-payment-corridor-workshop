@@ -22,7 +22,6 @@ unset — matching the codec server's own default.
 Because the Web UI page and the codec endpoint share the one
 `localhost:8233` origin, UI→codec calls are same-origin: no CORS
 preflight, so the codec needs no CORS config for the UI.
-`TEMPORAL_UI_ORIGIN` is kept but unexercised in this topology.
 
 The Fernet key env var is `CODEC_ENCRYPTION_KEY` (loaded by
 `shared.encryption.load_key`), NOT `CORRIDOR_ENCRYPTION_KEY`.

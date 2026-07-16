@@ -13,11 +13,12 @@ variables — a `*_HOST` and a `*_PORT` (cast to `int`) — combined at
 the point of use, never as a single `host:port` string.
 
 - Web UI: `WEBUI_HOST` + `WEBUI_PORT`.
-- Worker metrics: `WORKER_METRICS_HOST` (default `0.0.0.0`) +
-  `WORKER_METRICS_PORT` (default `9464`), combined into the
+- Payments metrics: `PAYMENTS_METRICS_HOST` (default `0.0.0.0`) +
+  `PAYMENTS_METRICS_PORT` (default `9464`), combined into the
   `PrometheusConfig` bind address in `payments/main.py`.
 
-Do not use a single `host:port` variable such as `METRICS_BIND_ADDRESS`.
+Do not use a single `host:port` variable such as
+`PAYMENTS_METRICS_BIND_ADDRESS`.
 When adding a new endpoint, follow the two-var shape and mirror the
 `int(os.getenv(...))` port cast used in `webui/main.py`.
 
