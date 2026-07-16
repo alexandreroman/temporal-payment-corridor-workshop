@@ -22,8 +22,14 @@ end-to-end on a local dev server.
 
 - **Durable agents** — Pydantic AI agents wrapped as Temporal workflows,
   so every model call survives worker crashes and restarts.
-- **Coordinator + child workflows** — a parent workflow fans out to an
-  instruction agent and a compliance agent, each its own child workflow.
+- **Coordinator + child workflows** — a parent workflow fans out to two
+  specialized agents, each its own child workflow: the **instruction agent**
+  (a payments operations expert that repairs the instruction so it can
+  settle — a valid BIC/SWIFT, the required intermediary bank, a consistent
+  routing detail) and the **compliance agent** (a compliance officer that
+  keeps the fix within the rules — the settlement currency must match the
+  corridor destination, no sanctioned intermediary). The coordinator then
+  keeps the highest-confidence proposal.
 - **Passive corridor memory** — agents check a memory of known
   corridor-specific patterns before spending a model call; the seeded
   happy path never touches an LLM.
@@ -222,27 +228,53 @@ See [.env.example](.env.example) for the remaining, rarely changed settings.
 
 The payment-correction service (`payments/`, namespace `payments`) hosts the
 coordinator, agents, and activities on one task queue. The coordinator
-orchestrates the agents; agents consult corridor memory before the LLM;
-activities perform all side effects and emit application metrics. Corridor
+orchestrates two specialized agents — the instruction agent repairs the
+payment instruction so it can settle, while the compliance agent guards the
+fix against currency and sanctions rules — and keeps the highest-confidence
+proposal. Each agent consults corridor memory before the LLM; activities
+perform all side effects and emit application metrics. Corridor
 memory is a separate service (`memory/`) that the `read_corridor_memory` and
 `write_corridor_memory` activities reach over HTTP (`/api/memory/v1`). With
 the `memory-workflow` FEATURE on, that service runs its own embedded worker
 and `MemoryWorkflow` on namespace `memory`; otherwise it serves a naive
 in-memory store.
 
+The correction of one payment plays out as this sequence — the coordinator
+fans out to both agents concurrently, each tries corridor memory before the
+LLM, and the coordinator applies the fix or escalates to a human:
+
 ```mermaid
-graph TD
-    S[simulator/main.py] -->|start workflow| C[PaymentCorrectionCoordinator]
-    C -->|child workflow| I[InstructionAgentWorkflow]
-    C -->|child workflow| K[ComplianceAgentWorkflow]
-    I --> M[read_corridor_memory]
-    K --> M
-    I -.->|on memory miss| L[(LLM via Pydantic AI)]
-    K -.->|on memory miss| L
-    C -->|apply| A[apply_correction]
-    C -.->|low confidence| H[Human approval signal]
-    M -->|HTTP /api/memory/v1| MEM[corridor-memory service memory/]
-    W[write_corridor_memory] -->|HTTP /api/memory/v1| MEM
+sequenceDiagram
+    participant Sim as simulator
+    participant Coord as PaymentCorrectionCoordinator
+    participant Agent as Instruction & Compliance<br/>agent child workflows
+    participant Mem as corridor-memory service
+    participant LLM as LLM (Pydantic AI)
+    participant Human as human reviewer
+
+    Sim->>Coord: start workflow (PaymentAnomaly)
+    par for each agent, concurrently
+        Coord->>Agent: execute child workflow
+        Agent->>Mem: read_corridor_memory (HTTP /api/memory/v1)
+        alt confident pattern in memory
+            Mem-->>Agent: known correction (source=memory)
+        else memory miss
+            Agent->>LLM: agent.run(prompt)
+            LLM-->>Agent: proposed correction (source=llm)
+        end
+        Agent-->>Coord: CorrectionProposal
+    end
+    Note over Coord: pick the highest-confidence proposal
+    alt confidence >= 0.75
+        Coord->>Coord: apply_correction (activity)
+    else confidence < 0.75
+        Coord->>Human: await decision (signal)
+        Human-->>Coord: ApprovalDecision
+        opt approved
+            Coord->>Coord: apply_correction (activity)
+        end
+    end
+    Coord-->>Sim: CorrectionOutcome
 ```
 
 | Component     | Role                                                                                                                     |
