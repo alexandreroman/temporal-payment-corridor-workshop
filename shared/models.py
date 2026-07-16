@@ -82,6 +82,18 @@ class ApprovalDecision(BaseModel):
     comment: str = ""
 
 
+# region FEATURE-ON: human-approval-signal
+# class ReviewState(BaseModel):
+#     """Pending proposal + verdict shown to a human reviewer while a
+#     correction is held for approval."""
+#
+#     proposal: CorrectionProposal
+#     verdict: ComplianceVerdict | None = None
+#
+#
+# endregion FEATURE-ON: human-approval-signal
+
+
 class CorridorPattern(BaseModel):
     """A known, reusable correction for a (corridor, anomaly_type) pair.
 

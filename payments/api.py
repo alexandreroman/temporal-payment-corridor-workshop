@@ -46,7 +46,7 @@ from shared.models import (  # noqa: E402
 )
 
 # region FEATURE-ON: human-approval-signal
-# from shared.models import ApprovalDecision  # noqa: E402
+# from shared.models import ApprovalDecision, ReviewState  # noqa: E402
 # endregion FEATURE-ON: human-approval-signal
 
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
@@ -135,13 +135,19 @@ class AnomalyDetail(BaseModel):
     workflow_id: str
     status: str
     outcome: CorrectionOutcome | None = None
-    # NOTE: Typed loosely as `object` rather than the not-yet-existing
-    # `ReviewState` model. The human-approval-signal feature (a later task)
-    # introduces `ReviewState` in shared/models.py and retypes this field as
-    # `ReviewState | None`, populating it with the pending proposal +
-    # verdict for the approval panel. Until then there is never a pending
-    # review, so this always serializes as `null`.
+    # region FEATURE-OFF: human-approval-signal
+    # NOTE: Typed loosely as `object` rather than `ReviewState`, which the
+    # human-approval-signal feature introduces in shared/models.py. Until that
+    # feature is enabled there is never a pending review, so this always
+    # serializes as `null`.
     review: object | None = None
+    # endregion FEATURE-OFF: human-approval-signal
+    # region FEATURE-ON: human-approval-signal
+    # # NOTE: The pending proposal + verdict for a correction currently held for
+    # # approval, populated by get_anomaly() for a running-awaiting execution;
+    # # null otherwise (including once approved and resumed).
+    # review: ReviewState | None = None
+    # endregion FEATURE-ON: human-approval-signal
 
 
 @asynccontextmanager
@@ -460,10 +466,19 @@ async def get_anomaly(payment_id: str) -> AnomalyDetail:
     status_sa = desc.typed_search_attributes.get(
         SearchAttributeKey.for_keyword("status")
     )
+    review = None
+    # region FEATURE-ON: human-approval-signal
+    # # NOTE: pending_review() returns non-None only while the coordinator is
+    # # blocked on a decision, so this single query both detects the awaiting
+    # # state and supplies the payload the approval panel renders -- no separate
+    # # _query_awaiting round trip needed here.
+    # review = await handle.query(PaymentCorrectionCoordinator.pending_review)
+    # endregion FEATURE-ON: human-approval-signal
     return AnomalyDetail(
         payment_id=payment_id,
         workflow_id=workflow_id,
         status=status_sa or "running",
+        review=review,
     )
 
 

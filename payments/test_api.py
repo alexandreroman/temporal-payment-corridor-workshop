@@ -11,11 +11,13 @@ No ``pytest-asyncio`` dependency is configured (see ``pyproject.toml``), so the
 async scenarios are driven with ``asyncio.run`` inside plain synchronous test
 functions — the same style as ``memory/test_app.py``.
 
-These tests cover the baseline only: ``search-attributes`` OFF (the client-side
+These tests cover the baseline: ``search-attributes`` OFF (the client-side
 N+1 listing that reads each running workflow via the ``describe_anomaly`` query,
 with ``_query_awaiting`` a no-op returning False) and ``human-approval-signal``
-OFF (no ``/approval`` route). The feature-gated variants are toggled in and
-verified elsewhere.
+OFF (no ``/approval`` route). Most feature-gated variants are toggled in and
+verified elsewhere; the exception is the ``human-approval-signal`` detail-route
+test below (in its own ``FEATURE-ON`` region), which reuses this file's httpx/
+ASGITransport harness rather than duplicating it in a separate module.
 """
 
 from __future__ import annotations
@@ -40,6 +42,10 @@ from shared.models import (
     CorrectionSource,
     PaymentAnomaly,
 )
+
+# region FEATURE-ON: human-approval-signal
+# from shared.models import ComplianceVerdict, ReviewState
+# endregion FEATURE-ON: human-approval-signal
 
 # ASGITransport ignores the host, but httpx still needs an absolute base URL to
 # build request URLs from the relative paths below.
@@ -95,17 +101,27 @@ class _StubHandle:
         describe_status: WorkflowExecutionStatus | None = None,
         describe_error: Exception | None = None,
         result: CorrectionOutcome | None = None,
+        # region FEATURE-ON: human-approval-signal
+        # review: ReviewState | None = None,
+        # endregion FEATURE-ON: human-approval-signal
     ) -> None:
         self.id = workflow_id
         self._anomaly = anomaly
         self._describe_status = describe_status
         self._describe_error = describe_error
         self._result = result
+        # region FEATURE-ON: human-approval-signal
+        # self._review = review
+        # endregion FEATURE-ON: human-approval-signal
         # Records whether result() was called, so a test can assert the detail
         # route never fetches an outcome for a closed non-completed run.
         self.result_called = False
 
     async def query(self, _query):
+        # region FEATURE-ON: human-approval-signal
+        # if _query is PaymentCorrectionCoordinator.pending_review:
+        #     return self._review
+        # endregion FEATURE-ON: human-approval-signal
         # The baseline listing only ever queries describe_anomaly; the awaiting
         # state comes from _query_awaiting (a no-op returning False), not a query.
         return self._anomaly
@@ -589,6 +605,47 @@ def test_get_anomaly_detail_has_null_review_in_baseline():
 
     body = asyncio.run(scenario()).json()
     assert body["review"] is None
+
+
+# region FEATURE-ON: human-approval-signal
+# def test_get_anomaly_returns_pending_review_while_awaiting():
+#     """A running, awaiting-approval correction surfaces its pending review."""
+#     review = ReviewState(
+#         proposal=CorrectionProposal(
+#             agent_name="instruction_agent",
+#             field_to_fix="bic",
+#             proposed_value="HDFCINBBXXX",
+#             rationale="Matched a known corridor pattern in passive memory.",
+#             confidence=0.95,
+#             source=CorrectionSource.MEMORY,
+#         ),
+#         verdict=ComplianceVerdict(
+#             compliant=False,
+#             violations=["sanctions hit"],
+#             confidence=0.9,
+#             source=CorrectionSource.MEMORY,
+#         ),
+#     )
+#     handle = _StubHandle(
+#         "correction-pay-1",
+#         describe_status=WorkflowExecutionStatus.RUNNING,
+#         review=review,
+#     )
+#     stub = _StubClient(handles={"correction-pay-1": handle})
+#     api.app.state.temporal_client = stub
+#
+#     async def scenario() -> httpx.Response:
+#         async with _http_client() as client:
+#             return await client.get("/api/payments/v1/anomalies/pay-1")
+#
+#     body = asyncio.run(scenario()).json()
+#
+#     assert body["review"] is not None
+#     assert body["review"]["proposal"]["proposed_value"] == "HDFCINBBXXX"
+#     assert body["review"]["verdict"]["compliant"] is False
+#
+#
+# endregion FEATURE-ON: human-approval-signal
 
 
 def test_get_unknown_anomaly_returns_404():

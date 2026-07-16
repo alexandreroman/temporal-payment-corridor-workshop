@@ -542,6 +542,15 @@ def test_coordinator_exposes_listing_query_surface():
                 #         break
                 #     await asyncio.sleep(0.1)
                 # assert awaiting
+                # # pending_review() carries the same proposal+verdict the approval
+                # # panel needs to render, populated for exactly as long as the
+                # # coordinator is blocked on a decision.
+                # review = await handle.query(
+                #     PaymentCorrectionCoordinator.pending_review,
+                # )
+                # assert review is not None
+                # assert review.proposal.agent_name == "instruction_agent"
+                # assert review.verdict is not None
                 # await handle.signal(
                 #     PaymentCorrectionCoordinator.approve_correction,
                 #     ApprovalDecision(approved=True, approver="tester"),
@@ -550,6 +559,10 @@ def test_coordinator_exposes_listing_query_surface():
                 # assert outcome.applied is True
                 # assert not await handle.query(
                 #     PaymentCorrectionCoordinator.awaiting_approval
+                # )
+                # assert (
+                #     await handle.query(PaymentCorrectionCoordinator.pending_review)
+                #     is None
                 # )
                 # endregion FEATURE-ON: human-approval-signal
 

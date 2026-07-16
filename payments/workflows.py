@@ -48,6 +48,10 @@ with workflow.unsafe.imports_passed_through():
         PaymentAnomaly,
     )
 
+    # region FEATURE-ON: human-approval-signal
+    # from shared.models import ReviewState
+    # endregion FEATURE-ON: human-approval-signal
+
 # Confidence at or above which a fix is trusted without human sign-off.
 CONFIDENCE_THRESHOLD = 0.75
 
@@ -286,6 +290,12 @@ class PaymentCorrectionCoordinator:
         # True only while the coordinator is blocked on a human decision; read by
         # the awaiting_approval() query on the client-side listing path.
         self._awaiting: bool = False
+        # region FEATURE-ON: human-approval-signal
+        # # Pending proposal + verdict shown to a human reviewer while the
+        # # coordinator is blocked on a decision; read by the pending_review()
+        # # query. None outside a review wait.
+        # self._review: ReviewState | None = None
+        # endregion FEATURE-ON: human-approval-signal
 
     @workflow.run
     async def run(self, anomaly: PaymentAnomaly) -> CorrectionOutcome:
@@ -357,6 +367,10 @@ class PaymentCorrectionCoordinator:
             # # resuming correction no longer lists as awaiting.
             # self._awaiting = True
             # _set_status("awaiting-approval")
+            # # NOTE: The pending proposal + verdict, read by the pending_review()
+            # # query so the approval panel can render what it is being asked to
+            # # decide on. Reset in the same finally block as _awaiting, below.
+            # self._review = ReviewState(proposal=proposal, verdict=verdict)
             # # _APPROVAL_TIMEOUT defaults to None (wait forever); enabling the
             # # `approval-timeout` feature turns this into a real auto-reject deadline.
             # try:
@@ -373,6 +387,7 @@ class PaymentCorrectionCoordinator:
             #     )
             # finally:
             #     self._awaiting = False
+            #     self._review = None
             #     _set_status("processing")
             # assert self._decision is not None
             # if not self._decision.approved:
@@ -501,5 +516,9 @@ class PaymentCorrectionCoordinator:
     # @workflow.query
     # def awaiting_approval(self) -> bool:
     #     return self._awaiting
+    #
+    # @workflow.query
+    # def pending_review(self) -> ReviewState | None:
+    #     return self._review
     #
     # endregion FEATURE-ON: human-approval-signal
