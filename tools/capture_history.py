@@ -20,7 +20,7 @@ What it does, step by step:
    actual ``PaymentCorrectionCoordinator``, ``InstructionAgentWorkflow`` and
    ``ComplianceAgentWorkflow`` — no test doubles.
 3. Executes ``PaymentCorrectionCoordinator`` against the SEEDED corridor-
-   memory anomaly (corridor ``"US->IN"``, anomaly type ``WRONG_IBAN`` — see
+   memory anomaly (corridor ``"US->IN"``, anomaly type ``WRONG_BIC`` — see
    ``memory/store.py``). That anomaly is a guaranteed memory hit, so the
    capture never calls a model and needs no API key.
 4. Fetches the resulting execution history from the server and overwrites
@@ -73,8 +73,8 @@ SEEDED_ANOMALY = PaymentAnomaly(
     corridor="US->IN",
     amount=500.0,
     currency="INR",
-    anomaly_type=AnomalyType.WRONG_IBAN,
-    details={"iban": "WRONG"},
+    anomaly_type=AnomalyType.WRONG_BIC,
+    details={"bic": "WRONG"},
 )
 
 

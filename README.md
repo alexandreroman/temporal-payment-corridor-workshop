@@ -1,11 +1,22 @@
 # Temporal Payment Corridor Workshop
 
-Repairs cross-border payments that arrive with an anomaly — a wrong IBAN,
-a missing intermediary bank, a currency mismatch — by coordinating
-specialized AI agents as durable Temporal workflows, with a passive
-corridor memory and human oversight for low-confidence fixes. It doubles
-as a hands-on Temporal + Pydantic AI training that runs end-to-end on a
-local dev server.
+Repairs cross-border payments that arrive with an anomaly — a wrong
+BIC/SWIFT code, a missing intermediary bank, a currency mismatch — by
+coordinating specialized AI agents as durable Temporal workflows, with
+a passive corridor memory and human oversight for low-confidence fixes.
+It doubles as a hands-on Temporal + Pydantic AI training that runs
+end-to-end on a local dev server.
+
+> [!NOTE]
+> The payment/transfer domain model is intentionally simplified to keep
+> the workshop focused on durable execution with Temporal, not on
+> payments compliance. A real cross-border payment carries far more than
+> a single field — an inbound transfer to India (corridor `US->IN`), for
+> example, needs the beneficiary account number, the bank's SWIFT/BIC,
+> the branch IFSC code, an RBI/FEMA purpose code, and often a
+> correspondent bank, and India does not use IBAN at all. Here each
+> anomaly targets one field (e.g. a malformed BIC) so the correction
+> logic stays easy to follow.
 
 ## Features
 
@@ -215,8 +226,8 @@ the outcome:
 
 ```text
 applied : True
-message : Correction applied (reference corr-iban-12358).
-proposal: iban=DE89370400440532013000 (confidence 0.95, via memory / instruction_agent)
+message : Correction applied (reference corr-bic-12358).
+proposal: bic=HDFCINBBXXX (confidence 0.95, via memory / instruction_agent)
 ```
 
 Inspect the merged metrics endpoint:

@@ -4,23 +4,21 @@ from payments.workflows import _select_best
 
 
 def test_correction_reference_is_stable_for_same_inputs():
-    a = _correction_reference("iban", "coordinator-abc")
-    b = _correction_reference("iban", "coordinator-abc")
+    a = _correction_reference("bic", "coordinator-abc")
+    b = _correction_reference("bic", "coordinator-abc")
     assert a == b  # a retry of the activity must produce the same reference
 
 
 def test_correction_reference_varies_by_workflow_and_field():
-    assert _correction_reference("iban", "wf-1") != _correction_reference(
-        "iban", "wf-2"
-    )
-    assert _correction_reference("iban", "wf-1") != _correction_reference("bic", "wf-1")
+    assert _correction_reference("bic", "wf-1") != _correction_reference("bic", "wf-2")
+    assert _correction_reference("bic", "wf-1") != _correction_reference("iban", "wf-1")
 
 
 def _p(name: str, conf: float) -> CorrectionProposal:
     return CorrectionProposal(
         agent_name=name,
-        field_to_fix="iban",
-        proposed_value="DE89370400440532013000",
+        field_to_fix="bic",
+        proposed_value="HDFCINBBXXX",
         rationale="test",
         confidence=conf,
         source=CorrectionSource.MEMORY,

@@ -67,8 +67,9 @@ async def main() -> None:
         corridor="US->IN",
         amount=15000.0,
         currency="USD",
-        anomaly_type=AnomalyType.WRONG_IBAN,
-        details={"beneficiary": "Acme Textiles Pvt Ltd", "iban": "IN00INVALID"},
+        anomaly_type=AnomalyType.WRONG_BIC,
+        # "HDFC" is a malformed BIC: a real ISO 9362 BIC/SWIFT code is 8 or 11 chars.
+        details={"beneficiary": "Acme Textiles Pvt Ltd", "bic": "HDFC"},
     )
 
     outcome = await client.execute_workflow(

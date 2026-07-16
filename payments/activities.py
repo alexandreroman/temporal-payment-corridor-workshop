@@ -52,22 +52,26 @@ def _correction_reference(field_to_fix: str, workflow_id: str) -> str:
 # _SIMULATE_INVALID_CORRECTION = False
 #
 #
-# def _is_valid_iban(value: str) -> bool:
-#     """Cheap structural check that ``value`` looks like an IBAN.
+# def _is_valid_bic(value: str) -> bool:
+#     """Cheap structural check that ``value`` looks like an ISO 9362 BIC/SWIFT code.
 #
-#     NOTE: This is a lightweight FORMAT screen (length + coarse layout), NOT a
-#     full ISO 13616 mod-97 checksum validation. It is kept deliberately simple
-#     and readable for the workshop; a production system must verify the checksum.
-#     Source: https://en.wikipedia.org/wiki/International_Bank_Account_Number
+#     NOTE: This is a lightweight FORMAT screen (length + character classes), NOT a
+#     lookup against the official SWIFT/BIC registry. It is kept deliberately simple
+#     and readable for the workshop; a production system must verify the code against
+#     that registry.
+#     Source: https://en.wikipedia.org/wiki/ISO_9362
 #     """
 #     compact = value.replace(" ", "").upper()
-#     # An IBAN is 15-34 characters: a 2-letter country code, 2 check digits, then
-#     # a country-specific account number (BBAN).
-#     if not 15 <= len(compact) <= 34:
+#     # A BIC is 8 or 11 characters: a 4-letter institution code, a 2-letter ISO
+#     # country code, a 2-character alphanumeric location code, and (only when 11
+#     # characters long) a 3-character alphanumeric branch code.
+#     if len(compact) not in (8, 11):
 #         return False
-#     if not (compact[:2].isalpha() and compact[2:4].isdigit()):
+#     if not (
+#         compact[:4].isalpha() and compact[4:6].isalpha() and compact[6:8].isalnum()
+#     ):
 #         return False
-#     return compact[4:].isalnum()
+#     return len(compact) == 8 or compact[8:11].isalnum()
 #
 #
 # endregion FEATURE-ON: non-retryable-validation
@@ -109,7 +113,7 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     # # budget. This deliberately contrasts with the RetryPolicy(maximum_attempts=3)
     # # the coordinator attaches to this activity, which only helps for TRANSIENT
     # # failures.
-    # if _SIMULATE_INVALID_CORRECTION or not _is_valid_iban(proposal.proposed_value):
+    # if _SIMULATE_INVALID_CORRECTION or not _is_valid_bic(proposal.proposed_value):
     #     # NOTE: non_retryable=True tells Temporal to fail the activity at once and
     #     # skip the remaining retry attempts. Use it for errors that can never
     #     # succeed on a retry (bad input, validation failures), as opposed to

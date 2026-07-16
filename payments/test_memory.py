@@ -96,15 +96,15 @@ def route_httpx_to_app(monkeypatch):
 
 
 def test_read_corridor_memory_returns_seeded_pattern_on_hit():
-    pattern = _run_activity(read_corridor_memory, "US->IN", AnomalyType.WRONG_IBAN)
+    pattern = _run_activity(read_corridor_memory, "US->IN", AnomalyType.WRONG_BIC)
 
     assert pattern is not None
-    assert pattern.field_to_fix == "iban"
-    assert pattern.proposed_value == "DE89370400440532013000"
+    assert pattern.field_to_fix == "bic"
+    assert pattern.proposed_value == "HDFCINBBXXX"
 
 
 def test_read_corridor_memory_returns_none_on_miss():
-    pattern = _run_activity(read_corridor_memory, "US->GB", AnomalyType.WRONG_IBAN)
+    pattern = _run_activity(read_corridor_memory, "US->GB", AnomalyType.WRONG_BIC)
 
     assert pattern is None
 

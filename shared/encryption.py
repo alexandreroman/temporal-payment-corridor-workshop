@@ -2,7 +2,7 @@
 
 A ``PayloadCodec`` sits at the very edge of serialization: the SDK calls
 ``encode`` on the way out (client and worker) and ``decode`` on the way in, so
-sensitive fields (IBANs, amounts) travel and rest in Event History as
+sensitive fields (bank identifiers like BICs, amounts) travel and rest in Event History as
 ciphertext, never plaintext. Encryption uses Fernet (AES-128-CBC + HMAC).
 Source: https://docs.temporal.io/production-deployment/data-encryption
 """

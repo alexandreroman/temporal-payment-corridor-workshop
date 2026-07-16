@@ -99,7 +99,7 @@ TASK_QUEUE = "payment-corridor-test"
 # activity names that run the service's own store logic (memory/store.py)
 # directly, in-process. That keeps the scenarios hermetic and offline while
 # preserving the exact hit/miss behaviour the coordinator depends on (the
-# store is pre-seeded with the US->IN / WRONG_IBAN pattern).
+# store is pre-seeded with the US->IN / WRONG_BIC pattern).
 
 
 @activity.defn(name="read_corridor_memory")
@@ -183,7 +183,7 @@ def test_instruction_agent_returns_llm_proposal_on_memory_miss():
                 workflows=[_FakeInstructionAgentWorkflow],
                 activities=[read_corridor_memory, write_corridor_memory],
             ):
-                # "US->GB" / WRONG_IBAN is not in the corridor-memory store's
+                # "US->GB" / WRONG_BIC is not in the corridor-memory store's
                 # seed, so this is a guaranteed miss that falls through to the
                 # agent.
                 anomaly = PaymentAnomaly(
@@ -191,8 +191,8 @@ def test_instruction_agent_returns_llm_proposal_on_memory_miss():
                     corridor="US->GB",
                     amount=250.0,
                     currency="GBP",
-                    anomaly_type=AnomalyType.WRONG_IBAN,
-                    details={"iban": "NOT-A-REAL-IBAN"},
+                    anomaly_type=AnomalyType.WRONG_BIC,
+                    details={"bic": "NOT-A-REAL-BIC"},
                 )
                 # Started by workflow type name (a plain string), since the
                 # class registered under that name here is a test double,
@@ -224,7 +224,7 @@ def test_coordinator_survives_one_failing_agent():
 
     The instruction agent is replaced with a stand-in that always raises.
     The compliance agent runs unmodified, but the anomaly is the seeded
-    memory hit (US->IN / WRONG_IBAN), so it also never calls a model — the
+    memory hit (US->IN / WRONG_BIC), so it also never calls a model — the
     whole scenario stays offline while still exercising the real
     PaymentCorrectionCoordinator, its fan-out, and _select_best.
     """
@@ -259,8 +259,8 @@ def test_coordinator_survives_one_failing_agent():
                     corridor="US->IN",
                     amount=500.0,
                     currency="INR",
-                    anomaly_type=AnomalyType.WRONG_IBAN,
-                    details={"iban": "WRONG"},
+                    anomaly_type=AnomalyType.WRONG_BIC,
+                    details={"bic": "WRONG"},
                 )
                 outcome: CorrectionOutcome = await client.execute_workflow(
                     PaymentCorrectionCoordinator.run,
@@ -288,7 +288,7 @@ def test_payload_encryption_encrypts_history():
     ``PydanticAIPlugin`` (proven in a prior task to coexist: the plugin only
     installs its own data converter when the caller supplies none). The
     coordinator runs on the encrypted client against the seeded memory-hit
-    anomaly (US->IN / WRONG_IBAN, no LLM call needed), then the PLAIN client
+    anomaly (US->IN / WRONG_BIC, no LLM call needed), then the PLAIN client
     reads back the raw event history and finds a payload marked
     ``encoding: binary/encrypted`` — proof that ciphertext, not plaintext,
     is what is actually stored. The encrypted client is used to confirm the
@@ -333,8 +333,8 @@ def test_payload_encryption_encrypts_history():
                     corridor="US->IN",
                     amount=750.0,
                     currency="INR",
-                    anomaly_type=AnomalyType.WRONG_IBAN,
-                    details={"iban": "WRONG"},
+                    anomaly_type=AnomalyType.WRONG_BIC,
+                    details={"bic": "WRONG"},
                 )
                 workflow_id = "test-payload-encryption"
                 outcome: CorrectionOutcome = await encrypted_client.execute_workflow(
@@ -364,6 +364,6 @@ def test_payload_encryption_encrypts_history():
         assert found_encrypted_payload
         assert outcome.applied is True
         assert outcome.proposal is not None
-        assert outcome.proposal.field_to_fix == "iban"
+        assert outcome.proposal.field_to_fix == "bic"
 
     asyncio.run(scenario())
