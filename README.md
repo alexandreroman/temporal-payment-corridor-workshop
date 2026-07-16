@@ -37,7 +37,7 @@ end-to-end on a local dev server.
 
 ## Prerequisites
 
-- **Python 3.12+** and [uv](https://docs.astral.sh/uv/)
+- **Python 3.13+** and [uv](https://docs.astral.sh/uv/)
 - **Docker** (or a compatible engine) with Compose — runs the Temporal
   dev server container
 - **LLM provider API key** — only needed once an anomaly misses corridor
