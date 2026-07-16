@@ -74,6 +74,11 @@ with workflow.unsafe.imports_passed_through():
         PaymentAnomaly,
     )
     from worker.activities import apply_correction
+
+    # --- FEATURE: settlement-confirmation ---
+    # from worker.activities import confirm_settlement
+    # --- END FEATURE: settlement-confirmation ---
+
     from worker.agents import AgentCorrection
     from worker.memory import read_corridor_memory, write_corridor_memory
     from worker.workflows import (
@@ -219,6 +224,9 @@ def test_coordinator_survives_one_failing_agent():
                     read_corridor_memory,
                     write_corridor_memory,
                     apply_correction,
+                    # --- FEATURE: settlement-confirmation ---
+                    # confirm_settlement,
+                    # --- END FEATURE: settlement-confirmation ---
                 ],
             ):
                 anomaly = PaymentAnomaly(
@@ -290,6 +298,9 @@ def test_payload_encryption_encrypts_history():
                     read_corridor_memory,
                     write_corridor_memory,
                     apply_correction,
+                    # --- FEATURE: settlement-confirmation ---
+                    # confirm_settlement,
+                    # --- END FEATURE: settlement-confirmation ---
                 ],
             ):
                 anomaly = PaymentAnomaly(

@@ -24,6 +24,11 @@ with workflow.unsafe.imports_passed_through():
     from pydantic_ai.durable_exec.temporal import PydanticAIWorkflow
 
     from worker.activities import apply_correction
+
+    # --- FEATURE: settlement-confirmation ---
+    # from worker.activities import confirm_settlement
+    # --- END FEATURE: settlement-confirmation ---
+
     from worker.agents import (
         AgentCorrection,
         compliance_temporal_agent,
@@ -258,6 +263,44 @@ class PaymentCorrectionCoordinator:
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
 
+        # --- FEATURE: settlement-confirmation ---
+        # # Once the correction is applied, wait for the downstream rail to
+        # # actually settle. confirm_settlement is a long-running, heartbeating
+        # # activity that polls the rail; from the workflow's point of view it is
+        # # just another activity to await, so determinism is preserved.
+        # # Source: https://docs.temporal.io/encyclopedia/detecting-activity-failures#activity-heartbeat
+        # #
+        # # NOTE: Enabling this feature adds a workflow step (this activity call),
+        # # so the coordinator's event history changes. The committed replay test
+        # # (worker/test_replay.py) replays worker/testdata/coordinator-history.json,
+        # # captured with the feature DISABLED, so it diverges and fails here BY
+        # # DESIGN -- that is expected, not a bug. In production the safe way to add
+        # # a step to already-running workflows is versioning/patching
+        # # (workflow.patched(...)); the workshop deliberately does not regenerate
+        # # the baseline history for the enabled state.
+        # # Source: https://docs.temporal.io/develop/python/versioning
+        # settlement = await workflow.execute_activity(
+        #     confirm_settlement,
+        #     reference,
+        #     start_to_close_timeout=timedelta(seconds=30),
+        #     # NOTE: heartbeat_timeout is what makes a stalled poll detectable: if
+        #     # no heartbeat arrives within this window the attempt fails and is
+        #     # retried per the policy below, resuming from the last reported cycle.
+        #     # Source: https://docs.temporal.io/encyclopedia/detecting-activity-failures#heartbeat-timeout
+        #     heartbeat_timeout=timedelta(seconds=5),
+        #     retry_policy=RetryPolicy(maximum_attempts=3),
+        # )
+        # return CorrectionOutcome(
+        #     payment_id=anomaly.payment_id,
+        #     applied=True,
+        #     proposal=best,
+        #     decision=self._decision,
+        #     settlement=settlement,
+        #     message=f"Correction applied (reference {reference}).",
+        # )
+        # --- END FEATURE: settlement-confirmation ---
+
+        # --- FEATURE-DEFAULT: settlement-confirmation ---
         return CorrectionOutcome(
             payment_id=anomaly.payment_id,
             applied=True,
@@ -265,6 +308,7 @@ class PaymentCorrectionCoordinator:
             decision=self._decision,
             message=f"Correction applied (reference {reference}).",
         )
+        # --- END FEATURE-DEFAULT: settlement-confirmation ---
 
     # --- FEATURE: human-approval-signal ---
     # @workflow.signal

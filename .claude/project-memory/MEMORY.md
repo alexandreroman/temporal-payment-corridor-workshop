@@ -26,3 +26,4 @@
 - [Authoring toggleable FEATURE blocks](references/reference_feature_block_authoring.md) — single-# code vs double-# prose; pair REPLACE features with FEATURE-DEFAULT; commented body must match ruff output; verify enable→parse→disable round-trip.
 - [Import symbols from their canonical public module](references/feedback_canonical_imports.md) — import pydantic_data_converter from temporalio.contrib.pydantic, not the pydantic_ai re-export, to avoid Pylance reportPrivateImportUsage.
 - [Implementation status](references/project_implementation_status.md) — workshop feature-set work that is still pending (not yet implemented).
+- [retry-alerting metric tags](references/reference_retry_alert_metric_tags.md) — corridor_correction_retries_alerted is tagged field/source (proposal has no corridor/anomaly type), matching sibling corridor_* metrics.
