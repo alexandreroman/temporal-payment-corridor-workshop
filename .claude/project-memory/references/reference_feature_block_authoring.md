@@ -1,14 +1,17 @@
 ---
 name: "Authoring toggleable FEATURE blocks"
-description: "How to write FEATURE/FEATURE-DEFAULT blocks so they enable to valid, ruff-clean Python and round-trip"
+description: "How to write FEATURE-ON/FEATURE-OFF blocks so they enable to valid, ruff-clean Python and round-trip"
 type: reference
 ---
 
 # Authoring toggleable FEATURE blocks
 
-`tools/features.py` toggles `# --- FEATURE: <name> ---` /
-`# --- FEATURE-DEFAULT: <name> ---` regions. Rules learned
-from fixing broken blocks:
+`tools/features.py` toggles `# region FEATURE-ON: <name>` /
+`# region FEATURE-OFF: <name>` regions (VS Code folding
+markers, closed by `# endregion <KIND>: <name>`). `FEATURE-ON` is
+the block that goes live when the feature is enabled; `FEATURE-OFF`
+is the base code live when it is off. Rules learned from fixing
+broken blocks:
 
 - **Enable strips exactly one leading `# `** per body line
   (`_uncomment`). So distinguish line kinds:
@@ -19,11 +22,11 @@ from fixing broken blocks:
 - **A region must yield at least one live Python line** when
   uncommented, else it still reads as disabled.
 - **A feature that REPLACES live code needs a paired
-  `FEATURE-DEFAULT`** wrapping the starting-point code; enable
-  comments the DEFAULT and uncomments the FEATURE, disable does
-  the inverse. Without the DEFAULT the old path stays live and
-  both run.
-- **Never put a FEATURE block after a `return`** — it becomes
+  `FEATURE-OFF`** wrapping the starting-point code; enable
+  comments the `FEATURE-OFF` block and uncomments the `FEATURE-ON`
+  block, disable does the inverse. Without the `FEATURE-OFF` block
+  the old path stays live and both run.
+- **Never put a `FEATURE-ON` block after a `return`** — it becomes
   dead/unreachable once live. Put the toggle before the shared
   tail and keep `return` reachable in both states.
 - **Enable runs `uv run ruff format`** on changed files, so the
@@ -35,7 +38,7 @@ from fixing broken blocks:
   commented form to match, then verify with an enable→disable
   round-trip (`diff` the files).
 - **A block whose body ends in a top-level `def`/`class`** gets
-  two blank lines inserted before its `# --- END FEATURE ---`
+  two blank lines inserted before its `# endregion FEATURE-ON:`
   marker on enable (ruff's blank-lines-after-top-level-def/class
   rule). So the canonical shipped (disabled) form must already
   carry the matching two `#` blank-comment lines before the END

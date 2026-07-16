@@ -10,26 +10,26 @@ Prometheus endpoint configured in ``worker/main.py``, next to the built-in
 
 from __future__ import annotations
 
-# --- FEATURE: retry-alerting ---
+# region FEATURE-ON: retry-alerting
 # import os
-# --- END FEATURE: retry-alerting ---
+# endregion FEATURE-ON: retry-alerting
 
-# --- FEATURE: settlement-confirmation ---
+# region FEATURE-ON: settlement-confirmation
 # import asyncio
 # import os
-# --- END FEATURE: settlement-confirmation ---
+# endregion FEATURE-ON: settlement-confirmation
 
 from temporalio import activity
 
-# --- FEATURE: non-retryable-validation ---
+# region FEATURE-ON: non-retryable-validation
 # from temporalio.exceptions import ApplicationError
-# --- END FEATURE: non-retryable-validation ---
+# endregion FEATURE-ON: non-retryable-validation
 
 from shared.models import CorrectionProposal
 
-# --- FEATURE: settlement-confirmation ---
+# region FEATURE-ON: settlement-confirmation
 # from shared.models import SettlementConfirmation, SettlementStatus
-# --- END FEATURE: settlement-confirmation ---
+# endregion FEATURE-ON: settlement-confirmation
 
 
 def _correction_reference(field_to_fix: str, workflow_id: str) -> str:
@@ -45,7 +45,7 @@ def _correction_reference(field_to_fix: str, workflow_id: str) -> str:
     return f"corr-{field_to_fix}-{workflow_id}"
 
 
-# --- FEATURE: non-retryable-validation ---
+# region FEATURE-ON: non-retryable-validation
 # # NOTE: Hand-operated fault switch for the workshop. Flip to True to force the
 # # non-retryable path without touching the seeded (valid) correction; a learner
 # # does this by hand. Default False keeps the happy path green.
@@ -70,9 +70,9 @@ def _correction_reference(field_to_fix: str, workflow_id: str) -> str:
 #     return compact[4:].isalnum()
 #
 #
-# --- END FEATURE: non-retryable-validation ---
+# endregion FEATURE-ON: non-retryable-validation
 
-# --- FEATURE: retry-alerting ---
+# region FEATURE-ON: retry-alerting
 # # NOTE: Hand-operated fault switch for the workshop. Flip to True to make
 # # apply_correction fail with a RETRYABLE error on its first attempts and then
 # # succeed, so a learner can watch the alert counter climb before the correction
@@ -83,7 +83,7 @@ def _correction_reference(field_to_fix: str, workflow_id: str) -> str:
 # # Configuration reads are side effects, so they belong in an activity's module,
 # # never in deterministic workflow code.
 # _RETRY_ALERT_THRESHOLD = int(os.environ.get("CORRIDOR_RETRY_ALERT_THRESHOLD", "2"))
-# --- END FEATURE: retry-alerting ---
+# endregion FEATURE-ON: retry-alerting
 
 
 @activity.defn
@@ -103,7 +103,7 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     applied.add(1, {"field": proposal.field_to_fix, "source": proposal.source})
     confidence.record(proposal.confidence, {"source": proposal.source})
 
-    # --- FEATURE: non-retryable-validation ---
+    # region FEATURE-ON: non-retryable-validation
     # # A malformed correction is a PERMANENT error: retrying it wastes time and
     # # can never self-heal, so we stop immediately instead of burning the retry
     # # budget. This deliberately contrasts with the RetryPolicy(maximum_attempts=3)
@@ -119,9 +119,9 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     #         f"Malformed correction, refusing to apply: {proposal.proposed_value!r}",
     #         non_retryable=True,
     #     )
-    # --- END FEATURE: non-retryable-validation ---
+    # endregion FEATURE-ON: non-retryable-validation
 
-    # --- FEATURE: retry-alerting ---
+    # region FEATURE-ON: retry-alerting
     # # NOTE: activity.info().attempt is the current attempt number; it starts at 1
     # # and the server increments it on every retry. It lets an activity notice it
     # # is being retried and react — here, raise an operational alert once retries
@@ -147,7 +147,7 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     #     # still succeed within maximum_attempts=3, after the alert has fired.
     #     # Source: https://docs.temporal.io/references/failures#retryable-vs-non-retryable
     #     raise RuntimeError(f"Simulated transient rail outage (attempt {attempt})")
-    # --- END FEATURE: retry-alerting ---
+    # endregion FEATURE-ON: retry-alerting
 
     # NOTE: Idempotency key from the (unique) coordinator workflow id, NOT hash():
     # a retry of this activity must not apply a second, differently-referenced
@@ -167,7 +167,7 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     return reference
 
 
-# --- FEATURE: settlement-confirmation ---
+# region FEATURE-ON: settlement-confirmation
 # # Poll cadence is read from the environment (with safe defaults) INSIDE the
 # # activity. Reading configuration and waiting on wall-clock time are side
 # # effects, so they belong in an activity, never in deterministic workflow code.
@@ -227,4 +227,4 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
 #     )
 #
 #
-# --- END FEATURE: settlement-confirmation ---
+# endregion FEATURE-ON: settlement-confirmation

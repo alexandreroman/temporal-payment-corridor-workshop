@@ -15,9 +15,9 @@ from temporalio.worker import Worker
 
 from worker.activities import apply_correction
 
-# --- FEATURE: settlement-confirmation ---
+# region FEATURE-ON: settlement-confirmation
 # from worker.activities import confirm_settlement
-# --- END FEATURE: settlement-confirmation ---
+# endregion FEATURE-ON: settlement-confirmation
 
 from worker.memory import (
     CorridorMemoryWorkflow,
@@ -52,8 +52,8 @@ def build_worker(client: Client) -> Worker:
             read_corridor_memory,
             write_corridor_memory,
             apply_correction,
-            # --- FEATURE: settlement-confirmation ---
+            # region FEATURE-ON: settlement-confirmation
             # confirm_settlement,
-            # --- END FEATURE: settlement-confirmation ---
+            # endregion FEATURE-ON: settlement-confirmation
         ],
     )
