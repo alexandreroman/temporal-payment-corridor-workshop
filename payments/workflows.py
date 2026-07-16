@@ -79,14 +79,14 @@ _APPROVAL_TIMEOUT: timedelta | None = None
 # _STATUS_SA = SearchAttributeKey.for_keyword("status")
 #
 #
-# def _mark_awaiting() -> None:
-#     """Tag this execution as awaiting a human decision (server-side filter)."""
-#     workflow.upsert_search_attributes([_STATUS_SA.value_set("awaiting-approval")])
+# def _set_status(value: str) -> None:
+#     """Publish the correction lifecycle through the status Search Attribute."""
+#     workflow.upsert_search_attributes([_STATUS_SA.value_set(value)])
 #
 #
 # endregion FEATURE-ON: search-attributes
 # region FEATURE-OFF: search-attributes
-def _mark_awaiting() -> None:
+def _set_status(value: str) -> None:
     """No-op until the search-attributes feature is enabled."""
 
 
@@ -247,10 +247,12 @@ class PaymentCorrectionCoordinator:
             # workflow.logger.info("Low confidence, awaiting human approval")
             # # NOTE: Publish the awaiting state through both listing seams: the
             # # in-memory flag feeds the awaiting_approval() query (client-side
-            # # listing), and _mark_awaiting() upserts the status search attribute
-            # # (server-side filtering) when that feature is enabled.
+            # # listing), and _set_status(...) upserts the status search attribute
+            # # (server-side filtering) when that feature is enabled. The finally
+            # # block resets both once the wait resolves, so an approved-and-
+            # # resuming correction no longer lists as awaiting.
             # self._awaiting = True
-            # _mark_awaiting()
+            # _set_status("awaiting-approval")
             # # _APPROVAL_TIMEOUT defaults to None (wait forever); enabling the
             # # `approval-timeout` feature turns this into a real auto-reject deadline.
             # try:
@@ -266,6 +268,7 @@ class PaymentCorrectionCoordinator:
             #     )
             # finally:
             #     self._awaiting = False
+            #     _set_status("processing")
             # assert self._decision is not None
             # if not self._decision.approved:
             #     return CorrectionOutcome(

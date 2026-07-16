@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 from temporalio.client import Client, WorkflowExecutionStatus
+from temporalio.common import SearchAttributeKey, WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
@@ -51,6 +52,18 @@ TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
 PAYMENTS_TEMPORAL_NAMESPACE = os.getenv("PAYMENTS_TEMPORAL_NAMESPACE", "payments")
 
 _WORKFLOW_TYPE = "PaymentCorrectionCoordinator"
+
+# Closed executions that carry no CorrectionOutcome: result() raises on these, so
+# the detail route reports the execution status instead of calling it.
+_CLOSED_NON_COMPLETED = frozenset(
+    {
+        WorkflowExecutionStatus.FAILED,
+        WorkflowExecutionStatus.CANCELED,
+        WorkflowExecutionStatus.TERMINATED,
+        WorkflowExecutionStatus.TIMED_OUT,
+        WorkflowExecutionStatus.CONTINUED_AS_NEW,
+    }
+)
 
 
 def setup_logfire() -> logfire.Logfire:
@@ -164,6 +177,14 @@ async def submit_anomaly(anomaly: PaymentAnomaly) -> AnomalyAcceptance:
 
     NOTE: start_workflow (not execute_workflow) — the API returns as soon as the
     correction is durably started, rather than blocking on the outcome.
+
+    NOTE: REJECT_DUPLICATE makes the deterministic workflow id
+    (correction-<payment_id>) reject any re-submission for the same payment,
+    even after an earlier correction has closed. Without it Temporal's default
+    policy would let a duplicate of a *closed* run start a fresh execution; the
+    contract is that a duplicate is always a conflict, so the reuse policy turns
+    it into WorkflowAlreadyStartedError, which the handler below maps to 409.
+    Source: https://docs.temporal.io/workflow-execution/workflowid-runid#workflow-id-reuse-policy
     """
     client: Client = app.state.temporal_client
     workflow_id = _workflow_id(anomaly.payment_id)
@@ -173,6 +194,7 @@ async def submit_anomaly(anomaly: PaymentAnomaly) -> AnomalyAcceptance:
             anomaly,
             id=workflow_id,
             task_queue=TASK_QUEUE,
+            id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
         )
     except WorkflowAlreadyStartedError as exc:
         raise HTTPException(
@@ -221,8 +243,6 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     # # NOTE: Server-side listing. The corridor/anomalyType/status search
     # # attributes are already on each execution, and the awaiting filter is
     # # pushed into the Visibility query — one round-trip, no per-workflow query.
-    # from temporalio.common import SearchAttributeKey
-    #
     # query = f"WorkflowType = '{_WORKFLOW_TYPE}' AND ExecutionStatus = 'Running'"
     # if awaiting_approval:
     #     query += " AND status = 'awaiting-approval'"
@@ -230,6 +250,11 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     #     sa = wf.typed_search_attributes
     #     corridor = sa.get(SearchAttributeKey.for_keyword("corridor")) or ""
     #     anomaly_type = sa.get(SearchAttributeKey.for_keyword("anomalyType")) or ""
+    #     if not anomaly_type:
+    #         # NOTE: Skip a half-tagged execution rather than letting
+    #         # AnomalyType("") raise; without the anomalyType SA it is not
+    #         # listable here.
+    #         continue
     #     wf_status = sa.get(SearchAttributeKey.for_keyword("status")) or "processing"
     #     summaries.append(
     #         AnomalySummary(
@@ -269,10 +294,28 @@ async def get_anomaly(payment_id: str) -> AnomalyDetail:
             status="completed",
             outcome=outcome,
         )
+
+    # NOTE: A closed-but-not-completed run (failed, terminated, canceled, timed
+    # out, continued as new) produced no CorrectionOutcome, and result() raises
+    # on it — so report the execution status verbatim and leave outcome empty.
+    if desc.status in _CLOSED_NON_COMPLETED:
+        return AnomalyDetail(
+            payment_id=payment_id,
+            workflow_id=workflow_id,
+            status=desc.status.name.lower(),
+        )
+
+    # Still running. With search-attributes enabled the coordinator publishes its
+    # lifecycle ("processing"/"awaiting-approval") through the status Search
+    # Attribute; surface it when present. The read is harmless when the attribute
+    # is absent (feature off): get() returns None and we fall back to "running".
+    status_sa = desc.typed_search_attributes.get(
+        SearchAttributeKey.for_keyword("status")
+    )
     return AnomalyDetail(
         payment_id=payment_id,
         workflow_id=workflow_id,
-        status="running",
+        status=status_sa or "running",
     )
 
 

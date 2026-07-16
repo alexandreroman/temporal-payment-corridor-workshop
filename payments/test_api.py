@@ -26,6 +26,7 @@ from types import SimpleNamespace
 import httpx
 
 from temporalio.client import WorkflowExecutionStatus
+from temporalio.common import TypedSearchAttributes, WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
@@ -89,6 +90,9 @@ class _StubHandle:
         self._describe_status = describe_status
         self._describe_error = describe_error
         self._result = result
+        # Records whether result() was called, so a test can assert the detail
+        # route never fetches an outcome for a closed non-completed run.
+        self.result_called = False
 
     async def query(self, _query):
         # The baseline listing only ever queries describe_anomaly; the awaiting
@@ -98,9 +102,15 @@ class _StubHandle:
     async def describe(self):
         if self._describe_error is not None:
             raise self._describe_error
-        return SimpleNamespace(status=self._describe_status)
+        # Running executions carry no status Search Attribute in the baseline, so
+        # an empty attribute set mirrors the search-attributes-off detail path.
+        return SimpleNamespace(
+            status=self._describe_status,
+            typed_search_attributes=TypedSearchAttributes.empty,
+        )
 
     async def result(self) -> CorrectionOutcome:
+        self.result_called = True
         assert self._result is not None
         return self._result
 
@@ -108,11 +118,12 @@ class _StubHandle:
 class _StartCall:
     """One captured ``start_workflow`` invocation, for later assertions."""
 
-    def __init__(self, run, arg, workflow_id, task_queue) -> None:
+    def __init__(self, run, arg, workflow_id, task_queue, id_reuse_policy) -> None:
         self.run = run
         self.arg = arg
         self.workflow_id = workflow_id
         self.task_queue = task_queue
+        self.id_reuse_policy = id_reuse_policy
 
 
 class _StubClient:
@@ -136,8 +147,8 @@ class _StubClient:
         self._handles = handles or {}
         self._workflows = workflows or []
 
-    async def start_workflow(self, run, arg, *, id, task_queue):
-        self.started.append(_StartCall(run, arg, id, task_queue))
+    async def start_workflow(self, run, arg, *, id, task_queue, id_reuse_policy):
+        self.started.append(_StartCall(run, arg, id, task_queue, id_reuse_policy))
         if self._start_error is not None:
             raise self._start_error
         return _StubHandle(id)
@@ -184,6 +195,8 @@ def test_submit_anomaly_starts_the_correction_workflow():
     assert call.run == PaymentCorrectionCoordinator.run
     assert call.workflow_id == "correction-pay-1"
     assert call.task_queue == TASK_QUEUE
+    # REJECT_DUPLICATE is what turns a re-submission of a closed run into a 409.
+    assert call.id_reuse_policy == WorkflowIDReusePolicy.REJECT_DUPLICATE
     # The posted JSON round-trips back to the exact model start_workflow receives.
     assert call.arg == anomaly
 
@@ -328,6 +341,32 @@ def test_get_anomaly_reports_completed_outcome():
     assert body["workflow_id"] == "correction-pay-1"
     assert body["outcome"]["applied"] is True
     assert body["outcome"]["proposal"]["proposed_value"] == "HDFCINBBXXX"
+
+
+def test_get_anomaly_reports_a_closed_non_completed_state():
+    """A failed correction reports its execution status and never calls result()."""
+    handle = _StubHandle(
+        "correction-pay-1",
+        describe_status=WorkflowExecutionStatus.FAILED,
+    )
+    stub = _StubClient(handles={"correction-pay-1": handle})
+    api.app.state.temporal_client = stub
+
+    async def scenario() -> httpx.Response:
+        async with _http_client() as client:
+            return await client.get("/api/payments/v1/anomalies/pay-1")
+
+    response = asyncio.run(scenario())
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "payment_id": "pay-1",
+        "workflow_id": "correction-pay-1",
+        "status": "failed",
+        "outcome": None,
+    }
+    # result() raises on a closed non-completed run, so the route must skip it.
+    assert handle.result_called is False
 
 
 def test_get_unknown_anomaly_returns_404():
