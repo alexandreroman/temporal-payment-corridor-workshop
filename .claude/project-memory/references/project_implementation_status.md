@@ -24,50 +24,24 @@ here — this note tracks only what remains to do.
   its `MEMORY.md` pointer. Keep the `MEMORY.md` index line
   generic — do not name individual pending items there.
 
-## Compliance as a gate, not a competing proposer (not yet implemented)
+## search-attributes enabled leaves `handle` unused (F841)
 
-Refactor the coordinator's proposal merge so the compliance agent
-*validates* the instruction agent's fix instead of proposing a
-competing correction. Recorded as future work to handle in a later
-session; not a `FEATURE` toggle for now.
+Enabling the `search-attributes` feature alone raises a ruff
+`F841` in `payments/test_workflows.py`
+(`test_coordinator_exposes_listing_query_surface`): the sole live
+use of the `handle` local lives in the `FEATURE-OFF:
+search-attributes` block (the `describe_anomaly` query), so
+enabling the feature comments it out and `handle` becomes
+assigned-but-unused. Baseline `make check` (all features off)
+passes; the lint only bites in the enabled state.
 
-- **Why:** both agent child workflows return `CorrectionProposal`
-  and the coordinator keeps the highest-`confidence` one via
-  `_select_best` (`payments/workflows.py`). That conflates orthogonal
-  concerns — operational repair and compliance are not interchangeable
-  candidates, so a more-confident instruction fix can silently discard
-  a compliance violation. In a real cross-border correction system
-  compliance is a gate/veto (and a sanctions hit a hard hold), never
-  outvoted by confidence.
-- **How to apply:** give `ComplianceAgentWorkflow` a distinct output
-  (e.g. a `ComplianceVerdict` with `compliant`, `violations`,
-  `confidence`) instead of `CorrectionProposal`; the coordinator
-  applies the instruction agent's fix only when compliance clears it,
-  blocks/holds on any violation regardless of instruction confidence,
-  and routes the low-confidence case into the existing
-  [[human-approval]] path. Parallel fan-out may stay, but merging then
-  combines constraints and escalates same-field conflicts to a human —
-  never `max(confidence)`.
-- **Also change the agent, not just the workflow:** in
-  `payments/agents.py` the `compliance_agent` has
-  `output_type=AgentCorrection` and instructions telling it to
-  *propose a correction*. A verdict output means rewriting that
-  `output_type` (to the verdict model) and its prompt (validate, don't
-  propose), plus the `_propose` path in `payments/workflows.py`, which
-  currently assumes both agents return an `AgentCorrection`.
-- **Replay fixture will break:** any change to the coordinator's
-  workflow code invalidates the committed
-  `payments/testdata/coordinator-history.json`, so `test_replay.py`
-  fails until regenerated with `make capture-history` (memory service
-  must be running first — see [[Regenerating the replay fixture needs
-  the memory service on make's port]] for the port gotcha).
-- **Preserve progressive activation:** the merge logic sits amid the
-  coordinator's existing `FEATURE-ON/OFF` blocks
-  (`human-approval-signal`, `settlement-confirmation`); keep that
-  structure intact per [[Authoring toggleable FEATURE blocks]] rather
-  than rewriting the coordinator in place.
-- **Tests affected:** changing the compliance agent's `output_type`
-  touches `payments/test_worker.py` and `test_replay.py`; follow
-  [[Testing TemporalAgent-based workflows under start_local]] (register
-  a `TestModel` stand-in under the real workflow name; `Agent.override`
-  does not reach the model activity).
+- **Why:** the test was introduced by the payments-API (backend)
+  work, and its other `handle` uses sit in the `human-approval-signal`
+  FEATURE-ON block. So `search-attributes` on + `human-approval-signal`
+  off is the failing combination — a real workshop-step lint gap, not
+  caused by the compliance-gate refactor.
+- **How to apply:** decide the intended enable order. If
+  `search-attributes` is meant to be enabled together with
+  `human-approval-signal`, document that; otherwise make the enabled
+  state consume `handle` (or drop it) so ruff stays clean in every
+  toggle combination, honouring [[Authoring toggleable FEATURE blocks]].
