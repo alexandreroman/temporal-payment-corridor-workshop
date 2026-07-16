@@ -34,6 +34,14 @@ from fixing broken blocks:
   calls on one line up to the configured width. Author the
   commented form to match, then verify with an enable→disable
   round-trip (`diff` the files).
+- **A block whose body ends in a top-level `def`/`class`** gets
+  two blank lines inserted before its `# --- END FEATURE ---`
+  marker on enable (ruff's blank-lines-after-top-level-def/class
+  rule). So the canonical shipped (disabled) form must already
+  carry the matching two `#` blank-comment lines before the END
+  marker; otherwise enable→disable is not a byte-identical
+  fixpoint. Author it that way, or run one enable→disable to
+  canonicalize the block.
 - **On any SyntaxError after enable, `features.py` rolls the
   whole tree back**, so a malformed block makes the feature
   impossible to enable at all.

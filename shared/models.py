@@ -79,6 +79,29 @@ class CorridorPattern(BaseModel):
     hit_count: int = 0
 
 
+# --- FEATURE: settlement-confirmation ---
+# # A downstream payment rail confirms settlement asynchronously: applying a
+# # correction is not the end of the story, because the money still has to
+# # settle on the rail. These models carry that confirmation outcome back
+# # across the Temporal boundary (activity result to coordinator to outcome).
+# class SettlementStatus(StrEnum):
+#     """Lifecycle of a settlement on the downstream payment rail."""
+#
+#     PENDING = "pending"  # accepted by the rail, not yet settled
+#     SETTLED = "settled"  # the rail has confirmed the funds settled
+#
+#
+# class SettlementConfirmation(BaseModel):
+#     """Result of polling the rail until the applied correction settles."""
+#
+#     reference: str  # opaque reference returned by apply_correction
+#     status: SettlementStatus
+#     poll_count: int  # number of poll cycles observed before settlement
+#
+#
+# --- END FEATURE: settlement-confirmation ---
+
+
 class CorrectionOutcome(BaseModel):
     """The final result of the coordinator workflow."""
 
@@ -87,3 +110,9 @@ class CorrectionOutcome(BaseModel):
     proposal: CorrectionProposal | None = None
     decision: ApprovalDecision | None = None
     message: str = ""
+    # --- FEATURE: settlement-confirmation ---
+    # # NOTE: Downstream settlement confirmation, populated only after the
+    # # long-running confirm_settlement activity reports SETTLED. Optional so the
+    # # baseline outcome (with no settlement step) still validates unchanged.
+    # settlement: SettlementConfirmation | None = None
+    # --- END FEATURE: settlement-confirmation ---
