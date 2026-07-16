@@ -49,8 +49,8 @@ services:
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       PAYMENTS_TEMPORAL_NAMESPACE: payments
-      WORKER_METRICS_HOST: 0.0.0.0
-      WORKER_METRICS_PORT: 9464
+      PAYMENTS_METRICS_HOST: 0.0.0.0
+      PAYMENTS_METRICS_PORT: 9464
       # Reach the memory service over HTTP (its Compose service name + port).
       MEMORY_HOST: memory
       MEMORY_PORT: 8010

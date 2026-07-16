@@ -10,7 +10,7 @@ In a Casper worktree `CASPER_PORT` is set and every published host port is
 remapped off it into `compose.override.yaml` — webui on `CASPER_PORT`,
 Temporal gRPC/UI and worker metrics on `CASPER_PORT+1/+2/+3`. That file is
 the single source of truth: the Makefile reads the published ports from it
-and exports them (`TEMPORAL_ADDRESS`, `WEBUI_PORT`, `WORKER_METRICS_*`) to
+and exports them (`TEMPORAL_ADDRESS`, `WEBUI_PORT`, `PAYMENTS_METRICS_*`) to
 the host-side `uv run payments`/`webui` processes, so `make dev` and
 `make webui` bind the remapped ports. This works in a normal worktree
 because the Casper `setup` hook (`make worktree-ports`) writes the file

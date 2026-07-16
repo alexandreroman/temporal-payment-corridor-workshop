@@ -34,12 +34,12 @@ MEMORY_URL_PORT    := $(shell sed -nE 's/.*"([0-9]+):8010".*/\1/p' compose.overr
 # Assign unconditionally (:=, not ?=): the override file is the source of truth
 # for published ports, so these must beat the .env baseline already exported
 # above. Plain := (not `override`) still lets an explicit `make VAR=...` win.
-TEMPORAL_ADDRESS     := localhost:$(TEMPORAL_GRPC_PORT)
-WEBUI_PORT           := $(WEBUI_URL_PORT)
-WORKER_METRICS_HOST  := 0.0.0.0
-WORKER_METRICS_PORT  := $(METRICS_PORT)
-MEMORY_PORT          := $(MEMORY_URL_PORT)
-export TEMPORAL_ADDRESS WEBUI_PORT WORKER_METRICS_HOST WORKER_METRICS_PORT MEMORY_PORT
+TEMPORAL_ADDRESS      := localhost:$(TEMPORAL_GRPC_PORT)
+WEBUI_PORT            := $(WEBUI_URL_PORT)
+PAYMENTS_METRICS_HOST := 0.0.0.0
+PAYMENTS_METRICS_PORT := $(METRICS_PORT)
+MEMORY_PORT           := $(MEMORY_URL_PORT)
+export TEMPORAL_ADDRESS WEBUI_PORT PAYMENTS_METRICS_HOST PAYMENTS_METRICS_PORT MEMORY_PORT
 else
 WEBUI_URL_PORT     := 8000
 TEMPORAL_UI_PORT   := 8233

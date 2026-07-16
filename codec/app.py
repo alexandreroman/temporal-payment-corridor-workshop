@@ -33,7 +33,6 @@ from collections.abc import Awaitable, Callable, Sequence
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
 from google.protobuf import json_format
 from temporalio.api.common.v1 import Payload, Payloads
 
@@ -74,15 +73,6 @@ if _key is None:
 # One codec instance shared by every request — it is stateless and thread-safe.
 _codec = EncryptionCodec(_key)
 
-# NOTE: The Web UI's codec calls originate from the browser, so the server must send
-# permissive CORS headers or the browser blocks the response. Restrict it to
-# the Web UI's own origin and to the method/headers the sample uses. This is
-# deliberately narrow, but note it is browser-enforced and not a security
-# boundary by itself (a non-browser client ignores CORS entirely). Mirrors the
-# sample's cors_options handler:
-# https://github.com/temporalio/samples-python/blob/main/encryption/codec_server.py
-_UI_ORIGIN = os.getenv("TEMPORAL_UI_ORIGIN", "http://localhost:8233")
-
 # NOTE: The codec server turns "encrypted in Event History" back into plaintext for
 # anyone who can reach it, over plain HTTP. Gate every request behind a shared
 # bearer token so only the Web UI (configured to forward it) can decode. A shared
@@ -119,20 +109,12 @@ def require_bearer_token(request: Request) -> None:
         )
 
 
-# NOTE: dependencies=[...] runs on every route, so both codec endpoints are gated;
-# CORS preflight (OPTIONS) is handled by CORSMiddleware before routing, so it is
-# unaffected. The browser must be allowed to send the Authorization header, hence
-# "authorization" is added to allow_headers. Source:
+# NOTE: dependencies=[...] runs on every route, so both codec endpoints are
+# gated. Source:
 # https://fastapi.tiangolo.com/tutorial/dependencies/global-dependencies/
 app = FastAPI(
     title="Payment Corridor Codec Server",
     dependencies=[Depends(require_bearer_token)],
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[_UI_ORIGIN],
-    allow_methods=["POST"],
-    allow_headers=["content-type", "x-namespace", "authorization"],
 )
 
 # A codec method: takes payloads, returns the transformed payloads.
