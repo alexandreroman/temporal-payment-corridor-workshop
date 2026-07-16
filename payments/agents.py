@@ -9,7 +9,7 @@ inside a deterministic workflow and replayed safely.
 The wrapped agents are referenced by the agent child workflows in
 ``payments/workflows.py`` (via ``__pydantic_ai_agents__``) and their
 activities are registered automatically by the ``PydanticAIPlugin`` in
-``payments/main.py``.
+``payments/main_worker.py``.
 """
 
 from __future__ import annotations

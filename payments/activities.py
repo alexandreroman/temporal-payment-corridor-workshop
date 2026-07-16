@@ -4,7 +4,7 @@ Activities are where side effects live. They also emit the *application*
 metrics (memory hit rate, corrections applied, confidence). Those go
 through :func:`temporalio.activity.metric_meter`, which is backed by the
 same runtime as the Temporal SDK metrics — so they surface on the one
-Prometheus endpoint configured in ``payments/main.py``, next to the built-in
+Prometheus endpoint configured in ``payments/main_worker.py``, next to the built-in
 ``temporal_*`` series but under their own ``corridor_*`` names.
 """
 

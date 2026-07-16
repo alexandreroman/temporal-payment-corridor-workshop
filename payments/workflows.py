@@ -62,19 +62,35 @@ _APPROVAL_TIMEOUT: timedelta | None = None
 # _APPROVAL_TIMEOUT: timedelta | None = timedelta(minutes=5)
 # endregion FEATURE-ON: approval-timeout
 
+
 # region FEATURE-ON: search-attributes
 # # NOTE: Typed Search Attribute keys used by PaymentCorrectionCoordinator below to
 # # tag each workflow execution with its corridor and anomaly type. This makes
 # # executions filterable and listable (in the Web UI, the `temporal workflow
-# # list` CLI, or the SDK) without scanning payloads.
+# # list` CLI, or the SDK) without scanning payloads. Registered on the dev
+# # server via compose.yaml, so no manual
+# # `temporal operator search-attribute create` step is needed.
 # # Source: https://docs.temporal.io/develop/python/observability#search-attributes
-# #
-# # These custom attributes must be registered on the dev server first:
-# #   temporal operator search-attribute create --name corridor --type Keyword
-# #   temporal operator search-attribute create --name anomalyType --type Keyword
 # _CORRIDOR_SA = SearchAttributeKey.for_keyword("corridor")
 # _ANOMALY_TYPE_SA = SearchAttributeKey.for_keyword("anomalyType")
+# # NOTE: status carries the correction lifecycle ("processing" ->
+# # "awaiting-approval") so the payments API can list and filter executions
+# # server-side. Registered on the dev server via compose.yaml.
+# _STATUS_SA = SearchAttributeKey.for_keyword("status")
+#
+#
+# def _set_status(value: str) -> None:
+#     """Publish the correction lifecycle through the status Search Attribute."""
+#     workflow.upsert_search_attributes([_STATUS_SA.value_set(value)])
+#
+#
 # endregion FEATURE-ON: search-attributes
+# region FEATURE-OFF: search-attributes
+def _set_status(value: str) -> None:
+    """No-op until the search-attributes feature is enabled."""
+
+
+# endregion FEATURE-OFF: search-attributes
 
 
 def _select_best(
@@ -168,9 +184,16 @@ class PaymentCorrectionCoordinator:
 
     def __init__(self) -> None:
         self._decision: ApprovalDecision | None = None
+        # Stored so the search-attributes OFF listing can read it back via the
+        # describe_anomaly() query; harmless when unused.
+        self._anomaly: PaymentAnomaly | None = None
+        # True only while the coordinator is blocked on a human decision; read by
+        # the awaiting_approval() query on the client-side listing path.
+        self._awaiting: bool = False
 
     @workflow.run
     async def run(self, anomaly: PaymentAnomaly) -> CorrectionOutcome:
+        self._anomaly = anomaly
         # region FEATURE-ON: search-attributes
         # # NOTE: Tag this execution with typed Search Attributes so it can be
         # # filtered/listed by corridor and anomaly type. This replaces the
@@ -183,6 +206,7 @@ class PaymentCorrectionCoordinator:
         #     [
         #         _CORRIDOR_SA.value_set(anomaly.corridor),
         #         _ANOMALY_TYPE_SA.value_set(str(anomaly.anomaly_type)),
+        #         _STATUS_SA.value_set("processing"),
         #     ]
         # )
         # endregion FEATURE-ON: search-attributes
@@ -221,6 +245,14 @@ class PaymentCorrectionCoordinator:
         if best.confidence < CONFIDENCE_THRESHOLD:
             # region FEATURE-ON: human-approval-signal
             # workflow.logger.info("Low confidence, awaiting human approval")
+            # # NOTE: Publish the awaiting state through both listing seams: the
+            # # in-memory flag feeds the awaiting_approval() query (client-side
+            # # listing), and _set_status(...) upserts the status search attribute
+            # # (server-side filtering) when that feature is enabled. The finally
+            # # block resets both once the wait resolves, so an approved-and-
+            # # resuming correction no longer lists as awaiting.
+            # self._awaiting = True
+            # _set_status("awaiting-approval")
             # # _APPROVAL_TIMEOUT defaults to None (wait forever); enabling the
             # # `approval-timeout` feature turns this into a real auto-reject deadline.
             # try:
@@ -234,6 +266,9 @@ class PaymentCorrectionCoordinator:
             #         proposal=best,
             #         message="No decision within the approval window; auto-rejected.",
             #     )
+            # finally:
+            #     self._awaiting = False
+            #     _set_status("processing")
             # assert self._decision is not None
             # if not self._decision.approved:
             #     return CorrectionOutcome(
@@ -310,6 +345,20 @@ class PaymentCorrectionCoordinator:
         )
         # endregion FEATURE-OFF: settlement-confirmation
 
+    # region FEATURE-OFF: search-attributes
+    @workflow.query
+    def describe_anomaly(self) -> PaymentAnomaly:
+        """Return the anomaly under correction.
+
+        NOTE: The client-side listing path (search-attributes disabled) reads
+        corridor/anomaly-type per running workflow through this query — one query
+        per execution, the N+1 cost that search attributes exist to remove.
+        """
+        assert self._anomaly is not None
+        return self._anomaly
+
+    # endregion FEATURE-OFF: search-attributes
+
     # region FEATURE-ON: human-approval-signal
     # @workflow.signal
     # async def approve_correction(self, decision: ApprovalDecision) -> None:
@@ -319,5 +368,9 @@ class PaymentCorrectionCoordinator:
     # @workflow.query
     # def decision(self) -> ApprovalDecision | None:
     #     return self._decision
+    #
+    # @workflow.query
+    # def awaiting_approval(self) -> bool:
+    #     return self._awaiting
     #
     # endregion FEATURE-ON: human-approval-signal

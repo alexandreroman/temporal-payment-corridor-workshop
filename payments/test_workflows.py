@@ -74,6 +74,11 @@ with workflow.unsafe.imports_passed_through():
         CorridorPattern,
         PaymentAnomaly,
     )
+
+    # region FEATURE-ON: human-approval-signal
+    # from shared.models import ApprovalDecision
+    #
+    # endregion FEATURE-ON: human-approval-signal
     from memory import store as memory_store
     from payments.activities import apply_correction
 
@@ -155,13 +160,39 @@ class _FailingInstructionAgentWorkflow:
         raise ApplicationError("Simulated instruction-agent outage")
 
 
+# A TestModel-backed compliance double, registered under the real compliance
+# workflow's type name. Paired with the instruction double, it lets the
+# coordinator reach a genuine low-confidence outcome (TestModel returns
+# confidence 0.0) entirely offline.
+_test_compliance_agent = Agent(
+    TestModel(),
+    name="compliance_agent",
+    output_type=AgentCorrection,
+    instructions="Test double; TestModel never reads this.",
+)
+_test_compliance_temporal_agent = TemporalAgent(_test_compliance_agent)
+
+
+@workflow.defn(name="ComplianceAgentWorkflow")
+class _FakeComplianceAgentWorkflow:
+    """Runs the real memory-first flow, but against a TestModel agent."""
+
+    __pydantic_ai_agents__ = [_test_compliance_temporal_agent]
+
+    @workflow.run
+    async def run(self, anomaly: PaymentAnomaly) -> CorrectionProposal:
+        return await _propose(
+            _test_compliance_temporal_agent, "compliance_agent", anomaly
+        )
+
+
 async def _local_env_client(env: WorkflowEnvironment) -> Client:
     """Connect a fresh client to the given local test server.
 
     ``env.client`` uses the default data converter, which cannot serialize
     the Pydantic models crossing the Temporal boundary here. Every test
     below instead connects its own client with ``PydanticAIPlugin``, exactly
-    like ``payments/main.py`` does — the plugin installs the Pydantic data
+    like ``payments/main_worker.py`` does — the plugin installs the Pydantic data
     converter and also wires the sandbox passthrough that TemporalAgent-
     based workflows need to pass validation at ``Worker`` construction.
     """
@@ -365,5 +396,100 @@ def test_payload_encryption_encrypts_history():
         assert outcome.applied is True
         assert outcome.proposal is not None
         assert outcome.proposal.field_to_fix == "bic"
+
+    asyncio.run(scenario())
+
+
+def test_coordinator_exposes_listing_query_surface():
+    """The coordinator exposes the payments API's listing/detail query surface.
+
+    ``describe_anomaly`` (the search-attributes OFF baseline) always returns
+    the anomaly under correction — the per-workflow read the client-side
+    listing path relies on. With human oversight wired
+    (``human-approval-signal`` enabled), a low-confidence correction blocks and
+    ``awaiting_approval`` reports True until a decision is signalled, then flips
+    back to False.
+    """
+
+    async def scenario() -> None:
+        async with await WorkflowEnvironment.start_local(
+            search_attributes=[
+                SearchAttributeKey.for_keyword("corridor"),
+                SearchAttributeKey.for_keyword("anomalyType"),
+                SearchAttributeKey.for_keyword("status"),
+            ],
+        ) as env:
+            client = await _local_env_client(env)
+            async with Worker(
+                client,
+                task_queue=TASK_QUEUE,
+                workflows=[
+                    PaymentCorrectionCoordinator,
+                    _FakeInstructionAgentWorkflow,
+                    _FakeComplianceAgentWorkflow,
+                ],
+                activities=[
+                    read_corridor_memory,
+                    write_corridor_memory,
+                    apply_correction,
+                    # region FEATURE-ON: settlement-confirmation
+                    # confirm_settlement,
+                    # endregion FEATURE-ON: settlement-confirmation
+                ],
+            ):
+                # "US->GB" / WRONG_BIC misses the seeded memory, so both agents
+                # fall through to their TestModel doubles, which return
+                # confidence 0.0 — a guaranteed low-confidence correction.
+                anomaly = PaymentAnomaly(
+                    payment_id="pay-query-surface-1",
+                    corridor="US->GB",
+                    amount=100.0,
+                    currency="GBP",
+                    anomaly_type=AnomalyType.WRONG_BIC,
+                    details={"bic": "NOT-A-REAL-BIC"},
+                )
+                handle = await client.start_workflow(
+                    PaymentCorrectionCoordinator.run,
+                    anomaly,
+                    id="test-coordinator-query-surface",
+                    task_queue=TASK_QUEUE,
+                    execution_timeout=timedelta(seconds=30),
+                )
+
+                # region FEATURE-OFF: search-attributes
+                # Baseline query surface (search-attributes OFF): describe_anomaly
+                # is REPLACE-removed when search-attributes is enabled, so this
+                # assertion pairs with the workflow's own FEATURE-OFF region.
+                described = await handle.query(
+                    PaymentCorrectionCoordinator.describe_anomaly
+                )
+                assert described.payment_id == anomaly.payment_id
+                assert described.corridor == anomaly.corridor
+                assert described.anomaly_type == anomaly.anomaly_type
+                # endregion FEATURE-OFF: search-attributes
+
+                # region FEATURE-ON: human-approval-signal
+                # # With human oversight wired, the low-confidence correction
+                # # blocks on a decision: awaiting_approval() stays True until a
+                # # verdict arrives, then flips back to False.
+                # awaiting = False
+                # for _ in range(50):
+                #     awaiting = await handle.query(
+                #         PaymentCorrectionCoordinator.awaiting_approval
+                #     )
+                #     if awaiting:
+                #         break
+                #     await asyncio.sleep(0.1)
+                # assert awaiting
+                # await handle.signal(
+                #     PaymentCorrectionCoordinator.approve_correction,
+                #     ApprovalDecision(approved=True, approver="tester"),
+                # )
+                # outcome: CorrectionOutcome = await handle.result()
+                # assert outcome.applied is True
+                # assert not await handle.query(
+                #     PaymentCorrectionCoordinator.awaiting_approval
+                # )
+                # endregion FEATURE-ON: human-approval-signal
 
     asyncio.run(scenario())

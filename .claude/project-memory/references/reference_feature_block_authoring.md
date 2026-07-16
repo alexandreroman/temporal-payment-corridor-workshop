@@ -45,6 +45,18 @@ so they enable cleanly and round-trip:
   marker; otherwise enable→disable is not a byte-identical
   fixpoint. Author it that way, or run one enable→disable to
   canonicalize the block.
+- **Never nest a region of one feature inside another feature's
+  region.** `set_feature_in_text` rewrites a region's body
+  line-by-line (`_comment`/`_uncomment`), so toggling the OUTER
+  feature prepends `# ` to the INNER feature's marker lines,
+  which then no longer match `MARKER_RE` — the inner feature
+  becomes untoggleable and its body double-commented. When two
+  features must interact at one call site (e.g. the SA-off
+  listing needs the human-approval awaiting state), hoist the
+  interaction into a module-scope helper that is itself a REPLACE
+  pair of the second feature, and call it as a plain line inside
+  the first feature's region (see `_query_awaiting` /
+  `_mark_awaiting` in `payments/api.py` / `payments/workflows.py`).
 - **On any SyntaxError after enable, `features.py` rolls the
   whole tree back**, so a malformed block makes the feature
   impossible to enable at all.

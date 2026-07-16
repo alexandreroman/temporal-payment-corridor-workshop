@@ -18,7 +18,7 @@ See [README.md](README.md) for full documentation.
 
 ```bash
 uv sync            # install dependencies
-make dev           # Temporal dev server (Docker) + payments, web UI & memory (hot reload)
+make dev           # Temporal dev server (Docker) + payments worker & API, web UI & memory (hot reload)
 make simulator     # simulate an incoming payment anomaly
 make check         # lint + tests
 ```
@@ -32,10 +32,14 @@ component definition isolated in its own file.
 
 - `shared/models.py` — shared Pydantic models exchanged across the
   Temporal boundary
-- `payments/` — payment-correction component. `main.py` bootstraps infra
-  (runtime, metrics, Logfire, client, hot reload); `worker.py` builds the
-  `Worker` (task queue + workflow/activity registration); `agents.py`,
-  `activities.py`, `workflows.py`, `memory.py` hold the durable logic
+- `payments/` — payment-correction component; two processes share this
+  package. The payments worker: `main_worker.py` bootstraps infra
+  (runtime, metrics, Logfire, client, hot reload) and `worker.py` builds
+  the `Worker` (task queue + workflow/activity registration), while
+  `agents.py`, `activities.py`, `workflows.py`, `memory.py` hold the
+  durable logic. The payments HTTP API: `main_api.py` bootstraps uvicorn
+  and `api.py` defines the `/api/payments/v1` routes as a Temporal client
+  (no `Worker`) that starts, lists, and relays approvals for corrections
 - `webui/` — FastAPI web UI. `main.py` bootstraps infra + uvicorn;
   `app.py` defines the app and routes; `templates/` and `static/` hold
   the HTML/CSS

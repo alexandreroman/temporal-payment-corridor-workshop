@@ -30,7 +30,7 @@ Two subtle invariants must be preserved when editing these bootstraps:
   `main.py`. Any config the served app needs (Logfire, `load_dotenv`)
   must live in `app.py`. Payments does not have this issue because its
   watchfiles subprocess runs `main()`.
-- **`payments/main.py` calls `load_dotenv()` before importing
+- **`payments/main_worker.py` calls `load_dotenv()` before importing
   `payments.worker`**, because `payments/agents.py` reads `CORRIDOR_MODEL`
   from the environment at import time (kept with `# noqa: E402`).
 

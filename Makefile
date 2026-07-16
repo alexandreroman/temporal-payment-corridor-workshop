@@ -30,13 +30,17 @@ TEMPORAL_UI_PORT      := $(shell sed -nE 's/.*"([0-9]+):8233".*/\1/p' compose.ov
 TEMPORAL_GRPC_PORT    := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.override.yaml | head -n1)
 PAYMENTS_METRICS_PORT := $(shell sed -nE 's/.*"([0-9]+):9464".*/\1/p' compose.override.yaml | head -n1)
 MEMORY_PORT           := $(shell sed -nE 's/.*"([0-9]+):8010".*/\1/p' compose.override.yaml | head -n1)
+PAYMENTS_API_PORT     := $(shell sed -nE 's/.*"([0-9]+):8020".*/\1/p' compose.override.yaml | head -n1)
 # Point the host-side dev flow (uv run payments/webui) at the remapped ports.
 # Assign unconditionally (:=, not ?=): the override file is the source of truth
 # for published ports, so these must beat the .env baseline already exported
 # above. Plain := (not `override`) still lets an explicit `make VAR=...` win.
 TEMPORAL_ADDRESS      := localhost:$(TEMPORAL_GRPC_PORT)
 PAYMENTS_METRICS_HOST := 0.0.0.0
-export TEMPORAL_ADDRESS WEBUI_PORT PAYMENTS_METRICS_HOST PAYMENTS_METRICS_PORT MEMORY_PORT
+# The simulator reaches the payments API through the gateway (remapped UI port).
+GATEWAY_HOST          := localhost
+GATEWAY_PORT          := $(TEMPORAL_UI_PORT)
+export TEMPORAL_ADDRESS WEBUI_PORT PAYMENTS_METRICS_HOST PAYMENTS_METRICS_PORT MEMORY_PORT PAYMENTS_API_PORT GATEWAY_HOST GATEWAY_PORT
 else
 # Without an override the published ports equal the conventional defaults.
 # Use ?= for ports that have a matching app env var so a value set in .env
@@ -45,6 +49,10 @@ WEBUI_PORT            ?= 8000
 TEMPORAL_UI_PORT      := 8233
 PAYMENTS_METRICS_PORT ?= 9464
 MEMORY_PORT           ?= 8010
+PAYMENTS_API_PORT     ?= 8020
+GATEWAY_HOST          := localhost
+GATEWAY_PORT          := $(TEMPORAL_UI_PORT)
+export PAYMENTS_API_PORT GATEWAY_HOST GATEWAY_PORT
 endif
 
 # Banner listing where to reach the running components.
@@ -54,6 +62,7 @@ define show_urls
 	@echo "  Web UI              http://localhost:$(WEBUI_PORT)"
 	@echo "  Corridor memory     http://localhost:$(MEMORY_PORT)"
 	@echo "  Temporal Web UI     http://localhost:$(TEMPORAL_UI_PORT)  (via gateway)"
+	@echo "  Payments API        http://localhost:$(GATEWAY_PORT)/api/payments/v1"
 	@echo "  Payments metrics    http://localhost:$(PAYMENTS_METRICS_PORT)/metrics"
 endef
 
@@ -84,6 +93,10 @@ infra-logs: ## Follow logs from the Temporal dev server
 payments: ## Run the payments worker on the host with hot reload
 	uv run payments
 
+.PHONY: payments-api
+payments-api: ## Run the payments HTTP API on the host with hot reload
+	uv run payments-api
+
 .PHONY: simulator
 simulator: ## Simulate a payment anomaly (SCENARIO=<name>; see `make simulator-list`)
 	uv run simulator $(if $(SCENARIO),--scenario $(SCENARIO))
@@ -103,7 +116,7 @@ memory: ## Run the corridor memory service on the host with hot reload
 .PHONY: dev
 dev: .venv infra-up ## Start Temporal, then run payments + web UI on the host with hot reload
 	$(show_urls)
-	@$(MAKE) -j payments webui memory
+	@$(MAKE) -j payments payments-api webui memory
 
 .venv: pyproject.toml uv.lock
 	uv sync
@@ -139,8 +152,8 @@ worktree-init: ## Initialise a worktree: install deps and remap host ports off C
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
-		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n  gateway:\n    ports: !override\n      - "%s:8233"\n  payments:\n    ports: !override\n      - "%s:9464"\n  webui:\n    ports: !override\n      - "%s:8000"\n  memory:\n    ports: !override\n      - "%s:8010"\n' \
-			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 3)) $$((CASPER_PORT + 4)) > compose.override.yaml; \
+		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n  gateway:\n    ports: !override\n      - "%s:8233"\n    environment:\n      PAYMENTS_API_UPSTREAM: host.docker.internal:%s\n  payments:\n    ports: !override\n      - "%s:9464"\n  payments-api:\n    ports: !override\n      - "%s:8020"\n  webui:\n    ports: !override\n      - "%s:8000"\n  memory:\n    ports: !override\n      - "%s:8010"\n' \
+			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 5)) $$((CASPER_PORT + 2)) $$((CASPER_PORT + 5)) $$((CASPER_PORT + 3)) $$((CASPER_PORT + 4)) > compose.override.yaml; \
 		echo "Wrote compose.override.yaml (CASPER_PORT=$$CASPER_PORT)"; \
 	fi
 

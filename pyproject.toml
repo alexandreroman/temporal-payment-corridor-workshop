@@ -18,7 +18,8 @@ dependencies = [
 ]
 
 [project.scripts]
-payments = "payments.main:dev"
+payments = "payments.main_worker:dev"
+payments-api = "payments.main_api:dev"
 simulator = "simulator.main:cli"
 webui = "webui.main:dev"
 memory = "memory.main:dev"

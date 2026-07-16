@@ -1,6 +1,6 @@
 ---
 name: "Docker images run modules from source, never build the project wheel"
-description: "Container images install deps only and run python -m payments.main/webui.main; building the wheel fails on the readme field"
+description: "Container images install deps only and run python -m payments.main_worker/webui.main; building the wheel fails on the readme field"
 type: project
 ---
 
@@ -9,7 +9,7 @@ type: project
 The `Dockerfile.payments` and `Dockerfile.webui` images install
 dependencies only (`uv sync --frozen --no-dev --no-install-project`) and
 run the packages directly from `/app` (`CMD ["python", "-m",
-"payments.main"]` / `CMD ["python", "-m", "webui.main"]`). Each image
+"payments.main_worker"]` / `CMD ["python", "-m", "webui.main"]`). Each image
 copies only the packages it needs: the payments image copies `shared/` +
 `payments/`;
 webui copies `webui/` (its `templates/` and `static/` live inside the

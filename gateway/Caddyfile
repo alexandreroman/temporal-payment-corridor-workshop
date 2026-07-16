@@ -32,5 +32,8 @@
 			header_up Authorization "Bearer {$CODEC_SERVER_AUTH_TOKEN:changeme}"
 		}
 	}
+	handle /api/payments/v1/* {
+		reverse_proxy {$PAYMENTS_API_UPSTREAM:payments-api:8020}
+	}
 	reverse_proxy temporal:8233
 }
