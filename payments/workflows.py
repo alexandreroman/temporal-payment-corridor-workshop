@@ -10,8 +10,8 @@ instances) instead of re-importing them.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Sequence
 from datetime import timedelta
+from enum import StrEnum
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -38,6 +38,7 @@ with workflow.unsafe.imports_passed_through():
 
     from shared.models import (
         ApprovalDecision,
+        ComplianceVerdict,
         CorrectionOutcome,
         CorrectionProposal,
         CorrectionSource,
@@ -93,31 +94,69 @@ def _set_status(value: str) -> None:
 # endregion FEATURE-OFF: search-attributes
 
 
-def _select_best(
-    results: Sequence[CorrectionProposal | BaseException],
-) -> CorrectionProposal | None:
-    """Pick the highest-confidence proposal, tolerating agent failures.
+class GateDecision(StrEnum):
+    """What the coordinator should do once both agents have reported."""
 
-    The coordinator fans out to agent child workflows concurrently. One agent
-    failing must not sink the whole correction, so we gather with
-    ``return_exceptions=True`` and select among the proposals that DID come
-    back. Returns ``None`` only if every agent failed.
-    Source: https://docs.temporal.io/develop/python/child-workflows
+    APPLY = "apply"  # compliant and confident -> apply the instruction fix
+    REVIEW = (
+        "review"  # hold for human oversight (violation / low confidence / no verdict)
+    )
+    NO_PROPOSAL = "no_proposal"  # instruction agent produced nothing to apply
+
+
+def _gate(
+    proposal: CorrectionProposal | None,
+    verdict: ComplianceVerdict | None,
+) -> tuple[GateDecision, str]:
+    """Combine the instruction proposal with the compliance verdict.
+
+    NOTE: Compliance is a gate, not a competing proposer. A fix is applied
+    only when the verdict clears it AND the proposal is confident enough.
+    Absence of a clearance -- the compliance agent failed, or it reported a
+    violation -- never auto-applies (fail-closed); it holds for a human. This
+    replaces the old max(confidence) merge, where a confident instruction fix
+    could silently outvote a compliance violation.
     """
-    proposals = [r for r in results if isinstance(r, CorrectionProposal)]
-    if not proposals:
-        return None
-    return max(proposals, key=lambda p: p.confidence)
+    if proposal is None:
+        return (
+            GateDecision.NO_PROPOSAL,
+            "All correction agents failed; no proposal to apply.",
+        )
+    if verdict is None:
+        return (
+            GateDecision.REVIEW,
+            "Compliance check unavailable; holding for human review.",
+        )
+    if not verdict.compliant:
+        joined = "; ".join(verdict.violations) or "unspecified"
+        return GateDecision.REVIEW, f"Compliance violation(s): {joined}."
+    if proposal.confidence < CONFIDENCE_THRESHOLD:
+        return (
+            GateDecision.REVIEW,
+            "Confidence below threshold; human approval required.",
+        )
+    return GateDecision.APPLY, ""
 
 
-def _prompt(anomaly: PaymentAnomaly) -> str:
-    """Render an anomaly into a prompt for a correction agent."""
+def _anomaly_context(anomaly: PaymentAnomaly) -> str:
+    """Render the shared anomaly context both agent prompts start from."""
     return (
         f"Corridor: {anomaly.corridor}\n"
         f"Anomaly: {anomaly.anomaly_type}\n"
         f"Amount: {anomaly.amount} {anomaly.currency}\n"
         f"Details: {anomaly.details}\n"
-        "Propose the single best correction."
+    )
+
+
+def _prompt(anomaly: PaymentAnomaly) -> str:
+    """Prompt the instruction agent to propose a correction."""
+    return _anomaly_context(anomaly) + "Propose the single best correction."
+
+
+def _compliance_prompt(anomaly: PaymentAnomaly) -> str:
+    """Prompt the compliance agent to return a verdict, not a correction."""
+    return _anomaly_context(anomaly) + (
+        "Validate whether a compliant correction is possible and return a verdict."
     )
 
 
@@ -156,6 +195,37 @@ async def _propose(
     )
 
 
+async def _verify_compliance(agent, anomaly: PaymentAnomaly) -> ComplianceVerdict:
+    """Memory-first compliance check for the compliance child workflow.
+
+    NOTE: A known high-confidence corridor pattern is presumed compliant
+    without a model call, mirroring _propose. This is what keeps the seeded
+    happy path (US->IN / WRONG_BIC) fully offline: neither agent calls the
+    model. On a miss, the durable compliance agent produces the verdict.
+    """
+    pattern = await workflow.execute_activity(
+        read_corridor_memory,
+        args=[anomaly.corridor, anomaly.anomaly_type],
+        start_to_close_timeout=timedelta(seconds=10),
+    )
+    if pattern is not None and pattern.confidence >= CONFIDENCE_THRESHOLD:
+        return ComplianceVerdict(
+            compliant=True,
+            violations=[],
+            confidence=pattern.confidence,
+            source=CorrectionSource.MEMORY,
+        )
+
+    result = await agent.run(_compliance_prompt(anomaly))
+    verdict: ComplianceVerdict = result.output
+    return ComplianceVerdict(
+        compliant=verdict.compliant,
+        violations=verdict.violations,
+        confidence=verdict.confidence,
+        source=CorrectionSource.LLM,
+    )
+
+
 @workflow.defn
 class InstructionAgentWorkflow(PydanticAIWorkflow):
     """Child workflow driving the instruction-fixing agent."""
@@ -174,8 +244,8 @@ class ComplianceAgentWorkflow(PydanticAIWorkflow):
     __pydantic_ai_agents__ = [compliance_temporal_agent]
 
     @workflow.run
-    async def run(self, anomaly: PaymentAnomaly) -> CorrectionProposal:
-        return await _propose(compliance_temporal_agent, "compliance_agent", anomaly)
+    async def run(self, anomaly: PaymentAnomaly) -> ComplianceVerdict:
+        return await _verify_compliance(compliance_temporal_agent, anomaly)
 
 
 @workflow.defn
@@ -233,16 +303,24 @@ class PaymentCorrectionCoordinator:
             ),
             return_exceptions=True,
         )
-        best = _select_best(results)
-        if best is None:
+        # NOTE: Compliance is now a gate over the instruction fix, not a rival
+        # proposal. results[0] is the instruction child, results[1] the
+        # compliance child (gather preserves order); either may be an exception.
+        proposal = results[0] if isinstance(results[0], CorrectionProposal) else None
+        verdict = results[1] if isinstance(results[1], ComplianceVerdict) else None
+        decision, message = _gate(proposal, verdict)
+
+        if decision is GateDecision.NO_PROPOSAL:
             return CorrectionOutcome(
                 payment_id=anomaly.payment_id,
                 applied=False,
-                message="All correction agents failed; no proposal to apply.",
+                verdict=verdict,
+                message=message,
             )
 
-        # Human oversight when confidence is low.
-        if best.confidence < CONFIDENCE_THRESHOLD:
+        # Human oversight when the gate withholds automatic apply: a compliance
+        # violation, a missing verdict (fail-closed), or low confidence.
+        if decision is GateDecision.REVIEW:
             # region FEATURE-ON: human-approval-signal
             # workflow.logger.info("Low confidence, awaiting human approval")
             # # NOTE: Publish the awaiting state through both listing seams: the
@@ -263,7 +341,8 @@ class PaymentCorrectionCoordinator:
             #     return CorrectionOutcome(
             #         payment_id=anomaly.payment_id,
             #         applied=False,
-            #         proposal=best,
+            #         proposal=proposal,
+            #         verdict=verdict,
             #         message="No decision within the approval window; auto-rejected.",
             #     )
             # finally:
@@ -274,26 +353,28 @@ class PaymentCorrectionCoordinator:
             #     return CorrectionOutcome(
             #         payment_id=anomaly.payment_id,
             #         applied=False,
-            #         proposal=best,
+            #         proposal=proposal,
+            #         verdict=verdict,
             #         decision=self._decision,
             #         message="Correction rejected by reviewer.",
             #     )
             # endregion FEATURE-ON: human-approval-signal
 
             # region FEATURE-OFF: human-approval-signal
-            # Starting point (no oversight wired yet): refuse low-confidence
-            # fixes outright.
+            # Starting point (no oversight wired yet): refuse a held correction
+            # outright, surfacing the gate's reason.
             return CorrectionOutcome(
                 payment_id=anomaly.payment_id,
                 applied=False,
-                proposal=best,
-                message="Confidence below threshold; human approval required.",
+                proposal=proposal,
+                verdict=verdict,
+                message=message,
             )
             # endregion FEATURE-OFF: human-approval-signal
 
         reference = await workflow.execute_activity(
             apply_correction,
-            best,
+            proposal,
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
@@ -328,7 +409,8 @@ class PaymentCorrectionCoordinator:
         # return CorrectionOutcome(
         #     payment_id=anomaly.payment_id,
         #     applied=True,
-        #     proposal=best,
+        #     proposal=proposal,
+        #     verdict=verdict,
         #     decision=self._decision,
         #     settlement=settlement,
         #     message=f"Correction applied (reference {reference}).",
@@ -339,7 +421,8 @@ class PaymentCorrectionCoordinator:
         return CorrectionOutcome(
             payment_id=anomaly.payment_id,
             applied=True,
-            proposal=best,
+            proposal=proposal,
+            verdict=verdict,
             decision=self._decision,
             message=f"Correction applied (reference {reference}).",
         )

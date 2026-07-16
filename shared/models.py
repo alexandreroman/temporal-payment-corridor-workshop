@@ -56,6 +56,24 @@ class CorrectionProposal(BaseModel):
     source: CorrectionSource
 
 
+class ComplianceVerdict(BaseModel):
+    """A compliance agent's assessment of an anomaly on a corridor.
+
+    NOTE: The compliance agent does not propose a correction. It validates
+    whether a compliant correction is possible and reports any violations, so
+    the coordinator can treat it as a gate/veto over the instruction agent's
+    fix instead of a competing proposal outvoted by confidence.
+    """
+
+    compliant: bool = Field(description="True when no violation blocks a fix.")
+    violations: list[str] = Field(
+        default_factory=list,
+        description="Human-readable violations; empty when compliant.",
+    )
+    confidence: float = Field(ge=0.0, le=1.0)
+    source: CorrectionSource
+
+
 class ApprovalDecision(BaseModel):
     """A human's verdict on a low-confidence proposal."""
 
@@ -109,6 +127,12 @@ class CorrectionOutcome(BaseModel):
     applied: bool
     proposal: CorrectionProposal | None = None
     decision: ApprovalDecision | None = None
+    # NOTE: The compliance verdict that gated this outcome, recorded so a held
+    # correction can explain *why* (violations) and an applied one records the
+    # verdict it was gated against -- which a human reviewer may have overridden
+    # when approving a non-compliant hold. Optional: a failed-instruction
+    # outcome has no verdict.
+    verdict: ComplianceVerdict | None = None
     message: str = ""
     # region FEATURE-ON: settlement-confirmation
     # # NOTE: Downstream settlement confirmation, populated only after the
