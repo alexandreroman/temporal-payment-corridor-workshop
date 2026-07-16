@@ -179,7 +179,7 @@ feature-enable: ## Enable a feature everywhere (NAME=<name>, DRY_RUN=1 to previe
 feature-disable: ## Disable a feature everywhere (NAME=<name>, DRY_RUN=1 to preview)
 	uv run python -m tools.features disable $(NAME) $(if $(DRY_RUN),--dry-run,)
 
-##@ Session 3
+##@ Gateway & codec
 
 .PHONY: gateway
 gateway: ## (Re)start the API gateway — single entry point (Web UI + /codec) at http://localhost:8233

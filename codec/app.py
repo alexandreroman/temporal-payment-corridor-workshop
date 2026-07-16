@@ -54,11 +54,11 @@ _DEFAULT_ENCRYPTION_KEY = "M80yQxCwjIWwuApHeRjQQoRARc0PhUh6FAEfukmEhlk="
 _DEFAULT_AUTH_TOKEN = "changeme"
 
 # NOTE: The codec never fails fast on missing config. Instead of raising (which
-# would stop the service from starting in early sessions where encryption is
-# not yet configured), it degrades to a built-in insecure default and logs a
-# loud WARNING. Trade-off: the service is always usable out of the box, at the
-# cost of running with a public key/token until real values are set — the
-# warning makes that unmissable.
+# would stop the service from starting before encryption is configured), it
+# degrades to a built-in insecure default and logs a loud WARNING. Trade-off:
+# the service is always usable out of the box, at the cost of running with a
+# public key/token until real values are set — the warning makes that
+# unmissable.
 _key = load_key()
 if _key is None:
     logger.warning(
