@@ -22,7 +22,7 @@ local dev server.
   serves both Temporal SDK metrics (`temporal_*`) and application metrics
   (`corridor_*`).
 - **Progressive activation** — the full application ships up front;
-  workshop steps are enabled by uncommenting tagged `STEP` blocks.
+  workshop steps are enabled by uncommenting tagged `FEATURE` blocks.
 
 ## Prerequisites
 
@@ -77,6 +77,68 @@ metrics at http://localhost:9464/metrics; `make dev` also prints these URLs
 in its banner. The default anomaly matches a pre-seeded corridor-memory
 pattern, so it is corrected end-to-end with no API key. Run `make help` to
 list all targets (`infra-up`, `infra-down`, `worker`, `lint`, ...).
+
+## Workshop features
+
+The full application ships up front; individual capabilities stay dormant in
+tagged `# --- FEATURE: <name> ---` blocks until you enable them. Toggle them by
+name — no manual editing:
+
+```bash
+make feature-list                           # every feature and its state
+make feature-diff    NAME=search-attributes # what enabling it changes
+make feature-enable  NAME=search-attributes # turn it on (everywhere it appears)
+make feature-disable NAME=search-attributes # revert
+```
+
+Enabling uncomments a feature's code; disabling re-comments it. A feature that
+replaces existing behavior pairs a `FEATURE` block with an inverse
+`FEATURE-DEFAULT` block, so the swap is reversible both ways.
+
+### Decrypting payloads in the Web UI (codec server)
+
+Once `payload-encryption` is enabled (`make feature-enable
+NAME=payload-encryption`) the worker encrypts every payload on the wire, so
+the Temporal Web UI shows raw ciphertext in Event History. Start the codec
+server to fix that:
+
+```bash
+make codec-server   # http://localhost:8081
+```
+
+It is a small HTTP service that reuses the same encryption key
+(`CORRIDOR_ENCRYPTION_KEY`, so set it first) to decrypt payloads on demand.
+Point the Web UI at it from the Web UI's own settings (the "Codec Server"
+endpoint field, `http://localhost:8081`). The dev server in `compose.yaml`
+runs `temporal server start-dev` without a codec endpoint; to wire it in at
+startup instead, add `--ui-codec-endpoint http://localhost:8081` to that
+command. The Web UI then displays decrypted payloads instead of ciphertext.
+
+### Registering Search Attributes (search-attributes)
+
+Once `search-attributes` is enabled (`make feature-enable
+NAME=search-attributes`) the coordinator tags each workflow execution with a
+`corridor` and an `anomalyType` Search Attribute. Before you can filter or
+list executions by them, register the two custom attributes on the dev
+server:
+
+```bash
+temporal operator search-attribute create --name corridor --type Keyword
+temporal operator search-attribute create --name anomalyType --type Keyword
+```
+
+Without this step the worker fails when it tries to upsert unregistered
+attributes. After registering, filter executions in the Web UI or with
+`temporal workflow list --query "corridor = '...'"`.
+
+Enabling a feature that changes workflow code — as `search-attributes` does
+by adding a Search Attribute upsert inside the coordinator — intentionally
+invalidates the committed replay fixture
+(`worker/testdata/coordinator-history.json`). The captured history no longer
+matches the new code path, so `worker/test_replay.py` failing after you
+enable such a feature is expected, not a regression. Regenerate the fixture
+for the new state with `make capture-history` if you want a passing replay
+test while the feature stays enabled.
 
 ## Usage
 
@@ -139,6 +201,8 @@ graph TD
 | `worker/main.py`       | Worker entrypoint: runtime, metrics, Logfire, hot reload             |
 | `webui/app.py`         | FastAPI web UI: routes, Logfire, temporal.io-styled landing page     |
 | `webui/main.py`        | Web UI entrypoint: uvicorn with hot reload                           |
+| `codec_server/app.py`  | FastAPI codec server: decrypts payloads for the Temporal Web UI      |
+| `codec_server/main.py` | Codec server entrypoint: uvicorn without reload                      |
 | `simulator/main.py`    | Client that simulates an incoming payment anomaly                    |
 
 ## License

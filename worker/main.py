@@ -24,6 +24,10 @@ from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 
 from pydantic_ai.durable_exec.temporal import LogfirePlugin, PydanticAIPlugin
 
+# --- FEATURE: payload-encryption ---
+# from shared.encryption import EncryptionCodec, build_data_converter, load_key
+#
+# --- END FEATURE: payload-encryption ---
 # All configuration comes from environment variables, loaded from a local
 # .env file when present (see .env.example). Load before reading any getenv.
 load_dotenv()
@@ -72,6 +76,7 @@ def setup_logfire() -> logfire.Logfire:
 async def main() -> None:
     runtime = build_runtime()
 
+    # --- FEATURE-DEFAULT: payload-encryption ---
     client = await Client.connect(
         TEMPORAL_ADDRESS,
         runtime=runtime,
@@ -85,6 +90,30 @@ async def main() -> None:
             LogfirePlugin(setup_logfire=setup_logfire, metrics=False),
         ],
     )
+    # --- END FEATURE-DEFAULT: payload-encryption ---
+    # --- FEATURE: payload-encryption ---
+    # # Encrypt every payload crossing the Temporal boundary with a codec-
+    # # enabled data converter. PydanticAIPlugin only installs its own data
+    # # converter when the caller doesn't pass one, so keeping the plugin
+    # # alongside an explicit data_converter is safe — verified empirically:
+    # # dropping PydanticAIPlugin instead breaks TemporalAgent workflow
+    # # sandbox validation at worker start-up. Source:
+    # # https://docs.temporal.io/production-deployment/data-encryption
+    # key = load_key()
+    # if not key:
+    #     raise RuntimeError(
+    #         "set CORRIDOR_ENCRYPTION_KEY to enable payload encryption"
+    #     )
+    # client = await Client.connect(
+    #     TEMPORAL_ADDRESS,
+    #     runtime=runtime,
+    #     data_converter=build_data_converter(EncryptionCodec(key)),
+    #     plugins=[
+    #         PydanticAIPlugin(),
+    #         LogfirePlugin(setup_logfire=setup_logfire, metrics=False),
+    #     ],
+    # )
+    # --- END FEATURE: payload-encryption ---
 
     worker = build_worker(client)
 

@@ -69,10 +69,14 @@ plugin) for all code tasks:
 ## Conventions
 
 - **Progressive activation** — the full application ships up front.
-  Workshop steps live in commented `# --- STEP: <name> ---` blocks;
+  Workshop steps live in commented `# --- FEATURE: <name> ---` blocks;
   attendees uncomment them following an external guide. Keep this
-  structure intact: add new workshop features as tagged STEP blocks
+  structure intact: add new workshop features as tagged FEATURE blocks
   rather than deleting or rewriting existing code.
+  Toggle features with `make feature-enable NAME=<name>` /
+  `feature-disable` (see `tools/features.py`); a feature that replaces
+  live code pairs a `FEATURE` block with an inverse `FEATURE-DEFAULT`
+  block.
 - **Determinism** — workflow code must stay deterministic; all I/O lives
   in activities or inside the durable agents.
 - **Config via environment** — read configuration from environment

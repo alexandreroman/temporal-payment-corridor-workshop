@@ -1963,6 +1963,7 @@ name = "temporal-payment-corridor-workshop"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "logfire", extra = ["fastapi"] },
@@ -1981,6 +1982,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=43" },
     { name = "fastapi", specifier = ">=0.139.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "logfire", extras = ["fastapi"], specifier = ">=4.37.0" },

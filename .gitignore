@@ -19,3 +19,6 @@ compose.override.yaml
 
 # Local design docs / specs (never commit)
 docs/
+
+# Subagent-driven-development scratch (briefs, reports, ledger, diffs)
+.superpowers/

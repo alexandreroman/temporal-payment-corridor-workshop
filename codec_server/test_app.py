@@ -1,0 +1,85 @@
+"""Tests for the remote codec server.
+
+Exercise the HTTP contract the Temporal Web UI relies on: POST a JSON
+``Payloads`` envelope to ``/encode`` / ``/decode`` and get an equivalent
+envelope back, encrypted or decrypted. Requests and responses are derived
+with ``json_format`` (never hand-written base64) so the test proves the real
+envelope shape rather than assuming it.
+"""
+
+from __future__ import annotations
+
+import os
+
+from cryptography.fernet import Fernet
+from fastapi.testclient import TestClient
+from google.protobuf import json_format
+from temporalio.api.common.v1 import Payload, Payloads
+
+# codec_server.app reads CORRIDOR_ENCRYPTION_KEY at *import* time and raises
+# if it is unset, so the key must be in the environment before that import
+# runs. Hence the deliberate import-after-statement below (see worker/main.py
+# for the same "import deferred until after env is set" pattern).
+os.environ["CORRIDOR_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+
+from codec_server.app import app  # noqa: E402
+
+client = TestClient(app)
+
+# A representative plaintext payload, shaped like what the SDK puts on the
+# wire: a metadata "encoding" hint plus the serialized value in "data".
+_PLAINTEXT = b'{"iban":"DE89370400440532013000"}'
+
+
+def _envelope(payload: Payload) -> str:
+    """Serialize a payload into the JSON envelope the Web UI would POST."""
+    return json_format.MessageToJson(Payloads(payloads=[payload]))
+
+
+def test_encode_wraps_plaintext_as_encrypted_envelope() -> None:
+    payload = Payload(metadata={"encoding": b"json/plain"}, data=_PLAINTEXT)
+
+    response = client.post(
+        "/encode",
+        content=_envelope(payload),
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 200
+
+    # The response round-trips through the same
+    # {"payloads": [{"metadata": {...}, "data": "..."}]} envelope the Web UI
+    # sends, with every bytes field rendered as a base64 string.
+    body = response.json()
+    assert "payloads" in body
+    assert len(body["payloads"]) == 1
+    item = body["payloads"][0]
+    assert isinstance(item["metadata"]["encoding"], str)
+    assert isinstance(item["data"], str)
+
+    # At the protobuf level, the single payload now carries the ciphertext
+    # marker EncryptionCodec.encode writes (see shared/encryption.py).
+    payloads = json_format.Parse(response.text, Payloads())
+    assert len(payloads.payloads) == 1
+    assert payloads.payloads[0].metadata["encoding"] == b"binary/encrypted"
+
+
+def test_decode_restores_original_plaintext() -> None:
+    payload = Payload(metadata={"encoding": b"json/plain"}, data=_PLAINTEXT)
+
+    encoded = client.post(
+        "/encode",
+        content=_envelope(payload),
+        headers={"content-type": "application/json"},
+    )
+    decoded = client.post(
+        "/decode",
+        content=encoded.text,
+        headers={"content-type": "application/json"},
+    )
+    assert decoded.status_code == 200
+
+    payloads = json_format.Parse(decoded.text, Payloads())
+    assert len(payloads.payloads) == 1
+    restored = payloads.payloads[0]
+    assert restored.metadata["encoding"] == b"json/plain"
+    assert restored.data == _PLAINTEXT

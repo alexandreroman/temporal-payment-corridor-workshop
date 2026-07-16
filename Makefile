@@ -139,6 +139,38 @@ test: ## Run the test suite
 .PHONY: check
 check: lint test ## Run linter and tests
 
+##@ Features (workshop progressive activation)
+
+.PHONY: feature-list
+feature-list: ## List workshop features and their state
+	uv run python -m tools.features list
+
+.PHONY: feature-status
+feature-status: ## Show one feature's regions (NAME=<name>)
+	uv run python -m tools.features status $(NAME)
+
+.PHONY: feature-diff
+feature-diff: ## Show what enabling a feature changes (NAME=<name>)
+	uv run python -m tools.features diff $(NAME)
+
+.PHONY: feature-enable
+feature-enable: ## Enable a feature everywhere (NAME=<name>, DRY_RUN=1 to preview)
+	uv run python -m tools.features enable $(NAME) $(if $(DRY_RUN),--dry-run,)
+
+.PHONY: feature-disable
+feature-disable: ## Disable a feature everywhere (NAME=<name>, DRY_RUN=1 to preview)
+	uv run python -m tools.features disable $(NAME) $(if $(DRY_RUN),--dry-run,)
+
+##@ Session 3
+
+.PHONY: codec-server
+codec-server: ## Run the codec server for the Temporal UI (decrypts payloads for display)
+	uv run python -m codec_server.main
+
+.PHONY: capture-history
+capture-history: ## Regenerate worker/testdata/coordinator-history.json for the replay test
+	uv run python -m tools.capture_history
+
 ##@ Helpers
 
 .PHONY: help

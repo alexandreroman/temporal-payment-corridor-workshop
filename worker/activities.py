@@ -15,6 +15,19 @@ from temporalio import activity
 from shared.models import CorrectionProposal
 
 
+def _correction_reference(field_to_fix: str, workflow_id: str) -> str:
+    """Build a stable, idempotent reference for an applied correction.
+
+    Derived from the coordinator's workflow id (unique per correction) and the
+    field, so a retried or replayed activity yields the SAME reference and the
+    downstream payment system can dedupe instead of double-applying. Activities
+    can run more than once (worker crash, transient failure, retry), so their
+    external effects must be idempotent.
+    Source: https://docs.temporal.io/activities#idempotency
+    """
+    return f"corr-{field_to_fix}-{workflow_id}"
+
+
 @activity.defn
 async def apply_correction(proposal: CorrectionProposal) -> str:
     """Apply the approved correction to the downstream payment system.
@@ -32,8 +45,11 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     applied.add(1, {"field": proposal.field_to_fix, "source": proposal.source})
     confidence.record(proposal.confidence, {"source": proposal.source})
 
-    reference = (
-        f"corr-{proposal.field_to_fix}-{abs(hash(proposal.proposed_value)) % 100000}"
+    # Idempotency key from the (unique) coordinator workflow id, NOT hash():
+    # a retry of this activity must not apply a second, differently-referenced
+    # correction. Source: https://docs.temporal.io/activities#idempotency
+    reference = _correction_reference(
+        proposal.field_to_fix, activity.info().workflow_id
     )
     activity.logger.info(
         "Applied %s=%s (ref %s)",
@@ -44,9 +60,9 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     return reference
 
 
-# --- STEP: saga-compensation ---
+# --- FEATURE: saga-compensation ---
 # @activity.defn
 # async def revert_correction(reference: str) -> None:
 #     """Undo a previously applied correction (saga compensation)."""
 #     activity.logger.warning("Reverting correction %s", reference)
-# --- END STEP: saga-compensation ---
+# --- END FEATURE: saga-compensation ---

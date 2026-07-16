@@ -1,0 +1,496 @@
+{
+  "workflow_id": "capture-coordinator-history",
+  "history": {
+    "events": [
+      {
+        "eventId": "1",
+        "eventTime": "2026-07-15T23:53:52.935646Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+        "taskId": "1048587",
+        "workflowExecutionStartedEventAttributes": {
+          "workflowType": {
+            "name": "PaymentCorrectionCoordinator"
+          },
+          "taskQueue": {
+            "name": "payment-corridor",
+            "kind": "TASK_QUEUE_KIND_NORMAL"
+          },
+          "input": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJwYXltZW50X2lkIjoicGF5LWNhcHR1cmUtMSIsImNvcnJpZG9yIjoiVVMtPklOIiwiYW1vdW50Ijo1MDAuMCwiY3VycmVuY3kiOiJJTlIiLCJhbm9tYWx5X3R5cGUiOiJ3cm9uZ19pYmFuIiwiZGV0YWlscyI6eyJpYmFuIjoiV1JPTkcifX0="
+              }
+            ]
+          },
+          "workflowTaskTimeout": "10s",
+          "originalExecutionRunId": "019f6833-7e27-79d7-83b5-f64f08f2e34e",
+          "identity": "29128@donnager",
+          "firstExecutionRunId": "019f6833-7e27-79d7-83b5-f64f08f2e34e",
+          "attempt": 1,
+          "firstWorkflowTaskBackoff": "0s",
+          "workflowId": "capture-coordinator-history",
+          "priority": {}
+        }
+      },
+      {
+        "eventId": "2",
+        "eventTime": "2026-07-15T23:53:52.935687Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+        "taskId": "1048588",
+        "workflowTaskScheduledEventAttributes": {
+          "taskQueue": {
+            "name": "payment-corridor",
+            "kind": "TASK_QUEUE_KIND_NORMAL"
+          },
+          "startToCloseTimeout": "10s",
+          "attempt": 1
+        }
+      },
+      {
+        "eventId": "3",
+        "eventTime": "2026-07-15T23:53:52.938338Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+        "taskId": "1048593",
+        "workflowTaskStartedEventAttributes": {
+          "scheduledEventId": "2",
+          "identity": "29128@donnager",
+          "requestId": "bf3a9fbe-652e-4c0e-bb42-b0880e6c1686",
+          "historySizeBytes": "442",
+          "workerVersion": {
+            "buildId": "c4cd7cfc9ca13a5ce6ff164c0243543c"
+          }
+        }
+      },
+      {
+        "eventId": "4",
+        "eventTime": "2026-07-15T23:53:52.942311Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+        "taskId": "1048597",
+        "workflowTaskCompletedEventAttributes": {
+          "scheduledEventId": "2",
+          "startedEventId": "3",
+          "identity": "29128@donnager",
+          "workerVersion": {
+            "buildId": "c4cd7cfc9ca13a5ce6ff164c0243543c"
+          },
+          "sdkMetadata": {
+            "coreUsedFlags": [
+              2,
+              1,
+              3
+            ],
+            "sdkName": "temporal-python",
+            "sdkVersion": "1.30.0"
+          },
+          "meteringMetadata": {}
+        }
+      },
+      {
+        "eventId": "5",
+        "eventTime": "2026-07-15T23:53:52.942546Z",
+        "eventType": "EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED",
+        "taskId": "1048598",
+        "startChildWorkflowExecutionInitiatedEventAttributes": {
+          "namespace": "default",
+          "workflowId": "capture-coordinator-history-instruction",
+          "workflowType": {
+            "name": "InstructionAgentWorkflow"
+          },
+          "taskQueue": {
+            "name": "payment-corridor",
+            "kind": "TASK_QUEUE_KIND_NORMAL"
+          },
+          "input": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJwYXltZW50X2lkIjoicGF5LWNhcHR1cmUtMSIsImNvcnJpZG9yIjoiVVMtPklOIiwiYW1vdW50Ijo1MDAuMCwiY3VycmVuY3kiOiJJTlIiLCJhbm9tYWx5X3R5cGUiOiJ3cm9uZ19pYmFuIiwiZGV0YWlscyI6eyJpYmFuIjoiV1JPTkcifX0="
+              }
+            ]
+          },
+          "workflowExecutionTimeout": "120s",
+          "workflowRunTimeout": "120s",
+          "workflowTaskTimeout": "10s",
+          "parentClosePolicy": "PARENT_CLOSE_POLICY_TERMINATE",
+          "workflowTaskCompletedEventId": "4",
+          "workflowIdReusePolicy": "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE",
+          "header": {},
+          "namespaceId": "019f6833-7d5b-74f1-905a-f397f58af893",
+          "inheritBuildId": true,
+          "priority": {}
+        }
+      },
+      {
+        "eventId": "6",
+        "eventTime": "2026-07-15T23:53:52.942665Z",
+        "eventType": "EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED",
+        "taskId": "1048599",
+        "startChildWorkflowExecutionInitiatedEventAttributes": {
+          "namespace": "default",
+          "workflowId": "capture-coordinator-history-compliance",
+          "workflowType": {
+            "name": "ComplianceAgentWorkflow"
+          },
+          "taskQueue": {
+            "name": "payment-corridor",
+            "kind": "TASK_QUEUE_KIND_NORMAL"
+          },
+          "input": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJwYXltZW50X2lkIjoicGF5LWNhcHR1cmUtMSIsImNvcnJpZG9yIjoiVVMtPklOIiwiYW1vdW50Ijo1MDAuMCwiY3VycmVuY3kiOiJJTlIiLCJhbm9tYWx5X3R5cGUiOiJ3cm9uZ19pYmFuIiwiZGV0YWlscyI6eyJpYmFuIjoiV1JPTkcifX0="
+              }
+            ]
+          },
+          "workflowExecutionTimeout": "120s",
+          "workflowRunTimeout": "120s",
+          "workflowTaskTimeout": "10s",
+          "parentClosePolicy": "PARENT_CLOSE_POLICY_TERMINATE",
+          "workflowTaskCompletedEventId": "4",
+          "workflowIdReusePolicy": "WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE",
+          "header": {},
+          "namespaceId": "019f6833-7d5b-74f1-905a-f397f58af893",
+          "inheritBuildId": true,
+          "priority": {}
+        }
+      },
+      {
+        "eventId": "7",
+        "eventTime": "2026-07-15T23:53:52.943916Z",
+        "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_STARTED",
+        "taskId": "1048609",
+        "childWorkflowExecutionStartedEventAttributes": {
+          "namespace": "default",
+          "initiatedEventId": "6",
+          "workflowExecution": {
+            "workflowId": "capture-coordinator-history-compliance",
+            "runId": "019f6833-7e2f-7947-b72b-7211449b3f27"
+          },
+          "workflowType": {
+            "name": "ComplianceAgentWorkflow"
+          },
+          "header": {},
+          "namespaceId": "019f6833-7d5b-74f1-905a-f397f58af893"
+        }
+      },
+      {
+        "eventId": "8",
+        "eventTime": "2026-07-15T23:53:52.943919Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+        "taskId": "1048610",
+        "workflowTaskScheduledEventAttributes": {
+          "taskQueue": {
+            "name": "29128@donnager-0dd689b525bb4a419a601d0082a2fe3c",
+            "kind": "TASK_QUEUE_KIND_STICKY",
+            "normalName": "payment-corridor"
+          },
+          "startToCloseTimeout": "10s",
+          "attempt": 1
+        }
+      },
+      {
+        "eventId": "9",
+        "eventTime": "2026-07-15T23:53:52.944879Z",
+        "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_STARTED",
+        "taskId": "1048623",
+        "childWorkflowExecutionStartedEventAttributes": {
+          "namespace": "default",
+          "initiatedEventId": "5",
+          "workflowExecution": {
+            "workflowId": "capture-coordinator-history-instruction",
+            "runId": "019f6833-7e30-753f-98ad-dd5a61291209"
+          },
+          "workflowType": {
+            "name": "InstructionAgentWorkflow"
+          },
+          "header": {},
+          "namespaceId": "019f6833-7d5b-74f1-905a-f397f58af893"
+        }
+      },
+      {
+        "eventId": "10",
+        "eventTime": "2026-07-15T23:53:52.945282Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+        "taskId": "1048631",
+        "workflowTaskStartedEventAttributes": {
+          "scheduledEventId": "8",
+          "identity": "29128@donnager",
+          "requestId": "feae4e56-2547-4c6e-bc94-0ce76b2afe32",
+          "historySizeBytes": "1884",
+          "workerVersion": {
+            "buildId": "c4cd7cfc9ca13a5ce6ff164c0243543c"
+          }
+        }
+      },
+      {
+        "eventId": "11",
+        "eventTime": "2026-07-15T23:53:52.948961Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+        "taskId": "1048641",
+        "workflowTaskCompletedEventAttributes": {
+          "scheduledEventId": "8",
+          "startedEventId": "10",
+          "identity": "29128@donnager",
+          "workerVersion": {
+            "buildId": "c4cd7cfc9ca13a5ce6ff164c0243543c"
+          },
+          "sdkMetadata": {},
+          "meteringMetadata": {}
+        }
+      },
+      {
+        "eventId": "12",
+        "eventTime": "2026-07-15T23:53:52.958532Z",
+        "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_COMPLETED",
+        "taskId": "1048689",
+        "childWorkflowExecutionCompletedEventAttributes": {
+          "result": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJhZ2VudF9uYW1lIjoiY29tcGxpYW5jZV9hZ2VudCIsImZpZWxkX3RvX2ZpeCI6ImliYW4iLCJwcm9wb3NlZF92YWx1ZSI6IkRFODkzNzA0MDA0NDA1MzIwMTMwMDAiLCJyYXRpb25hbGUiOiJNYXRjaGVkIGEga25vd24gY29ycmlkb3IgcGF0dGVybiBpbiBwYXNzaXZlIG1lbW9yeS4iLCJjb25maWRlbmNlIjowLjk1LCJzb3VyY2UiOiJtZW1vcnkifQ=="
+              }
+            ]
+          },
+          "namespace": "default",
+          "workflowExecution": {
+            "workflowId": "capture-coordinator-history-compliance",
+            "runId": "019f6833-7e2f-7947-b72b-7211449b3f27"
+          },
+          "workflowType": {
+            "name": "ComplianceAgentWorkflow"
+          },
+          "initiatedEventId": "6",
+          "startedEventId": "7",
+          "namespaceId": "019f6833-7d5b-74f1-905a-f397f58af893"
+        }
+      },
+      {
+        "eventId": "13",
+        "eventTime": "2026-07-15T23:53:52.958536Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+        "taskId": "1048690",
+        "workflowTaskScheduledEventAttributes": {
+          "taskQueue": {
+            "name": "29128@donnager-0dd689b525bb4a419a601d0082a2fe3c",
+            "kind": "TASK_QUEUE_KIND_STICKY",
+            "normalName": "payment-corridor"
+          },
+          "startToCloseTimeout": "10s",
+          "attempt": 1
+        }
+      },
+      {
+        "eventId": "14",
+        "eventTime": "2026-07-15T23:53:52.958909Z",
+        "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_COMPLETED",
+        "taskId": "1048694",
+        "childWorkflowExecutionCompletedEventAttributes": {
+          "result": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJhZ2VudF9uYW1lIjoiaW5zdHJ1Y3Rpb25fYWdlbnQiLCJmaWVsZF90b19maXgiOiJpYmFuIiwicHJvcG9zZWRfdmFsdWUiOiJERTg5MzcwNDAwNDQwNTMyMDEzMDAwIiwicmF0aW9uYWxlIjoiTWF0Y2hlZCBhIGtub3duIGNvcnJpZG9yIHBhdHRlcm4gaW4gcGFzc2l2ZSBtZW1vcnkuIiwiY29uZmlkZW5jZSI6MC45NSwic291cmNlIjoibWVtb3J5In0="
+              }
+            ]
+          },
+          "namespace": "default",
+          "workflowExecution": {
+            "workflowId": "capture-coordinator-history-instruction",
+            "runId": "019f6833-7e30-753f-98ad-dd5a61291209"
+          },
+          "workflowType": {
+            "name": "InstructionAgentWorkflow"
+          },
+          "initiatedEventId": "5",
+          "startedEventId": "9",
+          "namespaceId": "019f6833-7d5b-74f1-905a-f397f58af893"
+        }
+      },
+      {
+        "eventId": "15",
+        "eventTime": "2026-07-15T23:53:52.960181Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+        "taskId": "1048696",
+        "workflowTaskStartedEventAttributes": {
+          "scheduledEventId": "13",
+          "identity": "29128@donnager",
+          "requestId": "84b6be1f-8c5f-42b1-8193-88f06f8a8fc3",
+          "historySizeBytes": "3035",
+          "workerVersion": {
+            "buildId": "c4cd7cfc9ca13a5ce6ff164c0243543c"
+          }
+        }
+      },
+      {
+        "eventId": "16",
+        "eventTime": "2026-07-15T23:53:52.962011Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+        "taskId": "1048700",
+        "workflowTaskCompletedEventAttributes": {
+          "scheduledEventId": "13",
+          "startedEventId": "15",
+          "identity": "29128@donnager",
+          "workerVersion": {
+            "buildId": "c4cd7cfc9ca13a5ce6ff164c0243543c"
+          },
+          "sdkMetadata": {},
+          "meteringMetadata": {}
+        }
+      },
+      {
+        "eventId": "17",
+        "eventTime": "2026-07-15T23:53:52.962031Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+        "taskId": "1048701",
+        "activityTaskScheduledEventAttributes": {
+          "activityId": "1",
+          "activityType": {
+            "name": "apply_correction"
+          },
+          "taskQueue": {
+            "name": "payment-corridor",
+            "kind": "TASK_QUEUE_KIND_NORMAL"
+          },
+          "header": {},
+          "input": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJhZ2VudF9uYW1lIjoiaW5zdHJ1Y3Rpb25fYWdlbnQiLCJmaWVsZF90b19maXgiOiJpYmFuIiwicHJvcG9zZWRfdmFsdWUiOiJERTg5MzcwNDAwNDQwNTMyMDEzMDAwIiwicmF0aW9uYWxlIjoiTWF0Y2hlZCBhIGtub3duIGNvcnJpZG9yIHBhdHRlcm4gaW4gcGFzc2l2ZSBtZW1vcnkuIiwiY29uZmlkZW5jZSI6MC45NSwic291cmNlIjoibWVtb3J5In0="
+              }
+            ]
+          },
+          "scheduleToCloseTimeout": "0s",
+          "scheduleToStartTimeout": "0s",
+          "startToCloseTimeout": "30s",
+          "heartbeatTimeout": "0s",
+          "workflowTaskCompletedEventId": "16",
+          "retryPolicy": {
+            "initialInterval": "1s",
+            "backoffCoefficient": 2.0,
+            "maximumInterval": "100s",
+            "maximumAttempts": 3
+          },
+          "useWorkflowBuildId": true,
+          "priority": {}
+        }
+      },
+      {
+        "eventId": "18",
+        "eventTime": "2026-07-15T23:53:52.962658Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+        "taskId": "1048706",
+        "activityTaskStartedEventAttributes": {
+          "scheduledEventId": "17",
+          "identity": "29128@donnager",
+          "requestId": "9f5f527f-a3bf-4abf-b1c6-d7ab176abcc7",
+          "attempt": 1,
+          "workerVersion": {
+            "buildId": "c4cd7cfc9ca13a5ce6ff164c0243543c"
+          }
+        }
+      },
+      {
+        "eventId": "19",
+        "eventTime": "2026-07-15T23:53:52.963694Z",
+        "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+        "taskId": "1048707",
+        "activityTaskCompletedEventAttributes": {
+          "result": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "ImNvcnItaWJhbi1jYXB0dXJlLWNvb3JkaW5hdG9yLWhpc3Rvcnki"
+              }
+            ]
+          },
+          "scheduledEventId": "17",
+          "startedEventId": "18",
+          "identity": "29128@donnager"
+        }
+      },
+      {
+        "eventId": "20",
+        "eventTime": "2026-07-15T23:53:52.963702Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+        "taskId": "1048708",
+        "workflowTaskScheduledEventAttributes": {
+          "taskQueue": {
+            "name": "29128@donnager-0dd689b525bb4a419a601d0082a2fe3c",
+            "kind": "TASK_QUEUE_KIND_STICKY",
+            "normalName": "payment-corridor"
+          },
+          "startToCloseTimeout": "10s",
+          "attempt": 1
+        }
+      },
+      {
+        "eventId": "21",
+        "eventTime": "2026-07-15T23:53:52.964181Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+        "taskId": "1048712",
+        "workflowTaskStartedEventAttributes": {
+          "scheduledEventId": "20",
+          "identity": "29128@donnager",
+          "requestId": "14680352-36fc-445c-8eec-7cc6db9d207c",
+          "historySizeBytes": "3927",
+          "workerVersion": {
+            "buildId": "c4cd7cfc9ca13a5ce6ff164c0243543c"
+          }
+        }
+      },
+      {
+        "eventId": "22",
+        "eventTime": "2026-07-15T23:53:52.965879Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+        "taskId": "1048716",
+        "workflowTaskCompletedEventAttributes": {
+          "scheduledEventId": "20",
+          "startedEventId": "21",
+          "identity": "29128@donnager",
+          "workerVersion": {
+            "buildId": "c4cd7cfc9ca13a5ce6ff164c0243543c"
+          },
+          "sdkMetadata": {},
+          "meteringMetadata": {}
+        }
+      },
+      {
+        "eventId": "23",
+        "eventTime": "2026-07-15T23:53:52.965893Z",
+        "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED",
+        "taskId": "1048717",
+        "workflowExecutionCompletedEventAttributes": {
+          "result": {
+            "payloads": [
+              {
+                "metadata": {
+                  "encoding": "anNvbi9wbGFpbg=="
+                },
+                "data": "eyJwYXltZW50X2lkIjoicGF5LWNhcHR1cmUtMSIsImFwcGxpZWQiOnRydWUsInByb3Bvc2FsIjp7ImFnZW50X25hbWUiOiJpbnN0cnVjdGlvbl9hZ2VudCIsImZpZWxkX3RvX2ZpeCI6ImliYW4iLCJwcm9wb3NlZF92YWx1ZSI6IkRFODkzNzA0MDA0NDA1MzIwMTMwMDAiLCJyYXRpb25hbGUiOiJNYXRjaGVkIGEga25vd24gY29ycmlkb3IgcGF0dGVybiBpbiBwYXNzaXZlIG1lbW9yeS4iLCJjb25maWRlbmNlIjowLjk1LCJzb3VyY2UiOiJtZW1vcnkifSwiZGVjaXNpb24iOm51bGwsIm1lc3NhZ2UiOiJDb3JyZWN0aW9uIGFwcGxpZWQgKHJlZmVyZW5jZSBjb3JyLWliYW4tY2FwdHVyZS1jb29yZGluYXRvci1oaXN0b3J5KS4ifQ=="
+              }
+            ]
+          },
+          "workflowTaskCompletedEventId": "22"
+        }
+      }
+    ]
+  }
+}
