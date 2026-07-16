@@ -35,7 +35,7 @@ from pydantic_ai.durable_exec.temporal import TemporalAgent
 # 'google-gla:gemini-2.5-pro'.
 MODEL = os.getenv("CORRIDOR_MODEL", "anthropic:claude-sonnet-5")
 
-# Pydantic AI resolves the provider (and validates its API key) when the
+# NOTE: Pydantic AI resolves the provider (and validates its API key) when the
 # Agent is constructed. The seeded happy path never calls a model, so we set
 # a placeholder key when none is present to keep imports working offline. A
 # *real* key is only needed once an anomaly misses corridor memory and an
@@ -103,7 +103,7 @@ compliance_temporal_agent = TemporalAgent(compliance_agent)
 # --- END FEATURE-DEFAULT: agent-resilience ---
 
 # --- FEATURE: agent-resilience ---
-# # Tune how the durable agents' model activities retry and time out. Pydantic
+# # NOTE: Tune how the durable agents' model activities retry and time out. Pydantic
 # # AI runs each model request as a Temporal activity; `model_activity_config`
 # # sets that activity's timeout and RetryPolicy so slow/rate-limited model
 # # calls are retried durably instead of failing the workflow.

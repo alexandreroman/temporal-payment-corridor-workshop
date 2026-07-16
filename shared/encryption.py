@@ -31,7 +31,7 @@ class EncryptionCodec(PayloadCodec):
         self._fernet = Fernet(key)
 
     async def encode(self, payloads: Sequence[Payload]) -> list[Payload]:
-        # Fernet releases the GIL in its C extension; to_thread keeps the
+        # NOTE: Fernet releases the GIL in its C extension; to_thread keeps the
         # async event loop responsive under load.
         return [
             Payload(

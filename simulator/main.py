@@ -40,7 +40,7 @@ async def main() -> None:
     )
     # --- END FEATURE-DEFAULT: payload-encryption ---
     # --- FEATURE: payload-encryption ---
-    # # Encrypt payloads across the Temporal boundary, matching the worker's
+    # # NOTE: Encrypt payloads across the Temporal boundary, matching the worker's
     # # data converter. PydanticAIPlugin only installs its own data converter
     # # when the caller doesn't pass one, so keeping the plugin alongside an
     # # explicit data_converter is safe — verified empirically: dropping
@@ -49,9 +49,7 @@ async def main() -> None:
     # # https://docs.temporal.io/production-deployment/data-encryption
     # key = load_key()
     # if not key:
-    #     raise RuntimeError(
-    #         "set CORRIDOR_ENCRYPTION_KEY to enable payload encryption"
-    #     )
+    #     raise RuntimeError("set CORRIDOR_ENCRYPTION_KEY to enable payload encryption")
     # client = await Client.connect(
     #     TEMPORAL_ADDRESS,
     #     data_converter=build_data_converter(EncryptionCodec(key)),
@@ -84,7 +82,7 @@ async def main() -> None:
             f"(confidence {p.confidence:.2f}, via {p.source} / {p.agent_name})"
         )
 
-    # Teaching note (always-on documentation, not a toggleable feature block):
+    # NOTE: teaching aside (always-on documentation, not a toggleable feature block):
     # once the `human-approval-signal` feature is enabled in the worker, a
     # proposal whose confidence is below CONFIDENCE_THRESHOLD is no longer
     # applied automatically. Instead the coordinator pauses and waits for a

@@ -23,7 +23,7 @@ with workflow.unsafe.imports_passed_through():
 # ---------------------------------------------------------------------------
 # Passive corridor memory
 #
-# For the workshop's starting point this is a plain in-process dict, pre-
+# NOTE: For the workshop's starting point this is a plain in-process dict, pre-
 # seeded with one known pattern so the demo runs end-to-end offline (the
 # matching anomaly hits the cache and never calls an LLM). A later step
 # swaps this backing store for the long-running corridor-memory *workflow*:
@@ -52,7 +52,7 @@ async def read_corridor_memory(
     pattern = _MEMORY.get((corridor, anomaly_type))
     # --- END FEATURE-DEFAULT: corridor-memory-workflow ---
     # --- FEATURE: corridor-memory-workflow ---
-    # # Route reads through the long-running corridor-memory workflow instead
+    # # NOTE: Route reads through the long-running corridor-memory workflow instead
     # # of the in-process dict. The activity asks the worker's client for a
     # # handle to the memory workflow and queries its current state; queries
     # # are read-only and never appear in workflow history.
@@ -84,7 +84,7 @@ async def write_corridor_memory(pattern: CorridorPattern) -> None:
     _MEMORY[(pattern.corridor, pattern.anomaly_type)] = pattern
     # --- END FEATURE-DEFAULT: corridor-memory-workflow ---
     # --- FEATURE: corridor-memory-workflow ---
-    # # Persist the pattern by signalling the long-running corridor-memory
+    # # NOTE: Persist the pattern by signalling the long-running corridor-memory
     # # workflow instead of mutating the in-process dict. Signals are durably
     # # recorded in the workflow's history and its handler applies them in
     # # order, so learned patterns survive worker restarts.
@@ -129,7 +129,7 @@ class CorridorMemoryWorkflow:
         await workflow.wait_condition(
             lambda: self._updates >= self.MAX_UPDATES_BEFORE_CONTINUE
         )
-        # Drain in-flight signal handlers before continuing as new. A
+        # NOTE: Drain in-flight signal handlers before continuing as new. A
         # `remember` signal can be delivered in the same workflow task that
         # trips the threshold; without this wait it could still be executing
         # when we continue-as-new, and its update would be lost from the

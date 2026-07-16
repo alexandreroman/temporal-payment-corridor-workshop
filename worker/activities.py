@@ -45,7 +45,7 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     applied.add(1, {"field": proposal.field_to_fix, "source": proposal.source})
     confidence.record(proposal.confidence, {"source": proposal.source})
 
-    # Idempotency key from the (unique) coordinator workflow id, NOT hash():
+    # NOTE: Idempotency key from the (unique) coordinator workflow id, NOT hash():
     # a retry of this activity must not apply a second, differently-referenced
     # correction. Source: https://docs.temporal.io/activities#idempotency
     #
@@ -68,4 +68,6 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
 # async def revert_correction(reference: str) -> None:
 #     """Undo a previously applied correction (saga compensation)."""
 #     activity.logger.warning("Reverting correction %s", reference)
+#
+#
 # --- END FEATURE: saga-compensation ---
