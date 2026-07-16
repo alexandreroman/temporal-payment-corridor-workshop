@@ -119,11 +119,16 @@ worktree-init: ## Initialise a worktree: install deps and remap host ports off C
 	uv sync
 	@$(MAKE) worktree-ports
 
+# NOTE: the override also replaces temporal's `command` so --ui-codec-endpoint
+# points at the gateway's REMAPPED host port (CASPER_PORT), not the hard-coded
+# 8233 in compose.yaml — otherwise the Web UI, served from CASPER_PORT, would
+# look for the codec on 8233 and decoding would break in a worktree. This
+# mirrors compose.yaml's temporal command, so keep the two in sync.
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
-		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n  gateway:\n    ports: !override\n      - "%s:8233"\n  worker:\n    ports: !override\n      - "%s:9464"\n  webui:\n    ports: !override\n      - "%s:8000"\n' \
-			$$((CASPER_PORT + 1)) "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 3)) > compose.override.yaml; \
+		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n  gateway:\n    ports: !override\n      - "%s:8233"\n  worker:\n    ports: !override\n      - "%s:9464"\n  webui:\n    ports: !override\n      - "%s:8000"\n' \
+			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 3)) > compose.override.yaml; \
 		echo "Wrote compose.override.yaml (CASPER_PORT=$$CASPER_PORT)"; \
 	fi
 
