@@ -1,6 +1,6 @@
-from shared.models import CorrectionProposal, CorrectionSource
+from shared.models import ComplianceVerdict, CorrectionProposal, CorrectionSource
 from payments.activities import _correction_reference
-from payments.workflows import _select_best
+from payments.workflows import GateDecision, _gate
 
 
 def test_correction_reference_is_stable_for_same_inputs():
@@ -25,18 +25,41 @@ def _p(name: str, conf: float) -> CorrectionProposal:
     )
 
 
-def test_select_best_picks_highest_confidence():
-    best = _select_best([_p("a", 0.6), _p("b", 0.9)])
-    assert best is not None and best.agent_name == "b"
+def _v(
+    compliant: bool, conf: float = 0.9, violations: list[str] | None = None
+) -> ComplianceVerdict:
+    return ComplianceVerdict(
+        compliant=compliant,
+        violations=violations or ([] if compliant else ["currency mismatch"]),
+        confidence=conf,
+        source=CorrectionSource.LLM,
+    )
 
 
-def test_select_best_ignores_a_failed_agent():
-    best = _select_best([_p("a", 0.7), RuntimeError("agent b crashed")])
-    assert best is not None and best.agent_name == "a"
+def test_gate_applies_when_compliant_and_confident():
+    decision, _ = _gate(_p("instruction_agent", 0.9), _v(True))
+    assert decision is GateDecision.APPLY
 
 
-def test_select_best_returns_none_when_all_agents_fail():
-    assert _select_best([RuntimeError("x"), ValueError("y")]) is None
+def test_gate_reviews_when_not_compliant_even_if_confident():
+    decision, message = _gate(_p("instruction_agent", 0.99), _v(False))
+    assert decision is GateDecision.REVIEW
+    assert "currency mismatch" in message
+
+
+def test_gate_reviews_when_verdict_missing_fail_closed():
+    decision, _ = _gate(_p("instruction_agent", 0.99), None)
+    assert decision is GateDecision.REVIEW
+
+
+def test_gate_reviews_when_compliant_but_low_confidence():
+    decision, _ = _gate(_p("instruction_agent", 0.10), _v(True))
+    assert decision is GateDecision.REVIEW
+
+
+def test_gate_no_proposal_when_instruction_missing():
+    decision, _ = _gate(None, _v(True))
+    assert decision is GateDecision.NO_PROPOSAL
 
 
 def test_compliance_verdict_and_outcome_carry_a_verdict():

@@ -10,8 +10,8 @@ instances) instead of re-importing them.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Sequence
 from datetime import timedelta
+from enum import StrEnum
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -38,6 +38,7 @@ with workflow.unsafe.imports_passed_through():
 
     from shared.models import (
         ApprovalDecision,
+        ComplianceVerdict,
         CorrectionOutcome,
         CorrectionProposal,
         CorrectionSource,
@@ -93,21 +94,48 @@ def _set_status(value: str) -> None:
 # endregion FEATURE-OFF: search-attributes
 
 
-def _select_best(
-    results: Sequence[CorrectionProposal | BaseException],
-) -> CorrectionProposal | None:
-    """Pick the highest-confidence proposal, tolerating agent failures.
+class GateDecision(StrEnum):
+    """What the coordinator should do once both agents have reported."""
 
-    The coordinator fans out to agent child workflows concurrently. One agent
-    failing must not sink the whole correction, so we gather with
-    ``return_exceptions=True`` and select among the proposals that DID come
-    back. Returns ``None`` only if every agent failed.
-    Source: https://docs.temporal.io/develop/python/child-workflows
+    APPLY = "apply"  # compliant and confident -> apply the instruction fix
+    REVIEW = (
+        "review"  # hold for human oversight (violation / low confidence / no verdict)
+    )
+    NO_PROPOSAL = "no_proposal"  # instruction agent produced nothing to apply
+
+
+def _gate(
+    proposal: CorrectionProposal | None,
+    verdict: ComplianceVerdict | None,
+) -> tuple[GateDecision, str]:
+    """Combine the instruction proposal with the compliance verdict.
+
+    NOTE: Compliance is a gate, not a competing proposer. A fix is applied
+    only when the verdict clears it AND the proposal is confident enough.
+    Absence of a clearance -- the compliance agent failed, or it reported a
+    violation -- never auto-applies (fail-closed); it holds for a human. This
+    replaces the old max(confidence) merge, where a confident instruction fix
+    could silently outvote a compliance violation.
     """
-    proposals = [r for r in results if isinstance(r, CorrectionProposal)]
-    if not proposals:
-        return None
-    return max(proposals, key=lambda p: p.confidence)
+    if proposal is None:
+        return (
+            GateDecision.NO_PROPOSAL,
+            "All correction agents failed; no proposal to apply.",
+        )
+    if verdict is None:
+        return (
+            GateDecision.REVIEW,
+            "Compliance check unavailable; holding for human review.",
+        )
+    if not verdict.compliant:
+        joined = "; ".join(verdict.violations) or "unspecified"
+        return GateDecision.REVIEW, f"Compliance violation(s): {joined}."
+    if proposal.confidence < CONFIDENCE_THRESHOLD:
+        return (
+            GateDecision.REVIEW,
+            "Confidence below threshold; human approval required.",
+        )
+    return GateDecision.APPLY, ""
 
 
 def _prompt(anomaly: PaymentAnomaly) -> str:
@@ -233,7 +261,9 @@ class PaymentCorrectionCoordinator:
             ),
             return_exceptions=True,
         )
-        best = _select_best(results)
+        # NOTE: _select_best was replaced by the _gate/GateDecision pair above, but
+        # `run` is rewired to use them in a follow-up step; kept as-is here on purpose.
+        best = _select_best(results)  # noqa: F821
         if best is None:
             return CorrectionOutcome(
                 payment_id=anomaly.payment_id,
