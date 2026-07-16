@@ -15,19 +15,12 @@ activities are registered automatically by the ``PydanticAIPlugin`` in
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 
-# --- FEATURE: agent-resilience ---
-# from datetime import timedelta
-#
-# --- END FEATURE: agent-resilience ---
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.durable_exec.temporal import TemporalAgent
-
-# --- FEATURE: agent-resilience ---
-# from temporalio.common import RetryPolicy
-#
-# --- END FEATURE: agent-resilience ---
+from temporalio.common import RetryPolicy
 
 # Model is resolved at import time from the environment so attendees can
 # switch providers without touching code. Any Pydantic AI model string
@@ -95,27 +88,18 @@ compliance_agent = Agent(
 )
 
 
-# By default the durable agents use Pydantic AI's default activity settings
-# for their model/tool calls.
-# --- FEATURE-DEFAULT: agent-resilience ---
-instruction_temporal_agent = TemporalAgent(instruction_agent)
-compliance_temporal_agent = TemporalAgent(compliance_agent)
-# --- END FEATURE-DEFAULT: agent-resilience ---
-
-# --- FEATURE: agent-resilience ---
-# # NOTE: Tune how the durable agents' model activities retry and time out. Pydantic
-# # AI runs each model request as a Temporal activity; `model_activity_config`
-# # sets that activity's timeout and RetryPolicy so slow/rate-limited model
-# # calls are retried durably instead of failing the workflow.
-# # Source: https://ai.pydantic.dev/durable_execution/temporal/#activity-configuration
-# _MODEL_ACTIVITY_CONFIG = {
-#     "start_to_close_timeout": timedelta(seconds=60),
-#     "retry_policy": RetryPolicy(maximum_attempts=5),
-# }
-# instruction_temporal_agent = TemporalAgent(
-#     instruction_agent, model_activity_config=_MODEL_ACTIVITY_CONFIG
-# )
-# compliance_temporal_agent = TemporalAgent(
-#     compliance_agent, model_activity_config=_MODEL_ACTIVITY_CONFIG
-# )
-# --- END FEATURE: agent-resilience ---
+# NOTE: Tune how the durable agents' model activities retry and time out. Pydantic
+# AI runs each model request as a Temporal activity; `model_activity_config`
+# sets that activity's timeout and RetryPolicy so slow/rate-limited model
+# calls are retried durably instead of failing the workflow.
+# Source: https://ai.pydantic.dev/durable_execution/temporal/#activity-configuration
+_MODEL_ACTIVITY_CONFIG = {
+    "start_to_close_timeout": timedelta(seconds=60),
+    "retry_policy": RetryPolicy(maximum_attempts=5),
+}
+instruction_temporal_agent = TemporalAgent(
+    instruction_agent, model_activity_config=_MODEL_ACTIVITY_CONFIG
+)
+compliance_temporal_agent = TemporalAgent(
+    compliance_agent, model_activity_config=_MODEL_ACTIVITY_CONFIG
+)
