@@ -25,36 +25,36 @@ endif
 # and the host-side `make dev` flow can never diverge from what docker binds.
 # Otherwise fall back to the conventional defaults.
 ifneq (,$(wildcard compose.override.yaml))
-WEBUI_URL_PORT     := $(shell sed -nE 's/.*"([0-9]+):8000".*/\1/p' compose.override.yaml | head -n1)
-TEMPORAL_UI_PORT   := $(shell sed -nE 's/.*"([0-9]+):8233".*/\1/p' compose.override.yaml | head -n1)
-TEMPORAL_GRPC_PORT := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.override.yaml | head -n1)
-METRICS_PORT       := $(shell sed -nE 's/.*"([0-9]+):9464".*/\1/p' compose.override.yaml | head -n1)
-MEMORY_URL_PORT    := $(shell sed -nE 's/.*"([0-9]+):8010".*/\1/p' compose.override.yaml | head -n1)
+WEBUI_PORT            := $(shell sed -nE 's/.*"([0-9]+):8000".*/\1/p' compose.override.yaml | head -n1)
+TEMPORAL_UI_PORT      := $(shell sed -nE 's/.*"([0-9]+):8233".*/\1/p' compose.override.yaml | head -n1)
+TEMPORAL_GRPC_PORT    := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.override.yaml | head -n1)
+PAYMENTS_METRICS_PORT := $(shell sed -nE 's/.*"([0-9]+):9464".*/\1/p' compose.override.yaml | head -n1)
+MEMORY_PORT           := $(shell sed -nE 's/.*"([0-9]+):8010".*/\1/p' compose.override.yaml | head -n1)
 # Point the host-side dev flow (uv run payments/webui) at the remapped ports.
 # Assign unconditionally (:=, not ?=): the override file is the source of truth
 # for published ports, so these must beat the .env baseline already exported
 # above. Plain := (not `override`) still lets an explicit `make VAR=...` win.
 TEMPORAL_ADDRESS      := localhost:$(TEMPORAL_GRPC_PORT)
-WEBUI_PORT            := $(WEBUI_URL_PORT)
 PAYMENTS_METRICS_HOST := 0.0.0.0
-PAYMENTS_METRICS_PORT := $(METRICS_PORT)
-MEMORY_PORT           := $(MEMORY_URL_PORT)
 export TEMPORAL_ADDRESS WEBUI_PORT PAYMENTS_METRICS_HOST PAYMENTS_METRICS_PORT MEMORY_PORT
 else
-WEBUI_URL_PORT     := 8000
-TEMPORAL_UI_PORT   := 8233
-METRICS_PORT       := 9464
-MEMORY_URL_PORT    := 8010
+# Without an override the published ports equal the conventional defaults.
+# Use ?= for ports that have a matching app env var so a value set in .env
+# still wins over the hard-coded default (TEMPORAL_UI_PORT has no app var).
+WEBUI_PORT            ?= 8000
+TEMPORAL_UI_PORT      := 8233
+PAYMENTS_METRICS_PORT ?= 9464
+MEMORY_PORT           ?= 8010
 endif
 
 # Banner listing where to reach the running components.
 define show_urls
 	@echo ""
 	@echo "The stack is up. Open:"
-	@echo "  Web UI             http://localhost:$(WEBUI_URL_PORT)"
-	@echo "  Corridor memory    http://localhost:$(MEMORY_URL_PORT)"
-	@echo "  Temporal Web UI    http://localhost:$(TEMPORAL_UI_PORT)  (via gateway)"
-	@echo "  Worker metrics     http://localhost:$(METRICS_PORT)/metrics"
+	@echo "  Web UI              http://localhost:$(WEBUI_PORT)"
+	@echo "  Corridor memory     http://localhost:$(MEMORY_PORT)"
+	@echo "  Temporal Web UI     http://localhost:$(TEMPORAL_UI_PORT)  (via gateway)"
+	@echo "  Payments metrics    http://localhost:$(PAYMENTS_METRICS_PORT)/metrics"
 endef
 
 ##@ Setup
