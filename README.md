@@ -192,12 +192,11 @@ scenario with `SCENARIO=<name>`:
 make simulator SCENARIO=memory-miss
 ```
 
-Run `uv run simulator --list-scenarios` to see them all. Every scenario other
-than `memory-hit` misses corridor memory and invokes the agents, so it needs
+Run `make simulator-list` to see them all. Every scenario other than
+`memory-hit` misses corridor memory and invokes the agents, so it needs
 `ANTHROPIC_API_KEY` (see [Configuration](#configuration)). Always launch the
 simulator through `make`: the target exports the ports from
-`compose.override.yaml`, whereas a bare `uv run simulator` uses the default
-`localhost:7233` and fails when the ports are remapped.
+`compose.override.yaml`, so it keeps working when the ports are remapped.
 
 Inspect the merged metrics endpoint:
 
