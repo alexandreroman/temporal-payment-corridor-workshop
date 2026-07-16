@@ -167,6 +167,9 @@ _test_compliance_agent = Agent(
 _test_compliance_temporal_agent = TemporalAgent(_test_compliance_agent)
 
 
+# NOTE: This and _FailingComplianceAgentWorkflow below both register under the
+# real "ComplianceAgentWorkflow" type name; they are mutually exclusive -- each
+# test's Worker registers exactly one of them.
 @workflow.defn(name="ComplianceAgentWorkflow")
 class _FakeComplianceAgentWorkflow:
     """Runs the real memory-first compliance flow, but against a TestModel."""

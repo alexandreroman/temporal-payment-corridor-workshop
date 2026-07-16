@@ -128,8 +128,10 @@ class CorrectionOutcome(BaseModel):
     proposal: CorrectionProposal | None = None
     decision: ApprovalDecision | None = None
     # NOTE: The compliance verdict that gated this outcome, recorded so a held
-    # correction can explain *why* (violations) and an applied one shows it
-    # cleared compliance. Optional: a failed-instruction outcome has no verdict.
+    # correction can explain *why* (violations) and an applied one records the
+    # verdict it was gated against -- which a human reviewer may have overridden
+    # when approving a non-compliant hold. Optional: a failed-instruction
+    # outcome has no verdict.
     verdict: ComplianceVerdict | None = None
     message: str = ""
     # region FEATURE-ON: settlement-confirmation
