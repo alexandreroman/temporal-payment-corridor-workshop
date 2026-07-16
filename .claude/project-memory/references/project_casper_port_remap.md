@@ -1,6 +1,6 @@
 ---
 name: "Casper worktree port remap"
-description: "make dev/webui honor CASPER_PORT via compose.override.yaml; no auto-heal by decision"
+description: "make dev/webui/simulator honor CASPER_PORT via compose.override.yaml; run the simulator through make; no auto-heal by decision"
 type: project
 ---
 
@@ -12,7 +12,11 @@ Temporal gRPC/UI and worker metrics on `CASPER_PORT+1/+2/+3`. That file is
 the single source of truth: the Makefile reads the published ports from it
 and exports them (`TEMPORAL_ADDRESS`, `WEBUI_PORT`, `PAYMENTS_METRICS_*`) to
 the host-side `uv run payments`/`webui` processes, so `make dev` and
-`make webui` bind the remapped ports. This works in a normal worktree
+`make webui` bind the remapped ports. The simulator is in the same boat:
+run it through `make simulator` (optionally `SCENARIO=<name>` to pick a
+named anomaly), which inherits the exported `TEMPORAL_ADDRESS`. A bare
+`uv run simulator` uses the hard-coded `localhost:7233` default and fails
+to connect whenever the ports are remapped. This works in a normal worktree
 because the Casper `setup` hook (`make worktree-ports`) writes the file
 once at worktree creation. The host webui binds the remapped port (e.g.
 `0.0.0.0:45850` for `CASPER_PORT=45850`).

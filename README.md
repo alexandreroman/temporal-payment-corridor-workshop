@@ -230,6 +230,20 @@ message : Correction applied (reference corr-bic-12358).
 proposal: bic=HDFCINBBXXX (confidence 0.95, via memory / instruction_agent)
 ```
 
+By default this sends the offline `memory-hit` scenario. Pick another named
+scenario with `SCENARIO=<name>`:
+
+```bash
+make simulator SCENARIO=memory-miss
+```
+
+Run `uv run simulator --list-scenarios` to see them all. Every scenario other
+than `memory-hit` misses corridor memory and invokes the agents, so it needs
+`ANTHROPIC_API_KEY` (see [Configuration](#configuration)). Always launch the
+simulator through `make`: the target exports the ports from
+`compose.override.yaml`, whereas a bare `uv run simulator` uses the default
+`localhost:7233` and fails when the ports are remapped.
+
 Inspect the merged metrics endpoint:
 
 ```bash
