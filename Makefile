@@ -75,9 +75,16 @@ setup: ## Enable the local ruff pre-commit hook (run once after cloning)
 
 ##@ Infra
 
+# Dev-mode compose file set. compose.dev.yaml points the containerised gateway
+# at the HOST payments API (host.docker.internal) for the hot-reload flow; it is
+# NOT auto-merged (only compose.override.yaml is), so it must be passed
+# explicitly. The per-worktree compose.override.yaml (remapped ports) is
+# included only when present — a plain checkout has none.
+COMPOSE_DEV_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml,) -f compose.dev.yaml
+
 .PHONY: infra-up
 infra-up: ## Bring up temporal + codec + gateway (gateway is the Web UI entry point)
-	docker compose up -d temporal codec gateway
+	docker compose $(COMPOSE_DEV_FILES) up -d temporal codec gateway
 
 .PHONY: infra-down
 infra-down: ## Stop the Temporal dev server (keeps container around)
@@ -152,8 +159,8 @@ worktree-init: ## Initialise a worktree: install deps and remap host ports off C
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
-		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n  gateway:\n    ports: !override\n      - "%s:8233"\n    environment:\n      PAYMENTS_API_UPSTREAM: host.docker.internal:%s\n  payments:\n    ports: !override\n      - "%s:9464"\n  payments-api:\n    ports: !override\n      - "%s:8020"\n  webui:\n    ports: !override\n      - "%s:8000"\n  memory:\n    ports: !override\n      - "%s:8010"\n' \
-			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 5)) $$((CASPER_PORT + 2)) $$((CASPER_PORT + 5)) $$((CASPER_PORT + 3)) $$((CASPER_PORT + 4)) > compose.override.yaml; \
+		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n  gateway:\n    ports: !override\n      - "%s:8233"\n  payments:\n    ports: !override\n      - "%s:9464"\n  payments-api:\n    ports: !override\n      - "%s:8020"\n  webui:\n    ports: !override\n      - "%s:8000"\n  memory:\n    ports: !override\n      - "%s:8010"\n' \
+			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 5)) $$((CASPER_PORT + 3)) $$((CASPER_PORT + 4)) > compose.override.yaml; \
 		echo "Wrote compose.override.yaml (CASPER_PORT=$$CASPER_PORT)"; \
 	fi
 
