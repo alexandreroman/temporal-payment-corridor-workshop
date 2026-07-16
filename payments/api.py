@@ -25,6 +25,10 @@ from temporalio.service import RPCError, RPCStatusCode
 
 from pydantic_ai.durable_exec.temporal import PydanticAIPlugin
 
+# region FEATURE-ON: payload-encryption
+# from shared.encryption import EncryptionCodec, build_data_converter, load_key
+#
+# endregion FEATURE-ON: payload-encryption
 # NOTE: Load .env before importing payments.workflows: that import chain reaches
 # payments.agents, which reads CORRIDOR_MODEL at import time.
 load_dotenv()
@@ -109,6 +113,7 @@ class AnomalyDetail(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # region FEATURE-OFF: payload-encryption
     # NOTE: PydanticAIPlugin installs the Pydantic data converter so
     # PaymentAnomaly / CorrectionOutcome round-trip identically to the worker.
     # The API needs no Worker and no Prometheus runtime.
@@ -117,6 +122,25 @@ async def lifespan(app: FastAPI):
         namespace=PAYMENTS_TEMPORAL_NAMESPACE,
         plugins=[PydanticAIPlugin()],
     )
+    # endregion FEATURE-OFF: payload-encryption
+    # region FEATURE-ON: payload-encryption
+    # # NOTE: Encrypt every payload crossing the Temporal boundary with a codec-
+    # # enabled data converter. PydanticAIPlugin only installs its own data
+    # # converter when the caller doesn't pass one, so keeping the plugin
+    # # alongside an explicit data_converter is safe — verified empirically:
+    # # dropping PydanticAIPlugin instead breaks TemporalAgent workflow
+    # # sandbox validation at worker start-up. Source:
+    # # https://docs.temporal.io/production-deployment/data-encryption
+    # key = load_key()
+    # if not key:
+    #     raise RuntimeError("set CODEC_ENCRYPTION_KEY to enable payload encryption")
+    # client = await Client.connect(
+    #     TEMPORAL_ADDRESS,
+    #     namespace=PAYMENTS_TEMPORAL_NAMESPACE,
+    #     data_converter=build_data_converter(EncryptionCodec(key)),
+    #     plugins=[PydanticAIPlugin()],
+    # )
+    # endregion FEATURE-ON: payload-encryption
     app.state.temporal_client = client
     yield
 
