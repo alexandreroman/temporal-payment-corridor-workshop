@@ -14,12 +14,9 @@ end-to-end on a local dev server.
 > The payment/transfer domain model is intentionally simplified to keep
 > the workshop focused on durable execution with Temporal, not on
 > payments compliance. A real cross-border payment carries far more than
-> a single field — an inbound transfer to India (corridor `US->IN`), for
-> example, needs the beneficiary account number, the bank's SWIFT/BIC,
-> the branch IFSC code, an RBI/FEMA purpose code, and often a
-> correspondent bank, and India does not use IBAN at all. Here each
-> anomaly targets one field (e.g. a malformed BIC) so the correction
-> logic stays easy to follow.
+> a single field. Here each anomaly targets exactly one field — a wrong
+> BIC, a missing intermediary bank, or a currency mismatch — so the
+> correction logic stays easy to follow.
 
 ## Features
 
@@ -129,79 +126,41 @@ Once `payload-encryption` is enabled (`make feature-enable
 NAME=payload-encryption`) payments encrypts every payload on the wire, so
 the Temporal Web UI shows raw ciphertext in Event History. A codec server
 decrypts payloads on demand — a small HTTP service that reuses the same
-encryption key (`CODEC_ENCRYPTION_KEY`) — and the Web UI calls it to
-display cleartext.
+encryption key — and the Web UI calls it to display cleartext.
 
 Both the codec server and the gateway are Compose services that come up with
-the stack (`make dev` / `make app-up`). The gateway is the
-app's single published HTTP entry point (`http://localhost:8233`): it serves
-the Temporal Web UI at `/` and the codec server at `/codec`. Because the UI
-page and the codec endpoint share this one origin, calls from the UI to
-`/codec` are same-origin, so the browser sends no CORS preflight and the codec
-server needs no CORS configuration.
+the stack (`make dev` / `make app-up`). The gateway is the app's single
+published HTTP entry point (`http://localhost:8233`): it serves the Temporal
+Web UI at `/` and the codec server at `/codec`, so calls from the UI to
+`/codec` are same-origin and need no CORS configuration.
 
-The codec always starts, even before encryption is configured: when
-`CODEC_ENCRYPTION_KEY` or `CODEC_SERVER_AUTH_TOKEN` is unset it falls back to a
-public, insecure built-in default and logs a warning, so the demo works out of
-the box (the `/codec` route returns 502 only during the brief startup window).
+You don't have to configure anything for the demo. When `CODEC_ENCRYPTION_KEY`
+and `CODEC_SERVER_AUTH_TOKEN` are unset, both the codec and the gateway fall
+back to matching public, insecure built-in defaults (logging a warning) — so
+decoding works out of the box, even before you create a `.env`. The dev server
+is already pointed at `/codec` via its `--ui-codec-endpoint
+http://localhost:8233/codec` flag, and the gateway injects the bearer token, so
+decrypted payloads appear in the Web UI with no manual configuration. Set your
+own `CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` in `.env` only when you
+want to actually secure the setup.
 
-To decode encrypted payloads:
-
-1. Enable `payload-encryption` (`make feature-enable NAME=payload-encryption`).
-2. `cp .env.example .env` — the shipped file already sets matching
-   `CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` demo values (replace
-   them with your own to secure the setup).
-3. (Re)start the stack so payments and the codec pick up the configuration — for
-   example `make dev` (or `make app-up`).
-
-The dev server is already pointed at `/codec` via its
-`--ui-codec-endpoint http://localhost:8233/codec` flag, and the gateway
-injects the bearer token, so decrypted payloads appear in the Web UI with no
-manual UI configuration. Thanks to the matching built-in defaults, decoding
-even works before you create a `.env` at all.
-
-### Authenticating the codec server
-
-Left open, the codec server decrypts payloads for anyone who can reach it — an
-unauthenticated decryption oracle. So it requires a shared bearer token on
-every request and rejects any call whose `Authorization` header does not carry
-that secret. When `CODEC_SERVER_AUTH_TOKEN` is unset the server does not fail;
-it falls back to a public, insecure built-in default (logging a warning) so the
-demo authenticates out of the box. Set your own token (`.env.example` ships one;
-regenerate it with `python -c "import secrets;
-print(secrets.token_urlsafe(32))"`) to actually secure the codec.
-
-The Web UI cannot send that static secret itself: it only forwards a signed-in
-user's access token, and a local `temporal server start-dev` has no signed-in
-user. The gateway is the trusted local client that supplies it, injecting
-`Authorization: Bearer $CODEC_SERVER_AUTH_TOKEN` on every request it forwards
-to `/codec` (and defaulting to the same built-in token when the variable is
-unset). This is a local-development convenience only: in production the Web UI
-forwards the signed-in user's real access token, so no gateway or shared secret
-is needed.
-
-If you prefer the command line, point the CLI at the codec through the gateway.
-No `--codec-auth` is needed — the gateway injects the token:
+The same goes for the CLI: with the feature active, point `temporal` at the
+codec through the gateway to read decrypted payloads. No `--codec-auth` is
+needed — the gateway injects the token:
 
 ```bash
-temporal workflow show --codec-endpoint http://localhost:8233/codec
+temporal workflow show \
+  --workflow-id <workflow-id> \
+  --codec-endpoint http://localhost:8233/codec
 ```
 
 ### Registering Search Attributes (search-attributes)
 
 Once `search-attributes` is enabled (`make feature-enable
 NAME=search-attributes`) the coordinator tags each workflow execution with a
-`corridor` and an `anomalyType` Search Attribute. Before you can filter or
-list executions by them, register the two custom attributes on the dev
-server:
-
-```bash
-temporal operator search-attribute create --name corridor --type Keyword
-temporal operator search-attribute create --name anomalyType --type Keyword
-```
-
-Without this step payments fails when it tries to upsert unregistered
-attributes. After registering, filter executions in the Web UI or with
+`corridor` and an `anomalyType` Search Attribute. Both custom attributes are
+pre-registered by the dev server on startup (`make dev` / `make app-up`), so
+there is no manual registration step — filter executions in the Web UI or with
 `temporal workflow list --query "corridor = '...'"`.
 
 Enabling a feature that changes workflow code — as `search-attributes` does
@@ -249,15 +208,16 @@ curl -s http://localhost:9464/metrics | grep -E '^(temporal_|corridor_)'
 ## Configuration
 
 All configuration comes from environment variables, loaded from a local
-`.env` file when present (see [.env.example](.env.example)).
+`.env` file when present (see [.env.example](.env.example)). The essentials
+are the AI model the agents use and its matching provider key:
 
-| Variable                | Description                              | Default                       |
-| ----------------------- | ---------------------------------------- | ----------------------------- |
-| `TEMPORAL_ADDRESS`      | Temporal frontend address                | `localhost:7233`              |
-| `PAYMENTS_METRICS_HOST` | Host for the `/metrics` endpoint         | `0.0.0.0`                     |
-| `PAYMENTS_METRICS_PORT` | Port for the `/metrics` endpoint         | `9464`                        |
-| `CORRIDOR_MODEL`        | Pydantic AI model string for the agents  | `anthropic:claude-sonnet-5`   |
-| `ANTHROPIC_API_KEY`     | Provider key matching `CORRIDOR_MODEL`   | (required to run the agents)  |
+| Variable            | Description                             | Default                      |
+| ------------------- | --------------------------------------- | ---------------------------- |
+| `CORRIDOR_MODEL`    | Pydantic AI model string for the agents | `anthropic:claude-sonnet-5`  |
+| `ANTHROPIC_API_KEY` | Provider key matching `CORRIDOR_MODEL`  | (required to run the agents) |
+
+Swap `CORRIDOR_MODEL` and its provider key for any other Pydantic AI provider.
+See [.env.example](.env.example) for the remaining, rarely changed settings.
 
 ## Architecture
 
@@ -286,26 +246,15 @@ graph TD
     W[write_corridor_memory] -->|HTTP /api/memory/v1| MEM
 ```
 
-| Module                   | Description                                                                                                                          |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `shared/models.py`       | Shared Pydantic models exchanged across the Temporal boundary                                                                        |
-| `payments/agents.py`     | Pydantic AI agents wrapped as durable `TemporalAgent`s                                                                               |
-| `payments/workflows.py`  | Coordinator and agent child workflows                                                                                                |
-| `payments/activities.py` | Applying the correction                                                                                                              |
-| `payments/memory.py`     | HTTP-client activities (`read_corridor_memory` / `write_corridor_memory`) calling the corridor-memory service over `/api/memory/v1`. |
-| `payments/worker.py`     | Builds the `Worker`: task queue + workflow/activity registration                                                                     |
-| `payments/main.py`       | Worker entrypoint: runtime, metrics, Logfire, hot reload                                                                             |
-| `webui/app.py`           | FastAPI web UI: routes, Logfire, temporal.io-styled landing page                                                                     |
-| `webui/main.py`          | Web UI entrypoint: uvicorn with hot reload                                                                                           |
-| `memory/app.py`          | FastAPI corridor-memory service: the `/api/memory/v1` routes                                                                         |
-| `memory/store.py`        | Naive in-memory corridor-pattern store (baseline backend)                                                                            |
-| `memory/workflow.py`     | `MemoryWorkflow` durable store for the `memory-workflow` FEATURE                                                                     |
-| `memory/main.py`         | Memory service entrypoint: uvicorn with hot reload                                                                                   |
-| `codec/app.py`           | FastAPI codec server: decrypts payloads for the Temporal Web UI                                                                      |
-| `codec/main.py`          | Codec server entrypoint: uvicorn without reload                                                                                      |
-| `Dockerfile.codec`       | Codec server image                                                                                                                   |
-| `gateway/Caddyfile`      | API gateway: single entry point, injects the codec bearer token                                                                      |
-| `simulator/main.py`      | Client that simulates an incoming payment anomaly                                                                                    |
+| Component     | Role                                                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `shared/`     | Pydantic models exchanged across the Temporal boundary                                                                   |
+| `payments/`   | Payment-correction service (namespace `payments`): coordinator, durable Pydantic AI agents, and activities on one task queue |
+| `memory/`     | Corridor-memory service (namespace `memory`): serves `/api/memory/v1`, backed by a naive in-memory store or the durable `MemoryWorkflow` |
+| `webui/`      | FastAPI web UI — the temporal.io-styled landing page                                                                     |
+| `codec/`      | Codec server that decrypts payloads for the Temporal Web UI (with `payload-encryption`)                                  |
+| `gateway/`    | API gateway — the single published HTTP entry point; injects the codec bearer token                                      |
+| `simulator/`  | Client that simulates an incoming payment anomaly                                                                        |
 
 ## License
 
