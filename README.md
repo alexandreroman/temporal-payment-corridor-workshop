@@ -114,6 +114,23 @@ runs `temporal server start-dev` without a codec endpoint; to wire it in at
 startup instead, add `--ui-codec-endpoint http://localhost:8081` to that
 command. The Web UI then displays decrypted payloads instead of ciphertext.
 
+### Registering Search Attributes (search-attributes)
+
+Once `search-attributes` is enabled (`make feature-enable
+NAME=search-attributes`) the coordinator tags each workflow execution with a
+`corridor` and an `anomalyType` Search Attribute. Before you can filter or
+list executions by them, register the two custom attributes on the dev
+server:
+
+```bash
+temporal operator search-attribute create --name corridor --type Keyword
+temporal operator search-attribute create --name anomalyType --type Keyword
+```
+
+Without this step the worker fails when it tries to upsert unregistered
+attributes. After registering, filter executions in the Web UI or with
+`temporal workflow list --query "corridor = '...'"`.
+
 ## Usage
 
 `make simulator` starts a `PaymentCorrectionCoordinator` execution and prints

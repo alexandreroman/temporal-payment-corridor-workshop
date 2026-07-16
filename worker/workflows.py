@@ -15,6 +15,10 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
+# --- FEATURE: search-attributes ---
+# from temporalio.common import SearchAttributeKey
+# --- END FEATURE: search-attributes ---
+
 with workflow.unsafe.imports_passed_through():
     from pydantic_ai.durable_exec.temporal import PydanticAIWorkflow
 
@@ -38,6 +42,20 @@ with workflow.unsafe.imports_passed_through():
 CONFIDENCE_THRESHOLD = 0.75
 
 TASK_QUEUE = "payment-corridor"
+
+# --- FEATURE: search-attributes ---
+# # Typed Search Attribute keys used by PaymentCorrectionCoordinator below to
+# # tag each workflow execution with its corridor and anomaly type. This makes
+# # executions filterable and listable (in the Web UI, the `temporal workflow
+# # list` CLI, or the SDK) without scanning payloads.
+# # Source: https://docs.temporal.io/develop/python/observability#search-attributes
+# #
+# # These custom attributes must be registered on the dev server first:
+# #   temporal operator search-attribute create --name corridor --type Keyword
+# #   temporal operator search-attribute create --name anomalyType --type Keyword
+# _CORRIDOR_SA = SearchAttributeKey.for_keyword("corridor")
+# _ANOMALY_TYPE_SA = SearchAttributeKey.for_keyword("anomalyType")
+# --- END FEATURE: search-attributes ---
 
 
 def _select_best(
@@ -138,8 +156,18 @@ class PaymentCorrectionCoordinator:
     @workflow.run
     async def run(self, anomaly: PaymentAnomaly) -> CorrectionOutcome:
         # --- FEATURE: search-attributes ---
+        # # Tag this execution with typed Search Attributes so it can be
+        # # filtered/listed by corridor and anomaly type. This replaces the
+        # # deprecated dict form of upsert_search_attributes. anomaly.anomaly_type
+        # # is an AnomalyType StrEnum, so it is converted with str(...) because
+        # # value_set expects a plain str for a keyword key. The call is
+        # # deterministic and workflow-safe, so it belongs here in workflow code.
+        # # Source: https://docs.temporal.io/develop/python/observability#search-attributes
         # workflow.upsert_search_attributes(
-        #     {"corridor": [anomaly.corridor], "anomalyType": [anomaly.anomaly_type]}
+        #     [
+        #         _CORRIDOR_SA.value_set(anomaly.corridor),
+        #         _ANOMALY_TYPE_SA.value_set(str(anomaly.anomaly_type)),
+        #     ]
         # )
         # --- END FEATURE: search-attributes ---
 
