@@ -37,3 +37,19 @@ def test_select_best_ignores_a_failed_agent():
 
 def test_select_best_returns_none_when_all_agents_fail():
     assert _select_best([RuntimeError("x"), ValueError("y")]) is None
+
+
+def test_compliance_verdict_and_outcome_carry_a_verdict():
+    from shared.models import ComplianceVerdict, CorrectionOutcome, CorrectionSource
+
+    verdict = ComplianceVerdict(
+        compliant=False,
+        violations=["currency mismatch"],
+        confidence=0.9,
+        source=CorrectionSource.LLM,
+    )
+    assert verdict.violations == ["currency mismatch"]
+    outcome = CorrectionOutcome(payment_id="pay-1", applied=False, verdict=verdict)
+    assert outcome.verdict is verdict
+    # Default is None so existing callers are unaffected.
+    assert CorrectionOutcome(payment_id="pay-2", applied=True).verdict is None
