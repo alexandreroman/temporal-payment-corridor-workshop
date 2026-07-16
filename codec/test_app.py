@@ -16,15 +16,25 @@ from fastapi.testclient import TestClient
 from google.protobuf import json_format
 from temporalio.api.common.v1 import Payload, Payloads
 
-# codec_server.app reads CORRIDOR_ENCRYPTION_KEY at *import* time and raises
-# if it is unset, so the key must be in the environment before that import
-# runs. Hence the deliberate import-after-statement below (see worker/main.py
-# for the same "import deferred until after env is set" pattern).
-os.environ["CORRIDOR_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+# codec.app reads CODEC_ENCRYPTION_KEY and CODEC_SERVER_AUTH_TOKEN at *import*
+# time; when unset it falls back to insecure built-in demo defaults (with a
+# warning) rather than raising. Set both before the import so the tests run
+# against known values instead of the fallbacks. Hence the deliberate
+# import-after-statement below (see worker/main.py for the same "import
+# deferred until after env is set" pattern).
+os.environ["CODEC_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+os.environ["CODEC_SERVER_AUTH_TOKEN"] = "test-shared-secret"
 
-from codec_server.app import app  # noqa: E402
+from codec.app import app  # noqa: E402
 
-client = TestClient(app)
+# NOTE: The codec server rejects any request without the shared bearer token, so
+# set it as a default header and the encode/decode tests below keep exercising
+# the happy path. Source:
+# https://www.python-httpx.org/advanced/clients/#setting-and-getting-default-headers
+client = TestClient(
+    app,
+    headers={"Authorization": f"Bearer {os.environ['CODEC_SERVER_AUTH_TOKEN']}"},
+)
 
 # A representative plaintext payload, shaped like what the SDK puts on the
 # wire: a metadata "encoding" hint plus the serialized value in "data".
@@ -83,3 +93,16 @@ def test_decode_restores_original_plaintext() -> None:
     restored = payloads.payloads[0]
     assert restored.metadata["encoding"] == b"json/plain"
     assert restored.data == _PLAINTEXT
+
+
+def test_request_without_bearer_token_is_rejected() -> None:
+    # A client with no default Authorization header stands in for any caller that
+    # reaches the codec server without the shared secret.
+    unauthenticated = TestClient(app)
+    payload = Payload(metadata={"encoding": b"json/plain"}, data=_PLAINTEXT)
+    response = unauthenticated.post(
+        "/decode",
+        content=_envelope(payload),
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 401

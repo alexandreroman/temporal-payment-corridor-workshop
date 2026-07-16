@@ -26,32 +26,50 @@ short and correct.
 
 from __future__ import annotations
 
+import hmac
+import logging
 import os
 from collections.abc import Awaitable, Callable, Sequence
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from google.protobuf import json_format
 from temporalio.api.common.v1 import Payload, Payloads
 
 from shared.encryption import EncryptionCodec, load_key
 
+logger = logging.getLogger(__name__)
+
 # All configuration comes from environment variables, loaded from a local
 # .env file when present (see .env.example). Load before reading any getenv.
 load_dotenv()
 
-# NOTE: Fail fast at import time: a codec server with no key cannot do its one job
-# (decrypting payloads for display). Raising here surfaces the misconfiguration
-# on startup instead of on the first Web UI request.
+# Insecure, publicly-known dev defaults used only when the real values are
+# unset. They MUST match the fallbacks baked into gateway/Caddyfile (token) and
+# the values shipped in .env.example (both), so `cp .env.example .env` — or even
+# an empty environment — yields a coherent setup where the worker encrypts with
+# the key the codec expects and the gateway injects the token the codec expects.
+_DEFAULT_ENCRYPTION_KEY = "M80yQxCwjIWwuApHeRjQQoRARc0PhUh6FAEfukmEhlk="
+_DEFAULT_AUTH_TOKEN = "changeme"
+
+# NOTE: The codec never fails fast on missing config. Instead of raising (which
+# would stop the service from starting in early sessions where encryption is
+# not yet configured), it degrades to a built-in insecure default and logs a
+# loud WARNING. Trade-off: the service is always usable out of the box, at the
+# cost of running with a public key/token until real values are set — the
+# warning makes that unmissable.
 _key = load_key()
 if _key is None:
-    raise RuntimeError(
-        "CORRIDOR_ENCRYPTION_KEY is not set; the codec server cannot "
-        "decrypt payloads without it. Generate a key with: "
+    logger.warning(
+        "CODEC_ENCRYPTION_KEY is not set; falling back to an insecure "
+        "built-in dev default. Set CODEC_ENCRYPTION_KEY to a real Fernet key "
+        "for any non-demo use. Generate one with: "
         "python -c 'from cryptography.fernet import Fernet; "
         "print(Fernet.generate_key().decode())'"
     )
+    # load_key() returns the key as bytes, so encode the string default to match.
+    _key = _DEFAULT_ENCRYPTION_KEY.encode()
 
 # One codec instance shared by every request — it is stateless and thread-safe.
 _codec = EncryptionCodec(_key)
@@ -65,12 +83,56 @@ _codec = EncryptionCodec(_key)
 # https://github.com/temporalio/samples-python/blob/main/encryption/codec_server.py
 _UI_ORIGIN = os.getenv("TEMPORAL_UI_ORIGIN", "http://localhost:8233")
 
-app = FastAPI(title="Payment Corridor Codec Server")
+# NOTE: The codec server turns "encrypted in Event History" back into plaintext for
+# anyone who can reach it, over plain HTTP. Gate every request behind a shared
+# bearer token so only the Web UI (configured to forward it) can decode. A shared
+# secret is the simplest illustration; production would validate a real access
+# token / JWT instead. Source:
+# https://docs.temporal.io/production-deployment/data-encryption
+# As with the key above, an unset token degrades to an insecure built-in
+# default (with a warning) rather than failing fast, so the server always
+# starts and the gateway's matching default token authenticates out of the box.
+_AUTH_TOKEN = os.getenv("CODEC_SERVER_AUTH_TOKEN")
+if not _AUTH_TOKEN:
+    logger.warning(
+        "CODEC_SERVER_AUTH_TOKEN is not set; falling back to an insecure "
+        "built-in dev default. Set CODEC_SERVER_AUTH_TOKEN to a real secret "
+        "for any non-demo use. Generate one with: "
+        "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+    )
+    _AUTH_TOKEN = _DEFAULT_AUTH_TOKEN
+
+
+def require_bearer_token(request: Request) -> None:
+    """FastAPI dependency: reject any request missing the shared bearer token.
+
+    NOTE: Compared in constant time with hmac.compare_digest so the token cannot
+    be recovered byte-by-byte from response-timing differences.
+    Source: https://docs.python.org/3/library/hmac.html#hmac.compare_digest
+    """
+    expected = f"Bearer {_AUTH_TOKEN}"
+    if not hmac.compare_digest(request.headers.get("authorization", ""), expected):
+        raise HTTPException(
+            status_code=401,
+            detail="missing or invalid bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+# NOTE: dependencies=[...] runs on every route, so both codec endpoints are gated;
+# CORS preflight (OPTIONS) is handled by CORSMiddleware before routing, so it is
+# unaffected. The browser must be allowed to send the Authorization header, hence
+# "authorization" is added to allow_headers. Source:
+# https://fastapi.tiangolo.com/tutorial/dependencies/global-dependencies/
+app = FastAPI(
+    title="Payment Corridor Codec Server",
+    dependencies=[Depends(require_bearer_token)],
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[_UI_ORIGIN],
     allow_methods=["POST"],
-    allow_headers=["content-type", "x-namespace"],
+    allow_headers=["content-type", "x-namespace", "authorization"],
 )
 
 # A codec method: takes payloads, returns the transformed payloads.

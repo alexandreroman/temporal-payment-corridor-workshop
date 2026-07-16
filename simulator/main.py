@@ -49,7 +49,7 @@ async def main() -> None:
     # # https://docs.temporal.io/production-deployment/data-encryption
     # key = load_key()
     # if not key:
-    #     raise RuntimeError("set CORRIDOR_ENCRYPTION_KEY to enable payload encryption")
+    #     raise RuntimeError("set CODEC_ENCRYPTION_KEY to enable payload encryption")
     # client = await Client.connect(
     #     TEMPORAL_ADDRESS,
     #     data_converter=build_data_converter(EncryptionCodec(key)),
