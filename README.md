@@ -65,12 +65,20 @@ instead of only by CI:
 make setup       # enable the local ruff pre-commit hook
 ```
 
-Start the Temporal dev server, then payments, the web UI, and the corridor
-memory service (all with hot reload) in one go — three host processes plus
-the Temporal container. The command prints the reachable URLs in a banner:
+There are two ways to run the app. For development, `make dev` starts the
+Temporal dev server plus payments, the web UI, and the corridor memory
+service (all on the host with hot reload) and prints the reachable URLs in a
+banner:
 
 ```bash
-make dev       # Temporal dev server, then payments + web UI + memory on the host
+make dev       # Temporal dev server + payments, web UI & memory (hot reload)
+```
+
+For a fully containerized run, `make app-up` brings the whole stack up in
+containers (`make app-down` tears it down):
+
+```bash
+make app-up    # bring up the full stack in containers
 ```
 
 Payments and the memory service run in two separate Temporal namespaces
@@ -84,27 +92,12 @@ Then, in another terminal, fire a payment anomaly:
 make simulator   # simulate an incoming payment anomaly
 ```
 
-`make dev` already serves the web UI (a temporal.io-styled landing page).
-Use `make webui` to run only the web UI — for example when iterating on the
-frontend against an already-running payments process:
-
-```bash
-make webui       # http://localhost:8000
-```
-
-Likewise, `make memory` runs only the corridor memory service (its HTTP API
-serves `/api/memory/v1` on http://localhost:8010):
-
-```bash
-make memory      # http://localhost:8010
-```
-
 By default the Temporal Web UI is at http://localhost:8233 — served through
 the gateway, the app's single published HTTP entry point — and the payments
 metrics at http://localhost:9464/metrics; `make dev` also prints these URLs
 in its banner. The default anomaly matches a pre-seeded corridor-memory
 pattern, so it is corrected end-to-end with no API key. Run `make help` to
-list all targets (`infra-up`, `infra-down`, `payments`, `lint`, ...).
+list all targets.
 
 ## Workshop features
 
@@ -140,7 +133,7 @@ encryption key (`CODEC_ENCRYPTION_KEY`) — and the Web UI calls it to
 display cleartext.
 
 Both the codec server and the gateway are Compose services that come up with
-the stack (`make dev` / `make infra-up` / `make app-up`). The gateway is the
+the stack (`make dev` / `make app-up`). The gateway is the
 app's single published HTTP entry point (`http://localhost:8233`): it serves
 the Temporal Web UI at `/` and the codec server at `/codec`. Because the UI
 page and the codec endpoint share this one origin, calls from the UI to
@@ -219,8 +212,8 @@ matches the new code path, so `payments/test_replay.py` failing after you
 enable such a feature is expected, not a regression. Regenerate the fixture
 for the new state with `make capture-history` if you want a passing replay
 test while the feature stays enabled. That capture drives the coordinator,
-which now reads corridor memory over HTTP, so `make memory` must be running
-first.
+which now reads corridor memory over HTTP, so the memory service must be
+running first (e.g. via `make dev`).
 
 ## Usage
 
