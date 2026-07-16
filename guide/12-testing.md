@@ -1,0 +1,106 @@
+# 12 — Testing durable code
+
+> **Goal of this step.** Learn how the app is tested — and what is
+> *distinctive* about testing durable workflows: replay tests for
+> determinism, and mocking the model so agent tests never hit the network.
+
+## At a glance
+
+|                       |                                                                                                                                                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Feature**           | none — the test suite is always present                                                                                                                                                                                                    |
+| **Key files**         | [`payments/test_replay.py`](../payments/test_replay.py), [`payments/test_workflows.py`](../payments/test_workflows.py), [`payments/test_agents.py`](../payments/test_agents.py), [`tools/capture_history.py`](../tools/capture_history.py) |
+| **Temporal concepts** | `Replayer`, captured history, `WorkflowEnvironment`, mocking the model                                                                                                                                                                     |
+| **Docs**              | [Testing suite](https://docs.temporal.io/develop/python/testing-suite)                                                                                                                                                                     |
+
+## Running the suite
+
+```bash
+make check      # lint + tests
+make test       # tests only
+```
+
+The suite covers every package: payments (workflows, activities, API,
+agents, replay), the memory service (store, HTTP app, and the durable
+workflow), the simulator scenarios, the encryption codec, and the feature
+toggle tool itself. Browse them alongside the code:
+`payments/test_*.py`, `memory/test_*.py`, `shared/test_encryption.py`,
+`simulator/test_scenarios.py`, `tools/test_features.py`.
+
+## Replay tests: guarding determinism
+
+The standout is [`payments/test_replay.py`](../payments/test_replay.py).
+Read its docstring — it explains the whole idea:
+
+> Temporal recovers a running workflow by **replaying** its recorded event
+> history against the current code. If a change alters the sequence of
+> decisions a workflow makes (reordering awaited calls, adding one
+> conditionally, changing what a child is passed), replay diverges from
+> history and the instance gets stuck. A replay test catches that class of
+> bug at *test time*.
+
+The test does **not** run the workflow. It feeds a previously captured
+history (`payments/testdata/coordinator-history.json`) to
+`temporalio.worker.Replayer`, which re-executes it against whatever the
+coordinator looks like *now*.
+
+You met this in steps [07](07-settlement-confirmation.md) and
+[08](08-search-attributes.md): enabling a feature that changes the
+coordinator's shape **intentionally** breaks the replay test, because the
+committed fixture was captured with those features off. That failure is the
+lesson — in production you would reach for
+[versioning/patching](https://docs.temporal.io/develop/python/versioning)
+instead of silently recapturing.
+
+### Regenerating the fixture
+
+If you want the replay test green while a shape-changing feature stays
+enabled, recapture the fixture. The capture drives the real coordinator,
+which reads corridor memory over HTTP, so the memory service must be up:
+
+```bash
+make memory            # if not already running via `make dev`
+make capture-history   # writes payments/testdata/coordinator-history.json
+```
+
+> **Use the right memory port.** The capture reaches the memory service on
+> the port `make` uses; a bare invocation against the wrong port yields a
+> broken `applied:false` fixture. Always go through `make`. To restore the
+> committed baseline: `git checkout payments/testdata/coordinator-history.json`.
+
+## Testing agents without the network
+
+Agent tests must never call a real model. See
+[`payments/test_agents.py`](../payments/test_agents.py) and
+[`payments/test_workflows.py`](../payments/test_workflows.py): the model is
+mocked so tests are fast, deterministic, and offline — matching the
+checklist item "the model/LLM is mocked in agent tests: no network calls."
+
+> **A gotcha worth knowing.** When testing `TemporalAgent`-based workflows
+> under a local test environment, `Agent.override(model=...)` does *not*
+> reach the model activity that Pydantic AI offloads to. Register a
+> `TestModel` stand-in under the real workflow name instead, and remember
+> that Fernet needs `imports_passed_through()` too. The test files show the
+> working pattern.
+
+## What good coverage looks like here
+
+The [production-ready checklist](../production-ready-checklist.md) testing
+section is the rubric:
+
+- [ ] Failure paths are tested: retries exhausted, worker restart,
+      cancellation.
+- [ ] A replay test replays captured history through `Replayer` to catch
+      determinism regressions.
+- [ ] The model/LLM is mocked in agent tests: no network calls.
+
+## Checkpoint
+
+- [ ] `make check` passes on the baseline (no features enabled).
+- [ ] You can explain what a replay test proves — and why it *should* fail
+      after enabling a shape-changing feature.
+- [ ] You can explain why agent tests mock the model.
+
+---
+
+Next: [13 — Wrap-up](13-wrap-up.md).

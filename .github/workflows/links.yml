@@ -1,0 +1,58 @@
+# Markdown link checker for EXTERNAL links (docs.temporal.io, ai.pydantic.dev,
+# and the like). This is deliberately a SEPARATE workflow from ci.yml, not a
+# step in the required `check` job: external links move or suffer transient
+# outages, so a failure here must never block a merge the way the quality gate
+# does. Internal links are covered deterministically by tools/test_guide.py in
+# the main suite, so they are not this workflow's concern.
+name: Links
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly sweep so external link rot surfaces even when nothing is pushed
+    # (Mondays 06:00 UTC).
+    - cron: "0 6 * * 1"
+
+# The checker only reads the docs; it needs no write access.
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      # Persist lychee's URL cache across runs so a green URL is not re-fetched
+      # every time; keyed per-commit, restored from any prior cache.
+      - name: Restore lychee cache
+        uses: actions/cache@v4
+        with:
+          path: .lycheecache
+          key: cache-lychee-${{ github.sha }}
+          restore-keys: cache-lychee-
+
+      # lychee checks the docs' links; tools/test_guide.py already covers the
+      # internal ones, so the value here is the external URLs. --cache skips
+      # recently-seen URLs; 429 (rate-limited) and 206 (partial content) still
+      # count as reachable, and each URL is retried a few times before failing.
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --cache
+            --max-cache-age 1d
+            --timeout 20
+            --retry-wait-time 10
+            --max-retries 3
+            --accept 200,206,429
+            README.md
+            production-ready-checklist.md
+            "guide/**/*.md"
+          # Fail the job on a broken link so it is visible; branch protection
+          # intentionally does not require this job, so a red run reports
+          # without blocking merges.
+          fail: true
