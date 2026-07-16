@@ -25,6 +25,16 @@ def test_index_wires_the_anomaly_list() -> None:
     assert "powered by" in body
 
 
+def test_index_wires_the_approval_panel() -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    body = response.text
+    assert "awaiting-approval" in body  # gates the intervention panel
+    assert "/approval" in body  # POST target for the approve/reject decision
+    assert "Approve" in body
+    assert "Reject" in body
+
+
 def test_healthz_reports_ok() -> None:
     response = client.get("/healthz")
     assert response.status_code == 200

@@ -114,12 +114,103 @@
                   <span class="font-mono" x-text="a.anomaly_type"></span>
                   <span>·</span>
                   <span x-text="ago(a.start_time)"></span>
-                  <!-- The human-approval intervention panel for an
-                       awaiting-approval row lands in a later step; this task
-                       only renders the status badge. -->
                   <span x-show="a.outcome_summary" x-text="'· ' + a.outcome_summary"></span>
                 </div>
               </div>
+            </div>
+
+            <!-- The human-approval intervention panel. It only ever renders
+                 for a row whose status is "awaiting-approval", and that
+                 status only exists once the human-approval-signal FEATURE is
+                 enabled (payments/workflows.py) — so this whole block stays
+                 dormant while the workshop feature is off. -->
+            <div
+              x-show="a.status === 'awaiting-approval'"
+              class="border-t border-white/10 bg-white/[0.02] px-5 py-4"
+            >
+              <template x-if="a.review">
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div class="rounded-lg border border-white/10 p-3">
+                    <p class="text-xs uppercase tracking-wide text-white/40">Proposed correction</p>
+                    <p class="mt-1 text-sm">
+                      <span class="text-white/50">field</span>
+                      <span class="font-mono" x-text="a.review.proposal.field_to_fix"></span>
+                    </p>
+                    <p class="text-sm">
+                      <span class="text-white/50">value</span>
+                      <span class="font-mono text-accent" x-text="a.review.proposal.proposed_value"></span>
+                    </p>
+                    <p class="mt-1 text-xs text-white/60" x-text="a.review.proposal.rationale"></p>
+                    <div class="mt-2 flex items-center gap-2 text-xs">
+                      <span
+                        class="rounded bg-white/10 px-1.5 py-0.5"
+                        x-text="`source: ${a.review.proposal.source}`"
+                      ></span>
+                      <span
+                        class="rounded bg-white/10 px-1.5 py-0.5"
+                        x-text="`confidence ${a.review.proposal.confidence}`"
+                      ></span>
+                    </div>
+                  </div>
+                  <div class="rounded-lg border border-white/10 p-3">
+                    <p class="text-xs uppercase tracking-wide text-white/40">Compliance verdict</p>
+                    <template x-if="a.review.verdict">
+                      <div>
+                        <p
+                          class="mt-1 text-sm"
+                          :class="a.review.verdict.compliant ? 'text-emerald-300' : 'text-red-300'"
+                          x-text="
+                            a.review.verdict.compliant
+                              ? '✔ compliant — no violations'
+                              : `✕ ${a.review.verdict.violations.join(', ')}`
+                          "
+                        ></p>
+                        <p
+                          class="mt-1 text-xs text-white/50"
+                          x-text="`confidence ${a.review.verdict.confidence} · source ${a.review.verdict.source}`"
+                        ></p>
+                      </div>
+                    </template>
+                    <template x-if="!a.review.verdict">
+                      <p class="mt-1 text-xs text-white/40">No compliance verdict yet.</p>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <div class="mt-4 flex flex-wrap items-end gap-3">
+                <label class="text-xs text-white/50">
+                  Approver
+                  <input
+                    x-model="a.approver"
+                    class="mt-1 block h-9 w-40 rounded-md border border-white/15 bg-white/5 px-2 text-sm text-white"
+                  />
+                </label>
+                <label class="flex-1 text-xs text-white/50">
+                  Comment (optional)
+                  <input
+                    x-model="a.comment"
+                    placeholder="Looks right, approving."
+                    class="mt-1 block h-9 w-full rounded-md border border-white/15 bg-white/5 px-2 text-sm text-white placeholder-white/25"
+                  />
+                </label>
+                <div class="flex gap-2">
+                  <button
+                    @click="decide(a, true)"
+                    class="inline-flex h-9 items-center rounded-md bg-emerald-500/90 px-4 text-sm font-semibold text-white hover:bg-emerald-500"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    @click="decide(a, false)"
+                    class="inline-flex h-9 items-center rounded-md border border-red-400/40 px-4 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+
+              <p x-show="a.approvalError" class="mt-2 text-xs text-red-300" x-text="a.approvalError"></p>
             </div>
           </li>
         </template>
@@ -145,11 +236,82 @@
             try {
               const response = await fetch("/api/payments/v1/anomalies");
               if (!response.ok) throw new Error(response.status);
-              this.anomalies = await response.json();
+              this.mergeAnomalies(await response.json());
               this.error = false;
+              await this.loadPendingReviews();
             } catch (e) {
               this.error = true;
             }
+          },
+
+          // Reconciles the freshly-polled summaries onto the existing rows
+          // in place, rather than replacing `anomalies` wholesale — a
+          // wholesale replace would wipe the approval panel's client-only
+          // state (the typed approver/comment, the already-fetched review,
+          // any approval error) on every 3s poll.
+          mergeAnomalies(rows) {
+            const existing = new Map(this.anomalies.map((a) => [a.payment_id, a]));
+            this.anomalies = rows.map((row) => {
+              const a = existing.get(row.payment_id) || {
+                approver: "operator",
+                comment: "",
+                review: null,
+                approvalError: "",
+              };
+              Object.assign(a, row);
+              return a;
+            });
+          },
+
+          // Fetches the pending review (proposal + verdict) for every row
+          // still awaiting approval that hasn't loaded one yet. Runs after
+          // each refresh() so a row that just turned awaiting-approval picks
+          // up its review on the next poll.
+          async loadPendingReviews() {
+            for (const a of this.anomalies) {
+              if (a.status === "awaiting-approval" && !a.review) {
+                await this.loadReview(a);
+              }
+            }
+          },
+
+          async loadReview(a) {
+            try {
+              const response = await fetch(`/api/payments/v1/anomalies/${a.payment_id}`);
+              if (!response.ok) throw new Error(response.status);
+              a.review = (await response.json()).review;
+            } catch (e) {
+              // Leave review unset; the next poll retries.
+            }
+          },
+
+          // Relays a human decision to the coordinator. NOTE: the approval
+          // route only exists once the human-approval-signal FEATURE is
+          // enabled (payments/api.py) — a non-2xx response (e.g. 404 while
+          // the feature is off) is surfaced inline on the row instead of
+          // thrown; the next poll reconciles the row's true state either
+          // way.
+          async decide(a, approved) {
+            try {
+              const response = await fetch(
+                `/api/payments/v1/anomalies/${a.payment_id}/approval`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    approved,
+                    approver: a.approver || "operator",
+                    comment: a.comment || "",
+                  }),
+                },
+              );
+              a.approvalError = response.ok
+                ? ""
+                : `Could not record the decision (HTTP ${response.status}).`;
+            } catch (e) {
+              a.approvalError = "Could not record the decision — check your connection.";
+            }
+            await this.refresh();
           },
 
           init() {
