@@ -510,6 +510,12 @@ def test_coordinator_exposes_listing_query_surface():
                     task_queue=TASK_QUEUE,
                     execution_timeout=timedelta(seconds=30),
                 )
+                # NOTE: Consume the handle outside any FEATURE block so it is
+                # never left unused. Its other uses live in FEATURE regions --
+                # describe_anomaly (search-attributes off) and the approval
+                # queries (human-approval-signal on) -- so a lone toggle state
+                # would otherwise trip ruff F841.
+                assert handle.id == "test-coordinator-query-surface"
 
                 # region FEATURE-OFF: search-attributes
                 # Baseline query surface (search-attributes OFF): describe_anomaly
