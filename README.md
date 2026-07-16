@@ -167,7 +167,7 @@ All configuration comes from environment variables, loaded from a local
 | `TEMPORAL_ADDRESS`     | Temporal frontend address                | `localhost:7233`              |
 | `WORKER_METRICS_HOST`  | Host for the `/metrics` endpoint         | `0.0.0.0`                     |
 | `WORKER_METRICS_PORT`  | Port for the `/metrics` endpoint         | `9464`                        |
-| `CORRIDOR_MODEL`       | Pydantic AI model string for the agents  | `anthropic:claude-sonnet-4-5` |
+| `CORRIDOR_MODEL`       | Pydantic AI model string for the agents  | `anthropic:claude-sonnet-5`   |
 | `ANTHROPIC_API_KEY`    | Provider key matching `CORRIDOR_MODEL`   | (required to run the agents)  |
 
 ## Architecture

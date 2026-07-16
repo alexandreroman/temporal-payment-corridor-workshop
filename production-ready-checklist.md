@@ -35,7 +35,7 @@ https://docs.temporal.io/production-deployment/data-encryption
 
 ## Observability
 
-Docs: https://docs.temporal.io/develop/python/platform/observability
+Docs: https://docs.temporal.io/develop/python/observability
 
 - [ ] Logging goes through `workflow.logger`/`activity.logger`, never
       `print`.

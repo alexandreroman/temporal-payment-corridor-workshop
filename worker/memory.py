@@ -26,8 +26,11 @@ with workflow.unsafe.imports_passed_through():
 # For the workshop's starting point this is a plain in-process dict, pre-
 # seeded with one known pattern so the demo runs end-to-end offline (the
 # matching anomaly hits the cache and never calls an LLM). A later step
-# swaps this backing store for the long-running corridor-memory *workflow*
-# (see the STEP block below and read_corridor_memory below).
+# swaps this backing store for the long-running corridor-memory *workflow*:
+# enabling the `corridor-memory-workflow` feature comments out the
+# FEATURE-DEFAULT in-process-dict paths in read_corridor_memory /
+# write_corridor_memory and activates the paired FEATURE blocks, which query
+# and signal CorridorMemoryWorkflow instead (see both activities below).
 # ---------------------------------------------------------------------------
 _MEMORY: dict[tuple[str, AnomalyType], CorridorPattern] = {
     ("US->IN", AnomalyType.WRONG_IBAN): CorridorPattern(
@@ -45,8 +48,23 @@ async def read_corridor_memory(
     corridor: str, anomaly_type: AnomalyType
 ) -> CorridorPattern | None:
     """Look up a known correction pattern for a corridor + anomaly type."""
+    # --- FEATURE-DEFAULT: corridor-memory-workflow ---
     pattern = _MEMORY.get((corridor, anomaly_type))
+    # --- END FEATURE-DEFAULT: corridor-memory-workflow ---
+    # --- FEATURE: corridor-memory-workflow ---
+    # # Route reads through the long-running corridor-memory workflow instead
+    # # of the in-process dict. The activity asks the worker's client for a
+    # # handle to the memory workflow and queries its current state; queries
+    # # are read-only and never appear in workflow history.
+    # # Source: https://docs.temporal.io/develop/python/message-passing#send-query
+    # client = activity.client()
+    # handle = client.get_workflow_handle(CorridorMemoryWorkflow.WORKFLOW_ID)
+    # pattern = await handle.query(
+    #     CorridorMemoryWorkflow.lookup, args=[corridor, anomaly_type]
+    # )
+    # --- END FEATURE: corridor-memory-workflow ---
 
+    # Shared tail: runs identically whichever backing store produced `pattern`.
     meter = activity.metric_meter()
     lookups = meter.create_counter(
         "corridor_memory_lookups", "Passive corridor-memory lookups"
@@ -58,39 +76,30 @@ async def read_corridor_memory(
         activity.logger.info("Corridor-memory hit for %s/%s", corridor, anomaly_type)
     return pattern
 
-    # --- FEATURE: corridor-memory-workflow ---
-    # Route reads through the long-running corridor-memory workflow instead
-    # of the in-process dict. The activity queries the workflow.
-    #
-    # from temporalio.client import Client
-    #
-    # client: Client = activity.client()  # provided by the worker
-    # handle = client.get_workflow_handle(CorridorMemoryWorkflow.WORKFLOW_ID)
-    # return await handle.query(
-    #     CorridorMemoryWorkflow.lookup, args=[corridor, anomaly_type]
-    # )
-    # --- END FEATURE: corridor-memory-workflow ---
-
 
 @activity.defn
 async def write_corridor_memory(pattern: CorridorPattern) -> None:
     """Remember a newly learned correction pattern."""
+    # --- FEATURE-DEFAULT: corridor-memory-workflow ---
     _MEMORY[(pattern.corridor, pattern.anomaly_type)] = pattern
+    # --- END FEATURE-DEFAULT: corridor-memory-workflow ---
+    # --- FEATURE: corridor-memory-workflow ---
+    # # Persist the pattern by signalling the long-running corridor-memory
+    # # workflow instead of mutating the in-process dict. Signals are durably
+    # # recorded in the workflow's history and its handler applies them in
+    # # order, so learned patterns survive worker restarts.
+    # # Source: https://docs.temporal.io/develop/python/message-passing#send-signal-from-client
+    # client = activity.client()
+    # handle = client.get_workflow_handle(CorridorMemoryWorkflow.WORKFLOW_ID)
+    # await handle.signal(CorridorMemoryWorkflow.remember, pattern)
+    # --- END FEATURE: corridor-memory-workflow ---
+
+    # Shared tail: the learned pattern is logged regardless of backing store.
     activity.logger.info(
         "Corridor-memory learned pattern for %s/%s",
         pattern.corridor,
         pattern.anomaly_type,
     )
-
-    # --- FEATURE: corridor-memory-workflow ---
-    # Persist the pattern by signalling the corridor-memory workflow instead.
-    #
-    # from temporalio.client import Client
-    #
-    # client: Client = activity.client()
-    # handle = client.get_workflow_handle(CorridorMemoryWorkflow.WORKFLOW_ID)
-    # await handle.signal(CorridorMemoryWorkflow.remember, pattern)
-    # --- END FEATURE: corridor-memory-workflow ---
 
 
 @workflow.defn
@@ -120,6 +129,14 @@ class CorridorMemoryWorkflow:
         await workflow.wait_condition(
             lambda: self._updates >= self.MAX_UPDATES_BEFORE_CONTINUE
         )
+        # Drain in-flight signal handlers before continuing as new. A
+        # `remember` signal can be delivered in the same workflow task that
+        # trips the threshold; without this wait it could still be executing
+        # when we continue-as-new, and its update would be lost from the
+        # carried-over state. `all_handlers_finished` blocks until no handler
+        # is running.
+        # Source: https://docs.temporal.io/develop/python/message-passing#wait-for-message-handlers
+        await workflow.wait_condition(workflow.all_handlers_finished)
         workflow.continue_as_new(args=[self._patterns])
 
     @workflow.signal

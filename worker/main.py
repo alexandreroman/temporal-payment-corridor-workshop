@@ -117,6 +117,29 @@ async def main() -> None:
 
     worker = build_worker(client)
 
+    # --- FEATURE: corridor-memory-workflow ---
+    # # Start and seed the long-running corridor-memory workflow so the offline
+    # # demo still finds the pre-seeded US->IN pattern once reads are routed
+    # # through the workflow instead of the in-process dict. The seed is the
+    # # in-process `_MEMORY` converted to the workflow's internal key form.
+    # # `USE_EXISTING` makes the start idempotent: on a worker restart against
+    # # the same dev server we attach to the already-running execution rather
+    # # than erroring or spawning a duplicate.
+    # # Source: https://docs.temporal.io/develop/python/temporal-clients#start-workflow-execution
+    # from temporalio.common import WorkflowIDConflictPolicy
+    # from worker.memory import _MEMORY, CorridorMemoryWorkflow
+    # from worker.workflows import TASK_QUEUE
+    #
+    # seed = {CorridorMemoryWorkflow._key(c, a): p for (c, a), p in _MEMORY.items()}
+    # await client.start_workflow(
+    #     CorridorMemoryWorkflow.run,
+    #     args=[seed],
+    #     id=CorridorMemoryWorkflow.WORKFLOW_ID,
+    #     task_queue=TASK_QUEUE,
+    #     id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+    # )
+    # --- END FEATURE: corridor-memory-workflow ---
+
     metrics_url = f"http://{WORKER_METRICS_BIND}/metrics"
     print(f"Worker polling '{worker.task_queue}' — metrics on {metrics_url}")
     await worker.run()
