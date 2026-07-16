@@ -48,9 +48,12 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     # Idempotency key from the (unique) coordinator workflow id, NOT hash():
     # a retry of this activity must not apply a second, differently-referenced
     # correction. Source: https://docs.temporal.io/activities#idempotency
-    reference = _correction_reference(
-        proposal.field_to_fix, activity.info().workflow_id
-    )
+    #
+    # workflow_id is always populated inside an activity execution; assert it
+    # so the type checker knows the idempotency key can never be None.
+    workflow_id = activity.info().workflow_id
+    assert workflow_id is not None
+    reference = _correction_reference(proposal.field_to_fix, workflow_id)
     activity.logger.info(
         "Applied %s=%s (ref %s)",
         proposal.field_to_fix,
