@@ -20,6 +20,7 @@ from datetime import timedelta
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.durable_exec.temporal import TemporalAgent
+from shared.models import ComplianceVerdict
 from temporalio.common import RetryPolicy
 
 # Model is resolved at import time from the environment so attendees can
@@ -72,18 +73,21 @@ instruction_agent = Agent(
 
 
 # --- ComplianceAgent ---------------------------------------------------
-# Checks the correction against compliance rules: currency consistency
-# with the corridor, sanctioned intermediaries, and similar constraints.
+# Validates the situation against compliance rules and returns a verdict; it
+# does NOT propose a correction. The coordinator uses the verdict as a gate
+# over the instruction agent's fix.
 compliance_agent = Agent(
     MODEL,
     name="compliance_agent",
-    output_type=AgentCorrection,
+    output_type=ComplianceVerdict,
     instructions=(
         "You are a payments compliance officer. Given a payment anomaly on a "
-        "corridor, propose a correction that keeps the payment compliant: the "
-        "settlement currency must match the corridor's destination, and no "
-        "sanctioned intermediary may be introduced. Report an honest "
-        "confidence and explain the compliance rationale briefly."
+        "corridor, do NOT propose a correction. Validate whether a compliant "
+        "correction is possible and return a verdict. Set compliant to false "
+        "and list each violation when the settlement currency does not match "
+        "the corridor's destination or a sanctioned intermediary is involved; "
+        "otherwise compliant is true with no violations. Report an honest "
+        "confidence in the verdict."
     ),
 )
 
