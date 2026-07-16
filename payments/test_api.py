@@ -21,6 +21,7 @@ verified elsewhere.
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import httpx
@@ -43,6 +44,16 @@ from shared.models import (
 # ASGITransport ignores the host, but httpx still needs an absolute base URL to
 # build request URLs from the relative paths below.
 _BASE_URL = "http://payments.test"
+
+
+def _wf(workflow_id: str, minutes_ago: int) -> SimpleNamespace:
+    """A stub list_workflows row with an id and a start time."""
+    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    return SimpleNamespace(
+        id=workflow_id,
+        start_time=base - timedelta(minutes=minutes_ago),
+        typed_search_attributes=TypedSearchAttributes.empty,
+    )
 
 
 def _anomaly(payment_id: str = "pay-1") -> PaymentAnomaly:
@@ -228,8 +239,8 @@ def test_list_anomalies_reads_each_running_workflow_via_query():
     second = _anomaly("pay-2")
     stub = _StubClient(
         workflows=[
-            SimpleNamespace(id="correction-pay-1"),
-            SimpleNamespace(id="correction-pay-2"),
+            _wf("correction-pay-1", 10),
+            _wf("correction-pay-2", 1),
         ],
         handles={
             "correction-pay-1": _StubHandle("correction-pay-1", anomaly=first),
@@ -245,20 +256,23 @@ def test_list_anomalies_reads_each_running_workflow_via_query():
     response = asyncio.run(scenario())
 
     assert response.status_code == 200
+    # Newest first: pay-2 (1 minute ago) sorts ahead of pay-1 (10 minutes ago).
     assert response.json() == [
-        {
-            "payment_id": "pay-1",
-            "corridor": "US->IN",
-            "anomaly_type": "wrong_bic",
-            "status": "processing",
-            "workflow_id": "correction-pay-1",
-        },
         {
             "payment_id": "pay-2",
             "corridor": "US->IN",
             "anomaly_type": "wrong_bic",
             "status": "processing",
             "workflow_id": "correction-pay-2",
+            "start_time": "2019-12-31T23:59:00Z",
+        },
+        {
+            "payment_id": "pay-1",
+            "corridor": "US->IN",
+            "anomaly_type": "wrong_bic",
+            "status": "processing",
+            "workflow_id": "correction-pay-1",
+            "start_time": "2019-12-31T23:50:00Z",
         },
     ]
 
@@ -266,7 +280,7 @@ def test_list_anomalies_reads_each_running_workflow_via_query():
 def test_list_anomalies_awaiting_filter_is_empty_in_the_baseline():
     """With the human-approval feature off, nothing is ever awaiting approval."""
     stub = _StubClient(
-        workflows=[SimpleNamespace(id="correction-pay-1")],
+        workflows=[_wf("correction-pay-1", 1)],
         handles={
             "correction-pay-1": _StubHandle(
                 "correction-pay-1", anomaly=_anomaly("pay-1")
@@ -286,6 +300,32 @@ def test_list_anomalies_awaiting_filter_is_empty_in_the_baseline():
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_list_anomalies_sorts_newest_first():
+    """Running rows come back ordered by start_time, newest first."""
+    handles = {
+        "correction-pay-old": _StubHandle(
+            "correction-pay-old", anomaly=_anomaly("pay-old")
+        ),
+        "correction-pay-new": _StubHandle(
+            "correction-pay-new", anomaly=_anomaly("pay-new")
+        ),
+    }
+    stub = _StubClient(
+        handles=handles,
+        workflows=[_wf("correction-pay-old", 10), _wf("correction-pay-new", 1)],
+    )
+    api.app.state.temporal_client = stub
+
+    async def scenario() -> httpx.Response:
+        async with _http_client() as client:
+            return await client.get("/api/payments/v1/anomalies")
+
+    response = asyncio.run(scenario())
+    ids = [row["payment_id"] for row in response.json()]
+    assert ids == ["pay-new", "pay-old"]
+    assert response.json()[0]["start_time"] is not None
 
 
 def test_get_anomaly_reports_running():

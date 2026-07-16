@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import logfire
 from dotenv import load_dotenv
@@ -113,6 +114,7 @@ class AnomalySummary(BaseModel):
     anomaly_type: AnomalyType
     status: str
     workflow_id: str
+    start_time: datetime
 
 
 class AnomalyDetail(BaseModel):
@@ -235,6 +237,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                 anomaly_type=anomaly.anomaly_type,
                 status="awaiting-approval" if awaiting else "processing",
                 workflow_id=wf.id,
+                start_time=wf.start_time,
             )
         )
     # endregion FEATURE-OFF: search-attributes
@@ -263,9 +266,14 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     #             anomaly_type=AnomalyType(anomaly_type),
     #             status=wf_status,
     #             workflow_id=wf.id,
+    #             start_time=wf.start_time,
     #         )
     #     )
     # endregion FEATURE-ON: search-attributes
+
+    # NOTE: Newest-first ordering so the web UI's homepage shows the most
+    # recent anomalies at the top without any client-side sorting.
+    summaries.sort(key=lambda s: s.start_time, reverse=True)
 
     return summaries
 
