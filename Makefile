@@ -26,12 +26,19 @@ endif
 # and the host-side `make dev` flow can never diverge from what docker binds.
 # Otherwise fall back to the conventional defaults.
 ifneq (,$(wildcard compose.override.yaml))
-WEBUI_PORT            := $(shell sed -nE 's/.*"([0-9]+):8000".*/\1/p' compose.override.yaml | head -n1)
 TEMPORAL_UI_PORT      := $(shell sed -nE 's/.*"([0-9]+):8233".*/\1/p' compose.override.yaml | head -n1)
 TEMPORAL_GRPC_PORT    := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.override.yaml | head -n1)
 PAYMENTS_METRICS_PORT := $(shell sed -nE 's/.*"([0-9]+):9464".*/\1/p' compose.override.yaml | head -n1)
 MEMORY_PORT           := $(shell sed -nE 's/.*"([0-9]+):8010".*/\1/p' compose.override.yaml | head -n1)
 PAYMENTS_API_PORT     := $(shell sed -nE 's/.*"([0-9]+):8020".*/\1/p' compose.override.yaml | head -n1)
+# WEBUI_PORT can't be read back from compose.override.yaml like the ports
+# above: webui is reached only through the gateway (see gateway/Caddyfile), so
+# it no longer publishes a container port for `worktree-ports` to remap.
+# Derive it straight from CASPER_PORT instead, with the same +3 offset
+# `worktree-ports` uses for every other remapped port, so the host-side
+# `uv run webui` process and the gateway's WEBUI_UPSTREAM (compose.dev.yaml)
+# still land on the same worktree-unique port.
+WEBUI_PORT            := $(if $(CASPER_PORT),$(shell echo $$(($(CASPER_PORT) + 3))),8000)
 # Point the host-side dev flow (uv run payments/webui) at the remapped ports.
 # Assign unconditionally (:=, not ?=): the override file is the source of truth
 # for published ports, so these must beat the .env baseline already exported
@@ -56,13 +63,15 @@ GATEWAY_PORT          := $(TEMPORAL_UI_PORT)
 export PAYMENTS_API_PORT GATEWAY_HOST GATEWAY_PORT
 endif
 
-# Banner listing where to reach the running components.
+# Banner listing where to reach the running components. The Web UI and the
+# Temporal Web UI are both reached through the gateway now (respectively `/`
+# and `/temporal`), not their own ports directly — see gateway/Caddyfile.
 define show_urls
 	@echo ""
 	@echo "The stack is up. Open:"
-	@echo "  Web UI              http://localhost:$(WEBUI_PORT)"
+	@echo "  Web UI              http://localhost:$(GATEWAY_PORT)"
 	@echo "  Corridor memory     http://localhost:$(MEMORY_PORT)"
-	@echo "  Temporal Web UI     http://localhost:$(TEMPORAL_UI_PORT)  (via gateway)"
+	@echo "  Temporal Web UI     http://localhost:$(GATEWAY_PORT)/temporal"
 	@echo "  Payments API        http://localhost:$(GATEWAY_PORT)/api/payments/v1"
 	@echo "  Payments metrics    http://localhost:$(PAYMENTS_METRICS_PORT)/metrics"
 endef
@@ -156,12 +165,18 @@ worktree-init: ## Initialise a worktree: install deps and remap host ports off C
 # points at the gateway's REMAPPED host port (CASPER_PORT), not the hard-coded
 # 8233 in compose.yaml — otherwise the Web UI, served from CASPER_PORT, would
 # look for the codec on 8233 and decoding would break in a worktree. This
-# mirrors compose.yaml's temporal command, so keep the two in sync.
+# mirrors compose.yaml's temporal command, so keep the two in sync (including
+# --ui-public-path, which must stay /temporal here too).
+#
+# webui has no ports entry to remap: it is reached only through the gateway
+# (see gateway/Caddyfile), never published directly. Its per-worktree port
+# (CASPER_PORT+3, unused by any other service below) is derived straight from
+# CASPER_PORT in the Makefile's WEBUI_PORT instead — see the ifneq block above.
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
-		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n  gateway:\n    ports: !override\n      - "%s:8233"\n  payments:\n    ports: !override\n      - "%s:9464"\n  payments-api:\n    ports: !override\n      - "%s:8020"\n  webui:\n    ports: !override\n      - "%s:8000"\n  memory:\n    ports: !override\n      - "%s:8010"\n' \
-			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 5)) $$((CASPER_PORT + 3)) $$((CASPER_PORT + 4)) > compose.override.yaml; \
+		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --ui-public-path\n      - /temporal\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n  gateway:\n    ports: !override\n      - "%s:8233"\n  payments:\n    ports: !override\n      - "%s:9464"\n  payments-api:\n    ports: !override\n      - "%s:8020"\n  memory:\n    ports: !override\n      - "%s:8010"\n' \
+			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 5)) $$((CASPER_PORT + 4)) > compose.override.yaml; \
 		echo "Wrote compose.override.yaml (CASPER_PORT=$$CASPER_PORT)"; \
 	fi
 

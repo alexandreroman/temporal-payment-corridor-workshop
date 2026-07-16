@@ -17,6 +17,11 @@ services:
       # Compose address): the browser, not the server, calls it.
       - --ui-codec-endpoint
       - http://localhost:8233/codec
+      # Serve the Web UI under /temporal instead of the root path, so the
+      # gateway can route `/` to our payment-corridor Web UI instead (see
+      # gateway/Caddyfile).
+      - --ui-public-path
+      - /temporal
       # Pre-create one namespace per bounded context: payments and the
       # memory service never share a namespace.
       - --namespace
@@ -34,8 +39,8 @@ services:
       - status=Keyword
     ports:
       - "7233:7233"  # gRPC endpoint for workers and clients
-      # Web UI is not published directly: it is served through the gateway on
-      # http://localhost:8233.
+      # Web UI is not published directly: it is served through the gateway at
+      # http://localhost:8233/temporal.
     healthcheck:
       test: ["CMD-SHELL", "temporal operator cluster health"]
       interval: 10s
@@ -126,8 +131,10 @@ services:
       TEMPORAL_ADDRESS: temporal:7233
       WEBUI_HOST: 0.0.0.0
       WEBUI_PORT: 8000
-    ports:
-      - "8000:8000" # http — Web UI
+    # Reached only through the gateway (like payments-api) — it publishes no
+    # host port of its own.
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')\""]
       interval: 10s
@@ -197,8 +204,9 @@ services:
           memory: 256M
     restart: unless-stopped
 
-  # The gateway is the sole published HTTP entry point (Temporal Web UI at `/`,
-  # codec at `/codec`). It intentionally does NOT depend on the codec service,
+  # The gateway is the sole published HTTP entry point (Temporal Web UI at
+  # /temporal, payment-corridor Web UI at /, codec at /codec, payments API at
+  # /api/payments/v1). It intentionally does NOT depend on the codec service,
   # so `/codec` only 502s during the brief window before the codec is up (or if
   # the codec is manually stopped) — the codec itself always starts.
   gateway:
@@ -208,7 +216,7 @@ services:
       - path: .env
         required: false
     ports:
-      - "8233:8233" # http — single entry point: Temporal Web UI (/) + codec (/codec)
+      - "8233:8233" # http — single entry point: Web UI (/), Temporal Web UI (/temporal), payments API (/api/payments/v1), codec (/codec)
     # Lets the gateway reach a host-side payments API (used by the worktree
     # override's PAYMENTS_API_UPSTREAM); host.docker.internal resolves on Linux
     # via host-gateway and natively on macOS.
@@ -218,6 +226,8 @@ services:
       - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:
       temporal:
+        condition: service_healthy
+      webui:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:2019/config/"]

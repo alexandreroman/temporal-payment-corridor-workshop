@@ -1,12 +1,15 @@
 # API gateway for the app — the single HTTP entry point.
 #
-# `/` routes to the Temporal Web UI; `/codec/*` routes to the codec server
-# with the shared bearer token injected on every forwarded request.
+# `/` routes to our payment-corridor Web UI (the app front door); `/temporal`
+# routes to the Temporal Web UI; `/api/payments/v1/*` routes to the payments
+# API; `/codec/*` routes to the codec server with the shared bearer token
+# injected on every forwarded request.
 #
-# Because the Web UI page and the codec endpoint are served from this one
-# origin (http://localhost:8233), a browser call from the UI to `/codec` is
-# same-origin: there is NO cross-origin request, so the browser sends no CORS
-# preflight and the codec server needs no CORS configuration for the UI.
+# Because the Web UI page, the payments API, and the codec endpoint are all
+# served from this one origin (http://localhost:8233), a browser call from
+# the UI to `/api/payments/v1` or `/codec` is same-origin: there is NO
+# cross-origin request, so the browser sends no CORS preflight and neither
+# service needs CORS configuration for the UI.
 #
 # NOTE: the Temporal Web UI cannot attach a static shared secret itself. The
 # UI only forwards a signed-in user's access token, and on a local
@@ -15,8 +18,8 @@
 # convenience only: in production the UI forwards the user's real access token,
 # so no gateway or shared secret is needed.
 #
-# `temporal` and `codec` are Compose services reachable on the internal
-# network; neither publishes host ports.
+# `temporal`, `codec`, and `payments-api` are Compose services reachable on
+# the internal network; none of them publishes a host port.
 #
 # reverse_proxy directive reference:
 # https://caddyserver.com/docs/caddyfile/directives/reverse_proxy
@@ -35,5 +38,19 @@
 	handle /api/payments/v1/* {
 		reverse_proxy {$PAYMENTS_API_UPSTREAM:payments-api:8020}
 	}
-	reverse_proxy temporal:8233
+	# The Temporal Web UI is served under /temporal; the temporal service
+	# runs with --ui-public-path /temporal so its assets/links resolve here.
+	# NOTE: unlike /codec above, this is a plain `handle` (no handle_path): the
+	# UI itself serves its assets under the /temporal prefix, so Caddy must
+	# forward the prefix along instead of stripping it.
+	handle /temporal* {
+		reverse_proxy temporal:8233
+	}
+	# Everything else is our payment-corridor Web UI (the app front door).
+	# NOTE: in dev mode (`make dev`) webui runs on the HOST for hot reload,
+	# not as a container, so the containerised gateway can't resolve the
+	# Compose service name `webui`. compose.dev.yaml overrides WEBUI_UPSTREAM
+	# to dial back out to the host instead, the same way it already does for
+	# PAYMENTS_API_UPSTREAM above.
+	reverse_proxy {$WEBUI_UPSTREAM:webui:8000}
 }
