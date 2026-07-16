@@ -62,16 +62,16 @@ instead of only by CI:
 make setup       # enable the local ruff pre-commit hook
 ```
 
-Start the Temporal dev server, then the worker, the web UI, and the corridor
+Start the Temporal dev server, then payments, the web UI, and the corridor
 memory service (all with hot reload) in one go — three host processes plus
 the Temporal container. The command prints the reachable URLs in a banner:
 
 ```bash
-make dev       # Temporal dev server, then worker + web UI + memory on the host
+make dev       # Temporal dev server, then payments + web UI + memory on the host
 ```
 
-The worker and the memory service run in two separate Temporal namespaces
-(`payments` and `memory`); the dev server pre-creates both. The worker never
+Payments and the memory service run in two separate Temporal namespaces
+(`payments` and `memory`); the dev server pre-creates both. Payments never
 talks to the memory service over Temporal — it calls the memory HTTP API
 (`/api/memory/v1`) instead.
 
@@ -83,7 +83,7 @@ make simulator   # simulate an incoming payment anomaly
 
 `make dev` already serves the web UI (a temporal.io-styled landing page).
 Use `make webui` to run only the web UI — for example when iterating on the
-frontend against an already-running worker:
+frontend against an already-running payments process:
 
 ```bash
 make webui       # http://localhost:8000
@@ -97,7 +97,7 @@ make memory      # http://localhost:8010
 ```
 
 By default the Temporal Web UI is at http://localhost:8233 — served through
-the gateway, the app's single published HTTP entry point — and the worker
+the gateway, the app's single published HTTP entry point — and the payments
 metrics at http://localhost:9464/metrics; `make dev` also prints these URLs
 in its banner. The default anomaly matches a pre-seeded corridor-memory
 pattern, so it is corrected end-to-end with no API key. Run `make help` to
@@ -130,7 +130,7 @@ the dormant `# region FEATURE-ON:` regions while the base implementation
 ### Decrypting payloads in the Web UI (codec server)
 
 Once `payload-encryption` is enabled (`make feature-enable
-NAME=payload-encryption`) the worker encrypts every payload on the wire, so
+NAME=payload-encryption`) payments encrypts every payload on the wire, so
 the Temporal Web UI shows raw ciphertext in Event History. A codec server
 decrypts payloads on demand — a small HTTP service that reuses the same
 encryption key (`CODEC_ENCRYPTION_KEY`) — and the Web UI calls it to
@@ -155,7 +155,7 @@ To decode encrypted payloads:
 2. `cp .env.example .env` — the shipped file already sets matching
    `CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` demo values (replace
    them with your own to secure the setup).
-3. (Re)start the stack so the worker and codec pick up the configuration — for
+3. (Re)start the stack so payments and the codec pick up the configuration — for
    example `make dev` (or `make app-up`).
 
 The dev server is already pointed at `/codec` via its
@@ -204,7 +204,7 @@ temporal operator search-attribute create --name corridor --type Keyword
 temporal operator search-attribute create --name anomalyType --type Keyword
 ```
 
-Without this step the worker fails when it tries to upsert unregistered
+Without this step payments fails when it tries to upsert unregistered
 attributes. After registering, filter executions in the Web UI or with
 `temporal workflow list --query "corridor = '...'"`.
 
@@ -265,7 +265,7 @@ All configuration comes from environment variables, loaded from a local
 
 ## Architecture
 
-The payment-correction worker (`payments/`, namespace `payments`) hosts the
+The payment-correction service (`payments/`, namespace `payments`) hosts the
 coordinator, agents, and activities on one task queue. The coordinator
 orchestrates the agents; agents consult corridor memory before the LLM;
 activities perform all side effects and emit application metrics. Corridor

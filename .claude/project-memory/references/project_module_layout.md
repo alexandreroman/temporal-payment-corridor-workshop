@@ -7,8 +7,9 @@ type: project
 # Module layout: packages per domain with thin main.py
 
 The repo is organized as one Python package per functional domain —
-`shared/` (models), `payments/` (Temporal worker), `webui/` (FastAPI web
-UI), `memory/` (FastAPI corridor-memory service), `simulator/` (client) —
+`shared/` (models), `payments/` (payment-correction component), `webui/`
+(FastAPI web UI), `memory/` (FastAPI corridor-memory service), `simulator/`
+(client) —
 with absolute imports (`from shared.models import …`). Every executable
 module has a **thin `main.py` bootstrap** (infra init + logs + entry
 point) and the component definition isolated in its own file:
@@ -17,7 +18,7 @@ point) and the component definition isolated in its own file:
 
 The `memory/` package is a standalone service reached only over HTTP
 (`/api/memory/v1`); it runs in its own Temporal namespace (`memory`),
-separate from the worker's (`payments`). `memory/store.py` is the
+separate from payments' own namespace (`payments`). `memory/store.py` is the
 in-memory baseline backend and `memory/workflow.py` holds `MemoryWorkflow`,
 the durable backend enabled by the `memory-workflow` FEATURE.
 
@@ -27,7 +28,7 @@ Two subtle invariants must be preserved when editing these bootstraps:
   `uvicorn.run("webui.app:app", reload=True)`, the app runs in a reload
   subprocess that imports only `webui.app` and never executes
   `main.py`. Any config the served app needs (Logfire, `load_dotenv`)
-  must live in `app.py`. The worker does not have this issue because its
+  must live in `app.py`. Payments does not have this issue because its
   watchfiles subprocess runs `main()`.
 - **`payments/main.py` calls `load_dotenv()` before importing
   `payments.worker`**, because `payments/agents.py` reads `CORRIDOR_MODEL`

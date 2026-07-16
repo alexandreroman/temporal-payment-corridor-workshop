@@ -7,7 +7,7 @@ type: feedback
 # Dev workflow: hot reload and HTML preview
 
 Run the app through the hot-reload make targets rather than invoking
-commands by hand: `make dev` (Temporal dev server + worker, hot reload)
+commands by hand: `make dev` (Temporal dev server + payments, hot reload)
 and `make webui` (the web UI, hot reload on `WEBUI_PORT`, default 8000).
 
 To render or preview HTML pages, prefer Casper Browser when available.
