@@ -63,10 +63,10 @@ def _outcome(payment_id: str = "pay-1") -> CorrectionOutcome:
         payment_id=payment_id,
         applied=True,
         proposal=CorrectionProposal(
-            agent_name="compliance_agent",
+            agent_name="instruction_agent",
             field_to_fix="bic",
             proposed_value="HDFCINBBXXX",
-            rationale="Known corridor pattern.",
+            rationale="Matched a known corridor pattern in passive memory.",
             confidence=0.95,
             source=CorrectionSource.MEMORY,
         ),
