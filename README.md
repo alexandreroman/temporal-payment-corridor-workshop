@@ -38,6 +38,10 @@ end-to-end on a local dev server.
 - **One metrics endpoint** — a single Prometheus/OpenMetrics endpoint
   serves both Temporal SDK metrics (`temporal_*`) and application metrics
   (`corridor_*`).
+- **HTTP API** — external clients and the simulator submit anomalies and
+  observe in-flight corrections through a single HTTP API
+  (`/api/payments/v1`) behind the gateway, never by opening a Temporal
+  client of their own.
 - **Progressive activation** — the full application ships up front;
   workshop steps are enabled by uncommenting tagged `FEATURE-ON` blocks.
 
@@ -69,9 +73,9 @@ make setup       # enable the local ruff pre-commit hook
 ```
 
 There are two ways to run the app. For development, `make dev` starts the
-Temporal dev server plus payments, the web UI, and the corridor memory
-service (all on the host with hot reload) and prints the reachable URLs in a
-banner:
+Temporal dev server plus the payments worker and its HTTP API, the web UI,
+and the corridor memory service (all on the host with hot reload) and prints
+the reachable URLs in a banner:
 
 ```bash
 make dev       # Temporal dev server + payments, web UI & memory (hot reload)
@@ -96,11 +100,12 @@ make simulator   # simulate an incoming payment anomaly
 ```
 
 By default the Temporal Web UI is at http://localhost:8233 — served through
-the gateway, the app's single published HTTP entry point — and the payments
-metrics at http://localhost:9464/metrics; `make dev` also prints these URLs
-in its banner. The default anomaly matches a pre-seeded corridor-memory
-pattern, so it is corrected end-to-end with no API key. Run `make help` to
-list all targets.
+the gateway, the app's single published HTTP entry point — the payments HTTP
+API at http://localhost:8233/api/payments/v1, and the payments metrics at
+http://localhost:9464/metrics; `make dev` also prints these URLs in its
+banner. The default anomaly matches a pre-seeded corridor-memory pattern, so
+it is corrected end-to-end with no API key. Run `make help` to list all
+targets.
 
 ## Workshop features
 
@@ -164,10 +169,12 @@ temporal workflow show \
 
 Once `search-attributes` is enabled (`make feature-enable
 NAME=search-attributes`) the coordinator tags each workflow execution with a
-`corridor` and an `anomalyType` Search Attribute. Both custom attributes are
-pre-registered by the dev server on startup (`make dev` / `make app-up`), so
-there is no manual registration step — filter executions in the Web UI or with
-`temporal workflow list --query "corridor = '...'"`.
+`corridor`, an `anomalyType`, and a `status` Search Attribute — the last
+carrying the correction lifecycle (`processing` → `awaiting-approval`) so the
+payments API can filter in-flight corrections server-side. All three custom
+attributes are pre-registered by the dev server on startup (`make dev` /
+`make app-up`), so there is no manual registration step — filter executions in
+the Web UI or with `temporal workflow list --query "corridor = '...'"`.
 
 Enabling a feature that changes workflow code — as `search-attributes` does
 by adding a Search Attribute upsert inside the coordinator — intentionally
@@ -182,14 +189,19 @@ running first (e.g. via `make dev`).
 
 ## Usage
 
-`make simulator` starts a `PaymentCorrectionCoordinator` execution and prints
-the outcome:
+`make simulator` submits an anomaly to the payments API through the gateway,
+which starts a `PaymentCorrectionCoordinator` execution, and prints the
+accepted identifiers:
 
 ```text
-applied : True
-message : Correction applied (reference corr-bic-12358).
-proposal: bic=HDFCINBBXXX (confidence 0.95, via memory / instruction_agent)
+scenario: memory-hit
+payment : pmt-9f3c1a2b
+workflow: correction-pmt-9f3c1a2b
+accepted: submitted to http://localhost:8233/api/payments/v1/anomalies
 ```
+
+Follow the correction in the Temporal Web UI, or fetch its outcome from
+`GET /api/payments/v1/anomalies/<payment_id>` once it completes.
 
 By default this sends the offline `memory-hit` scenario. Pick another named
 scenario with `SCENARIO=<name>`:
@@ -210,6 +222,42 @@ Inspect the merged metrics endpoint:
 curl -s http://localhost:9464/metrics | grep -E '^(temporal_|corridor_)'
 ```
 
+## Payments HTTP API
+
+The payments component runs as two processes that share one package: the
+**payments worker** (`uv run payments`), a Temporal worker hosting the
+coordinator, agents, and activities; and the **payments HTTP API** (`uv run
+payments-api`), a Temporal *client* — no worker — that starts corrections,
+lists in-flight ones over the Visibility API, and relays human approvals.
+`make dev` and `make app-up` run both.
+
+The API is the single external entry point for payment requests: clients and
+the simulator submit and observe corrections over HTTP through the gateway
+under `/api/payments/v1`, never by opening a Temporal client of their own —
+the same convention as the corridor-memory service's `/api/memory/v1`. Every
+request goes through the gateway; the API's own bind address
+(`PAYMENTS_API_HOST`/`PAYMENTS_API_PORT`, default `0.0.0.0:8020`) is internal.
+
+| Method & path | Purpose |
+| ------------- | ------- |
+| `POST /api/payments/v1/anomalies` | Submit a `PaymentAnomaly`; starts a correction. Returns `202` with `{payment_id, workflow_id}`; a duplicate payment returns `409`. |
+| `GET /api/payments/v1/anomalies` | List in-flight corrections; `?awaiting_approval=true` keeps only those blocked on a human decision. |
+| `GET /api/payments/v1/anomalies/{payment_id}` | One correction's state — running, or completed with its outcome; an unknown payment returns `404`. |
+| `POST /api/payments/v1/anomalies/{payment_id}/approval` | Relay an `ApprovalDecision` to a waiting correction. Present only when the `human-approval-signal` feature is enabled. |
+
+The listing endpoint has two implementations toggled by the
+`search-attributes` feature: enabled, it filters running executions
+server-side in a single Visibility query on the `status` Search Attribute;
+disabled (the baseline), it lists running executions and reads each one's
+summary with a per-workflow query — the N+1 pattern that search attributes
+exist to remove.
+
+Because these routes are served through the gateway, the simulator reaches
+them at `http://<GATEWAY_HOST>:<GATEWAY_PORT>/api/payments/v1` (default
+`localhost:8233`). Container mode routes `/api/payments/v1/*` to the
+`payments-api` Compose service; dev mode routes it to the host-run API via
+`host.docker.internal`, wired automatically by the generated Compose override.
+
 ## Configuration
 
 All configuration comes from environment variables, loaded from a local
@@ -226,8 +274,11 @@ See [.env.example](.env.example) for the remaining, rarely changed settings.
 
 ## Architecture
 
-The payment-correction service (`payments/`, namespace `payments`) hosts the
-coordinator, agents, and activities on one task queue. The coordinator
+The payment-correction component (`payments/`, namespace `payments`) runs as
+two processes that share one package: the payments worker hosts the
+coordinator, agents, and activities on one task queue, while the payments HTTP
+API (`/api/payments/v1`) is a Temporal client that starts and observes
+corrections for external callers. The coordinator
 orchestrates two specialized agents — the instruction agent repairs the
 payment instruction so it can settle, while the compliance agent guards the
 fix against currency and sanctions rules — and keeps the highest-confidence
@@ -246,13 +297,16 @@ LLM, and the coordinator applies the fix or escalates to a human:
 ```mermaid
 sequenceDiagram
     participant Sim as simulator
+    participant API as payments API
     participant Coord as PaymentCorrectionCoordinator
     participant Agent as Instruction & Compliance<br/>agent child workflows
     participant Mem as corridor-memory service
     participant LLM as LLM (Pydantic AI)
     participant Human as human reviewer
 
-    Sim->>Coord: start workflow (PaymentAnomaly)
+    Sim->>API: POST /api/payments/v1/anomalies (via gateway)
+    API->>Coord: start workflow (PaymentAnomaly)
+    API-->>Sim: 202 Accepted (payment_id, workflow_id)
     par for each agent, concurrently
         Coord->>Agent: execute child workflow
         Agent->>Mem: read_corridor_memory (HTTP /api/memory/v1)
@@ -274,13 +328,14 @@ sequenceDiagram
             Coord->>Coord: apply_correction (activity)
         end
     end
-    Coord-->>Sim: CorrectionOutcome
+    Coord-->>API: CorrectionOutcome
+    Note over Sim,API: simulator fetches the outcome later via<br/>GET /api/payments/v1/anomalies/{payment_id}
 ```
 
 | Component     | Role                                                                                                                     |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `shared/`     | Pydantic models exchanged across the Temporal boundary                                                                   |
-| `payments/`   | Payment-correction service (namespace `payments`): coordinator, durable Pydantic AI agents, and activities on one task queue |
+| `payments/`   | Payment-correction component (namespace `payments`): a Temporal worker (coordinator, durable Pydantic AI agents, activities on one task queue) plus the `/api/payments/v1` HTTP API that starts and observes corrections |
 | `memory/`     | Corridor-memory service (namespace `memory`): serves `/api/memory/v1`, backed by a naive in-memory store or the durable `MemoryWorkflow` |
 | `webui/`      | FastAPI web UI — the temporal.io-styled landing page                                                                     |
 | `codec/`      | Codec server that decrypts payloads for the Temporal Web UI (with `payload-encryption`)                                  |
