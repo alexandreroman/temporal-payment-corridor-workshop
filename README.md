@@ -121,6 +121,29 @@ runs `temporal server start-dev` without a codec endpoint; to wire it in at
 startup instead, add `--ui-codec-endpoint http://localhost:8081` to that
 command. The Web UI then displays decrypted payloads instead of ciphertext.
 
+### Authenticating the codec server
+
+Left open, the codec server decrypts payloads for anyone who can reach it,
+over plain HTTP — an unauthenticated decryption oracle. So it requires a
+shared bearer token on every request: it fails fast on startup unless
+`CODEC_SERVER_AUTH_TOKEN` is set (generate one with
+`python -c "import secrets; print(secrets.token_urlsafe(32))"`) and rejects
+any call whose `Authorization` header does not carry that secret.
+
+Point the Web UI at the codec server as usual; callers send
+`Authorization: Bearer <token>` on every request:
+
+```bash
+curl -H "Authorization: Bearer $CODEC_SERVER_AUTH_TOKEN" \
+  -H "content-type: application/json" \
+  --data '{"payloads":[]}' \
+  http://localhost:8081/decode
+```
+
+A shared secret keeps the reference example simple. In production the Web UI
+forwards the operator's real access token (typically a JWT) instead of a
+static shared secret, and the codec server validates that token.
+
 ### Registering Search Attributes (search-attributes)
 
 Once `search-attributes` is enabled (`make feature-enable
@@ -208,8 +231,8 @@ graph TD
 | `worker/main.py`       | Worker entrypoint: runtime, metrics, Logfire, hot reload             |
 | `webui/app.py`         | FastAPI web UI: routes, Logfire, temporal.io-styled landing page     |
 | `webui/main.py`        | Web UI entrypoint: uvicorn with hot reload                           |
-| `codec_server/app.py`  | FastAPI codec server: decrypts payloads for the Temporal Web UI      |
-| `codec_server/main.py` | Codec server entrypoint: uvicorn without reload                      |
+| `codec/app.py`         | FastAPI codec server: decrypts payloads for the Temporal Web UI      |
+| `codec/main.py`        | Codec server entrypoint: uvicorn without reload                     |
 | `simulator/main.py`    | Client that simulates an incoming payment anomaly                    |
 
 ## License

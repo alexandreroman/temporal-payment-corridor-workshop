@@ -31,7 +31,8 @@ https://docs.temporal.io/production-deployment/data-encryption
       with a codec server for the UI.
 - [ ] The codec server is authenticated (mTLS or a bearer token) and
       TLS-terminated: otherwise it is an unauthenticated decryption oracle
-      that lets anyone who can reach it decrypt any payload.
+      that lets anyone who can reach it decrypt any payload (the reference
+      codec server requires a bearer token).
 
 ## Observability
 

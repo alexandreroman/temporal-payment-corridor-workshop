@@ -26,11 +26,12 @@ short and correct.
 
 from __future__ import annotations
 
+import hmac
 import os
 from collections.abc import Awaitable, Callable, Sequence
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from google.protobuf import json_format
 from temporalio.api.common.v1 import Payload, Payloads
@@ -65,12 +66,51 @@ _codec = EncryptionCodec(_key)
 # https://github.com/temporalio/samples-python/blob/main/encryption/codec_server.py
 _UI_ORIGIN = os.getenv("TEMPORAL_UI_ORIGIN", "http://localhost:8233")
 
-app = FastAPI(title="Payment Corridor Codec Server")
+# NOTE: The codec server turns "encrypted in Event History" back into plaintext for
+# anyone who can reach it, over plain HTTP. Gate every request behind a shared
+# bearer token so only the Web UI (configured to forward it) can decode. A shared
+# secret is the simplest illustration; production would validate a real access
+# token / JWT instead. Source:
+# https://docs.temporal.io/production-deployment/data-encryption
+_AUTH_TOKEN = os.getenv("CODEC_SERVER_AUTH_TOKEN")
+if not _AUTH_TOKEN:
+    raise RuntimeError(
+        "CODEC_SERVER_AUTH_TOKEN is not set; the codec server gates every "
+        "request behind a shared bearer token. Generate one with: "
+        "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+    )
+
+
+def require_bearer_token(request: Request) -> None:
+    """FastAPI dependency: reject any request missing the shared bearer token.
+
+    NOTE: Compared in constant time with hmac.compare_digest so the token cannot
+    be recovered byte-by-byte from response-timing differences.
+    Source: https://docs.python.org/3/library/hmac.html#hmac.compare_digest
+    """
+    expected = f"Bearer {_AUTH_TOKEN}"
+    if not hmac.compare_digest(request.headers.get("authorization", ""), expected):
+        raise HTTPException(
+            status_code=401,
+            detail="missing or invalid bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+# NOTE: dependencies=[...] runs on every route, so both codec endpoints are gated;
+# CORS preflight (OPTIONS) is handled by CORSMiddleware before routing, so it is
+# unaffected. The browser must be allowed to send the Authorization header, hence
+# "authorization" is added to allow_headers. Source:
+# https://fastapi.tiangolo.com/tutorial/dependencies/global-dependencies/
+app = FastAPI(
+    title="Payment Corridor Codec Server",
+    dependencies=[Depends(require_bearer_token)],
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[_UI_ORIGIN],
     allow_methods=["POST"],
-    allow_headers=["content-type", "x-namespace"],
+    allow_headers=["content-type", "x-namespace", "authorization"],
 )
 
 # A codec method: takes payloads, returns the transformed payloads.

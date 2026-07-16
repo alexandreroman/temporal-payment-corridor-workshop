@@ -28,3 +28,5 @@
 - [Import symbols from their canonical public module](references/feedback_canonical_imports.md) — import pydantic_data_converter from temporalio.contrib.pydantic, not the pydantic_ai re-export, to avoid Pylance reportPrivateImportUsage.
 - [Implementation status](references/project_implementation_status.md) — workshop feature-set work that is still pending (not yet implemented).
 - [retry-alerting metric tags](references/reference_retry_alert_metric_tags.md) — corridor_correction_retries_alerted is tagged field/source (proposal has no corridor/anomaly type), matching sibling corridor_* metrics.
+- [Memory entries are present-tense standing facts](references/feedback_memory_present_tense.md) — phrase every entry as a current fact; never narrate past events ("renamed from", "the user asked").
+- [codec package is a support tool, not a FEATURE surface](references/feedback_codec_server_not_a_feature.md) — codec-server behavior (e.g. bearer-token auth) is plain always-on code; FEATURE blocks belong only in app components; features.py ROOTS excludes codec.

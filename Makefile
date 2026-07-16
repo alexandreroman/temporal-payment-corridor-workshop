@@ -170,7 +170,7 @@ feature-disable: ## Disable a feature everywhere (NAME=<name>, DRY_RUN=1 to prev
 
 .PHONY: codec-server
 codec-server: ## Run the codec server for the Temporal UI (decrypts payloads for display)
-	uv run python -m codec_server.main
+	uv run python -m codec.main
 
 .PHONY: capture-history
 capture-history: ## Regenerate worker/testdata/coordinator-history.json for the replay test

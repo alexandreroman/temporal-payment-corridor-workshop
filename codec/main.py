@@ -2,9 +2,9 @@
 
 Runtime bootstrap for the remote codec server: load configuration and start
 the uvicorn server. The application itself is defined in
-``codec_server/app.py``.
+``codec/app.py``.
 
-Run with:  ``uv run python -m codec_server.main``  (also what
+Run with:  ``uv run python -m codec.main``  (also what
 ``make codec-server`` calls). Requires CORRIDOR_ENCRYPTION_KEY to be set —
 the app raises on import otherwise.
 """
@@ -28,10 +28,10 @@ def run() -> None:
     """Start the codec server (no hot reload — a single stable process).
 
     The import is deferred to here so merely importing this module does not
-    require CORRIDOR_ENCRYPTION_KEY to be set: ``codec_server.app`` reads and
+    require CORRIDOR_ENCRYPTION_KEY to be set: ``codec.app`` reads and
     validates the key at import time and raises when it is missing.
     """
-    from codec_server.app import app
+    from codec.app import app
 
     uvicorn.run(app, host=CODEC_SERVER_HOST, port=CODEC_SERVER_PORT)
 
