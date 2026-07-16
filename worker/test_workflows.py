@@ -47,6 +47,7 @@ from datetime import timedelta
 
 from temporalio import workflow
 from temporalio.client import Client
+from temporalio.common import SearchAttributeKey
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
@@ -199,7 +200,12 @@ def test_coordinator_survives_one_failing_agent():
     """
 
     async def scenario() -> None:
-        async with await WorkflowEnvironment.start_local() as env:
+        async with await WorkflowEnvironment.start_local(
+            search_attributes=[
+                SearchAttributeKey.for_keyword("corridor"),
+                SearchAttributeKey.for_keyword("anomalyType"),
+            ],
+        ) as env:
             client = await _local_env_client(env)
             async with Worker(
                 client,
@@ -257,7 +263,12 @@ def test_payload_encryption_encrypts_history():
     """
 
     async def scenario() -> None:
-        async with await WorkflowEnvironment.start_local() as env:
+        async with await WorkflowEnvironment.start_local(
+            search_attributes=[
+                SearchAttributeKey.for_keyword("corridor"),
+                SearchAttributeKey.for_keyword("anomalyType"),
+            ],
+        ) as env:
             plain_client = await _local_env_client(env)
             encrypted_client = await Client.connect(
                 env.client.service_client.config.target_host,

@@ -131,6 +131,15 @@ Without this step the worker fails when it tries to upsert unregistered
 attributes. After registering, filter executions in the Web UI or with
 `temporal workflow list --query "corridor = '...'"`.
 
+Enabling a feature that changes workflow code — as `search-attributes` does
+by adding a Search Attribute upsert inside the coordinator — intentionally
+invalidates the committed replay fixture
+(`worker/testdata/coordinator-history.json`). The captured history no longer
+matches the new code path, so `worker/test_replay.py` failing after you
+enable such a feature is expected, not a regression. Regenerate the fixture
+for the new state with `make capture-history` if you want a passing replay
+test while the feature stays enabled.
+
 ## Usage
 
 `make simulator` starts a `PaymentCorrectionCoordinator` execution and prints

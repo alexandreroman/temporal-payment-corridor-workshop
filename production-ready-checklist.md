@@ -29,6 +29,9 @@ https://docs.temporal.io/production-deployment/data-encryption
 - [ ] Payloads and event history stay under the platform's size limits.
 - [ ] PII crossing the boundary is encrypted via a `PayloadCodec`, paired
       with a codec server for the UI.
+- [ ] The codec server is authenticated (mTLS or a bearer token) and
+      TLS-terminated: otherwise it is an unauthenticated decryption oracle
+      that lets anyone who can reach it decrypt any payload.
 
 ## Observability
 
