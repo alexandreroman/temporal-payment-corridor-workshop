@@ -1,10 +1,11 @@
 """Client script: simulate an incoming payment anomaly.
 
-Starts a ``PaymentCorrectionCoordinator`` execution and prints the outcome.
-Pick what to send with ``--scenario NAME`` (see ``--list-scenarios``); the
-default ``memory-hit`` scenario matches a pre-seeded corridor-memory pattern,
-so it is corrected end-to-end without any LLM call (no API key required). The
-scenario definitions live in ``simulator/scenarios.py``.
+Submits an anomaly to the payments HTTP API through the gateway and prints the
+accepted payment/workflow identifiers. Pick what to send with ``--scenario
+NAME`` (see ``--list-scenarios``); the default ``memory-hit`` scenario matches a
+pre-seeded corridor-memory pattern, so it is corrected end-to-end without any
+LLM call (no API key required). The scenario definitions live in
+``simulator/scenarios.py``.
 
 Run with:  ``uv run simulator``  (payments and the dev server must be running).
 """
@@ -15,90 +16,52 @@ import argparse
 import asyncio
 import os
 
+import httpx
 from dotenv import load_dotenv
-from temporalio.client import Client
 
-from pydantic_ai.durable_exec.temporal import PydanticAIPlugin
-
-# region FEATURE-ON: payload-encryption
-# from shared.encryption import EncryptionCodec, build_data_converter, load_key
-#
-# endregion FEATURE-ON: payload-encryption
 from simulator.scenarios import DEFAULT_SCENARIO, SCENARIOS, Scenario, build_anomaly
-from payments.workflows import TASK_QUEUE, PaymentCorrectionCoordinator
 
 # Configuration from environment / local .env (see .env.example).
 load_dotenv()
 
-TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
-# NOTE: start the coordinator in the same namespace as payments, distinct
-# from the memory service's namespace.
-PAYMENTS_TEMPORAL_NAMESPACE = os.getenv("PAYMENTS_TEMPORAL_NAMESPACE", "payments")
+GATEWAY_HOST = os.getenv("GATEWAY_HOST", "localhost")
+GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", "8233"))
+# Base URL of the payments API, reached through the gateway (see .env.example).
+_API_BASE = f"http://{GATEWAY_HOST}:{GATEWAY_PORT}/api/payments/v1"
 
 
 async def main(scenario: Scenario) -> None:
     # Leading, self-describing line so a captured run names the scenario it ran.
     print(f"scenario: {scenario.name}")
 
-    # region FEATURE-OFF: payload-encryption
-    client = await Client.connect(
-        TEMPORAL_ADDRESS,
-        namespace=PAYMENTS_TEMPORAL_NAMESPACE,
-        # Same data converter as payments, so Pydantic models round-trip.
-        plugins=[PydanticAIPlugin()],
-    )
-    # endregion FEATURE-OFF: payload-encryption
-    # region FEATURE-ON: payload-encryption
-    # # NOTE: Encrypt payloads across the Temporal boundary, matching payments'
-    # # data converter. PydanticAIPlugin only installs its own data converter
-    # # when the caller doesn't pass one, so keeping the plugin alongside an
-    # # explicit data_converter is safe — verified empirically: dropping
-    # # PydanticAIPlugin instead breaks TemporalAgent workflow sandbox
-    # # validation at worker start-up. Source:
-    # # https://docs.temporal.io/production-deployment/data-encryption
-    # key = load_key()
-    # if not key:
-    #     raise RuntimeError("set CODEC_ENCRYPTION_KEY to enable payload encryption")
-    # client = await Client.connect(
-    #     TEMPORAL_ADDRESS,
-    #     namespace=PAYMENTS_TEMPORAL_NAMESPACE,
-    #     data_converter=build_data_converter(EncryptionCodec(key)),
-    #     plugins=[PydanticAIPlugin()],
-    # )
-    # endregion FEATURE-ON: payload-encryption
-
     anomaly = build_anomaly(scenario)
 
-    outcome = await client.execute_workflow(
-        PaymentCorrectionCoordinator.run,
-        anomaly,
-        id=f"correction-{anomaly.payment_id}",
-        task_queue=TASK_QUEUE,
-    )
-
-    print(f"applied : {outcome.applied}")
-    print(f"message : {outcome.message}")
-    if outcome.proposal is not None:
-        p = outcome.proposal
-        print(
-            f"proposal: {p.field_to_fix}={p.proposed_value} "
-            f"(confidence {p.confidence:.2f}, via {p.source} / {p.agent_name})"
+    # NOTE: Submit through the gateway — the single external entry point — the
+    # same path any real client uses. The API starts the correction; the
+    # simulator does not talk to Temporal directly.
+    async with httpx.AsyncClient() as http:
+        resp = await http.post(
+            f"{_API_BASE}/anomalies", json=anomaly.model_dump(mode="json")
         )
+        resp.raise_for_status()
+        acceptance = resp.json()
+
+    print(f"payment : {acceptance['payment_id']}")
+    print(f"workflow: {acceptance['workflow_id']}")
+    print(f"accepted: submitted to {_API_BASE}/anomalies")
 
     # NOTE: teaching aside (always-on documentation, not a toggleable feature block):
     # once the `human-approval-signal` feature is enabled in payments, a
     # proposal whose confidence is below CONFIDENCE_THRESHOLD is no longer
     # applied automatically. Instead the coordinator pauses and waits for a
     # human verdict, which arrives out-of-band — sent by a *separate* client,
-    # not by this simulator (which only starts the workflow and awaits its
-    # result). For example, an ops process holding a workflow handle can
-    # approve the correction with:
+    # not by this simulator (which only submits the anomaly and returns the
+    # accepted identifiers). For example, an ops process can approve the
+    # correction through the same gateway API, POSTing the verdict to the
+    # approval endpoint:
     #
-    #     handle = client.get_workflow_handle(f"correction-{payment_id}")
-    #     await handle.signal(
-    #         PaymentCorrectionCoordinator.approve_correction,
-    #         ApprovalDecision(approved=True, approver="ops@bank.example"),
-    #     )
+    #     POST /api/payments/v1/anomalies/<payment_id>/approval
+    #     {"approved": true, "approver": "ops@bank.example"}
     #
     # or straight from the Temporal CLI:
     #
