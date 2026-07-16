@@ -10,6 +10,10 @@ Prometheus endpoint configured in ``worker/main.py``, next to the built-in
 
 from __future__ import annotations
 
+# --- FEATURE: retry-alerting ---
+# import os
+# --- END FEATURE: retry-alerting ---
+
 # --- FEATURE: settlement-confirmation ---
 # import asyncio
 # import os
@@ -68,6 +72,19 @@ def _correction_reference(field_to_fix: str, workflow_id: str) -> str:
 #
 # --- END FEATURE: non-retryable-validation ---
 
+# --- FEATURE: retry-alerting ---
+# # NOTE: Hand-operated fault switch for the workshop. Flip to True to make
+# # apply_correction fail with a RETRYABLE error on its first attempts and then
+# # succeed, so a learner can watch the alert counter climb before the correction
+# # completes. Default False keeps the happy path green (success on attempt 1).
+# _SIMULATE_TRANSIENT_RAIL_OUTAGE = False
+# # Attempt number at or above which the retry-alert metric is emitted. Read from
+# # the environment (with a safe default) so it can be tuned without a code change.
+# # Configuration reads are side effects, so they belong in an activity's module,
+# # never in deterministic workflow code.
+# _RETRY_ALERT_THRESHOLD = int(os.environ.get("CORRIDOR_RETRY_ALERT_THRESHOLD", "2"))
+# --- END FEATURE: retry-alerting ---
+
 
 @activity.defn
 async def apply_correction(proposal: CorrectionProposal) -> str:
@@ -103,6 +120,34 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     #         non_retryable=True,
     #     )
     # --- END FEATURE: non-retryable-validation ---
+
+    # --- FEATURE: retry-alerting ---
+    # # NOTE: activity.info().attempt is the current attempt number; it starts at 1
+    # # and the server increments it on every retry. It lets an activity notice it
+    # # is being retried and react — here, raise an operational alert once retries
+    # # pile up. Source: https://docs.temporal.io/references/failures#activity-retries
+    # attempt = activity.info().attempt
+    # if attempt >= _RETRY_ALERT_THRESHOLD:
+    #     # Retry Alerting via Metrics: surface persistent failures to operators
+    #     # through the same meter that backs the Prometheus endpoint, so a climbing
+    #     # counter can drive a dashboard or an alert rule.
+    #     alerted = meter.create_counter(
+    #         "corridor_correction_retries_alerted",
+    #         "Corrections whose retries crossed the alert threshold",
+    #     )
+    #     # NOTE: corridor / anomaly type are not carried on CorrectionProposal, so
+    #     # we tag with the same identifying attributes as the sibling corridor_*
+    #     # counters above (field + source) to keep the metric series consistent.
+    #     alerted.add(1, {"field": proposal.field_to_fix, "source": proposal.source})
+    # if _SIMULATE_TRANSIENT_RAIL_OUTAGE and attempt < _RETRY_ALERT_THRESHOLD + 1:
+    #     # NOTE: A plain exception is RETRYABLE by default in Temporal (only
+    #     # ApplicationError(non_retryable=True) or exceeding the RetryPolicy stops
+    #     # the retries), so Temporal retries per the coordinator's policy. Bounding
+    #     # the failure to attempt < _RETRY_ALERT_THRESHOLD + 1 lets the correction
+    #     # still succeed within maximum_attempts=3, after the alert has fired.
+    #     # Source: https://docs.temporal.io/references/failures#retryable-vs-non-retryable
+    #     raise RuntimeError(f"Simulated transient rail outage (attempt {attempt})")
+    # --- END FEATURE: retry-alerting ---
 
     # NOTE: Idempotency key from the (unique) coordinator workflow id, NOT hash():
     # a retry of this activity must not apply a second, differently-referenced
