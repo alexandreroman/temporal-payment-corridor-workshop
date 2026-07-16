@@ -12,9 +12,10 @@ part of the workshop's
 progressive-activation FEATURE mechanism. Behavior there —
 including the bearer-token authentication that gates every
 request — ships as plain, always-on default code with **no**
-`# region FEATURE-ON/OFF:` markers. The bearer token is
-required (fail-fast at import if `CODEC_SERVER_AUTH_TOKEN` is
-unset, mirroring the `CORRIDOR_ENCRYPTION_KEY` check).
+`# region FEATURE-ON/OFF:` markers. When `CODEC_SERVER_AUTH_TOKEN`
+(or `CODEC_ENCRYPTION_KEY`) is unset the server logs a WARNING and
+falls back to an insecure built-in demo default (token `changeme`)
+rather than failing fast, so it always starts.
 Toggleable FEATURE blocks live only in the app components
 (`worker/`, `simulator/`, `webui/`, `shared/`), which is why
 `tools/features.py` `ROOTS` deliberately excludes

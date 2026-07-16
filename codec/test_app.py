@@ -16,11 +16,13 @@ from fastapi.testclient import TestClient
 from google.protobuf import json_format
 from temporalio.api.common.v1 import Payload, Payloads
 
-# codec.app reads CORRIDOR_ENCRYPTION_KEY at *import* time and raises
-# if it is unset, so the key must be in the environment before that import
-# runs. Hence the deliberate import-after-statement below (see worker/main.py
-# for the same "import deferred until after env is set" pattern).
-os.environ["CORRIDOR_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
+# codec.app reads CODEC_ENCRYPTION_KEY and CODEC_SERVER_AUTH_TOKEN at *import*
+# time; when unset it falls back to insecure built-in demo defaults (with a
+# warning) rather than raising. Set both before the import so the tests run
+# against known values instead of the fallbacks. Hence the deliberate
+# import-after-statement below (see worker/main.py for the same "import
+# deferred until after env is set" pattern).
+os.environ["CODEC_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 os.environ["CODEC_SERVER_AUTH_TOKEN"] = "test-shared-secret"
 
 from codec.app import app  # noqa: E402

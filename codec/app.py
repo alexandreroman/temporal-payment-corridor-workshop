@@ -27,6 +27,7 @@ short and correct.
 from __future__ import annotations
 
 import hmac
+import logging
 import os
 from collections.abc import Awaitable, Callable, Sequence
 
@@ -38,21 +39,37 @@ from temporalio.api.common.v1 import Payload, Payloads
 
 from shared.encryption import EncryptionCodec, load_key
 
+logger = logging.getLogger(__name__)
+
 # All configuration comes from environment variables, loaded from a local
 # .env file when present (see .env.example). Load before reading any getenv.
 load_dotenv()
 
-# NOTE: Fail fast at import time: a codec server with no key cannot do its one job
-# (decrypting payloads for display). Raising here surfaces the misconfiguration
-# on startup instead of on the first Web UI request.
+# Insecure, publicly-known dev defaults used only when the real values are
+# unset. They MUST match the fallbacks baked into gateway/Caddyfile (token) and
+# the values shipped in .env.example (both), so `cp .env.example .env` — or even
+# an empty environment — yields a coherent setup where the worker encrypts with
+# the key the codec expects and the gateway injects the token the codec expects.
+_DEFAULT_ENCRYPTION_KEY = "M80yQxCwjIWwuApHeRjQQoRARc0PhUh6FAEfukmEhlk="
+_DEFAULT_AUTH_TOKEN = "changeme"
+
+# NOTE: The codec never fails fast on missing config. Instead of raising (which
+# would stop the service from starting in early sessions where encryption is
+# not yet configured), it degrades to a built-in insecure default and logs a
+# loud WARNING. Trade-off: the service is always usable out of the box, at the
+# cost of running with a public key/token until real values are set — the
+# warning makes that unmissable.
 _key = load_key()
 if _key is None:
-    raise RuntimeError(
-        "CORRIDOR_ENCRYPTION_KEY is not set; the codec server cannot "
-        "decrypt payloads without it. Generate a key with: "
+    logger.warning(
+        "CODEC_ENCRYPTION_KEY is not set; falling back to an insecure "
+        "built-in dev default. Set CODEC_ENCRYPTION_KEY to a real Fernet key "
+        "for any non-demo use. Generate one with: "
         "python -c 'from cryptography.fernet import Fernet; "
         "print(Fernet.generate_key().decode())'"
     )
+    # load_key() returns the key as bytes, so encode the string default to match.
+    _key = _DEFAULT_ENCRYPTION_KEY.encode()
 
 # One codec instance shared by every request — it is stateless and thread-safe.
 _codec = EncryptionCodec(_key)
@@ -72,13 +89,18 @@ _UI_ORIGIN = os.getenv("TEMPORAL_UI_ORIGIN", "http://localhost:8233")
 # secret is the simplest illustration; production would validate a real access
 # token / JWT instead. Source:
 # https://docs.temporal.io/production-deployment/data-encryption
+# As with the key above, an unset token degrades to an insecure built-in
+# default (with a warning) rather than failing fast, so the server always
+# starts and the gateway's matching default token authenticates out of the box.
 _AUTH_TOKEN = os.getenv("CODEC_SERVER_AUTH_TOKEN")
 if not _AUTH_TOKEN:
-    raise RuntimeError(
-        "CODEC_SERVER_AUTH_TOKEN is not set; the codec server gates every "
-        "request behind a shared bearer token. Generate one with: "
+    logger.warning(
+        "CODEC_SERVER_AUTH_TOKEN is not set; falling back to an insecure "
+        "built-in dev default. Set CODEC_SERVER_AUTH_TOKEN to a real secret "
+        "for any non-demo use. Generate one with: "
         "python -c 'import secrets; print(secrets.token_urlsafe(32))'"
     )
+    _AUTH_TOKEN = _DEFAULT_AUTH_TOKEN
 
 
 def require_bearer_token(request: Request) -> None:

@@ -49,7 +49,7 @@ define show_urls
 	@echo ""
 	@echo "The stack is up. Open:"
 	@echo "  Web UI             http://localhost:$(WEBUI_URL_PORT)"
-	@echo "  Temporal dashboard http://localhost:$(TEMPORAL_UI_PORT)"
+	@echo "  Temporal Web UI    http://localhost:$(TEMPORAL_UI_PORT)  (via gateway)"
 	@echo "  Worker metrics     http://localhost:$(METRICS_PORT)/metrics"
 endef
 
@@ -63,8 +63,8 @@ setup: ## Enable the local ruff pre-commit hook (run once after cloning)
 ##@ Infra
 
 .PHONY: infra-up
-infra-up: ## Bring up the Temporal dev server
-	docker compose up -d temporal
+infra-up: ## Bring up temporal + codec + gateway (gateway is the Web UI entry point)
+	docker compose up -d temporal codec gateway
 
 .PHONY: infra-down
 infra-down: ## Stop the Temporal dev server (keeps container around)
@@ -122,8 +122,8 @@ worktree-init: ## Initialise a worktree: install deps and remap host ports off C
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
-		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n      - "%s:8233"\n  worker:\n    ports: !override\n      - "%s:9464"\n  webui:\n    ports: !override\n      - "%s:8000"\n' \
-			$$((CASPER_PORT + 1)) $$((CASPER_PORT + 2)) $$((CASPER_PORT + 3)) "$$CASPER_PORT" > compose.override.yaml; \
+		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n  gateway:\n    ports: !override\n      - "%s:8233"\n  worker:\n    ports: !override\n      - "%s:9464"\n  webui:\n    ports: !override\n      - "%s:8000"\n' \
+			$$((CASPER_PORT + 1)) "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 3)) > compose.override.yaml; \
 		echo "Wrote compose.override.yaml (CASPER_PORT=$$CASPER_PORT)"; \
 	fi
 
@@ -168,9 +168,9 @@ feature-disable: ## Disable a feature everywhere (NAME=<name>, DRY_RUN=1 to prev
 
 ##@ Session 3
 
-.PHONY: codec-server
-codec-server: ## Run the codec server for the Temporal UI (decrypts payloads for display)
-	uv run python -m codec.main
+.PHONY: gateway
+gateway: ## (Re)start the API gateway — single entry point (Web UI + /codec) at http://localhost:8233
+	docker compose up -d gateway
 
 .PHONY: capture-history
 capture-history: ## Regenerate worker/testdata/coordinator-history.json for the replay test

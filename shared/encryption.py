@@ -57,12 +57,12 @@ class EncryptionCodec(PayloadCodec):
 
 
 def load_key() -> bytes | None:
-    """Read the Fernet key from ``CORRIDOR_ENCRYPTION_KEY`` (None if unset).
+    """Read the Fernet key from ``CODEC_ENCRYPTION_KEY`` (None if unset).
 
     Generate one with ``python -c 'from cryptography.fernet import Fernet;
     print(Fernet.generate_key().decode())'``.
     """
-    key = os.getenv("CORRIDOR_ENCRYPTION_KEY")
+    key = os.getenv("CODEC_ENCRYPTION_KEY")
     return key.encode() if key else None
 
 
