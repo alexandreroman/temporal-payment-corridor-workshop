@@ -17,8 +17,8 @@ the point of use, never as a single `host:port` string.
   `WORKER_METRICS_PORT` (default `9464`), combined into the
   `PrometheusConfig` bind address in `payments/main.py`.
 
-The older single `METRICS_BIND_ADDRESS=host:port` form is gone. When
-adding a new endpoint, follow the two-var shape and mirror the
+Do not use a single `host:port` variable such as `METRICS_BIND_ADDRESS`.
+When adding a new endpoint, follow the two-var shape and mirror the
 `int(os.getenv(...))` port cast used in `webui/main.py`.
 
 ## Logfire is local-only

@@ -10,8 +10,8 @@ type: reference
 `# region FEATURE-OFF: <name>` regions (VS Code folding
 markers, closed by `# endregion <KIND>: <name>`). `FEATURE-ON` is
 the block that goes live when the feature is enabled; `FEATURE-OFF`
-is the base code live when it is off. Rules learned from fixing
-broken blocks:
+is the base code live when it is off. Rules for authoring these blocks
+so they enable cleanly and round-trip:
 
 - **Enable strips exactly one leading `# `** per body line
   (`_uncomment`). So distinguish line kinds:

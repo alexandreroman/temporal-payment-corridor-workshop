@@ -8,8 +8,8 @@ type: reference
 
 `payments/test_workflows.py` runs real workflow code against
 `temporalio.testing.WorkflowEnvironment.start_local()`. Two non-obvious
-things were learned getting that green, both worth knowing before writing
-more tests in this area.
+things about this setup are worth knowing before writing more tests in
+this area.
 
 ## `Agent.override(model=...)` does not reach the model activity
 
@@ -19,8 +19,8 @@ this does **not** work: model requests are dispatched as Temporal
 *activities*, independent tasks picked up by the worker's activity
 poller — not plain nested Python calls — so the contextvar `override()`
 sets around the workflow call never reaches the activity's execution
-context. Verified empirically: wrapping `client.execute_workflow(...)` in
-the override still made a real call to the configured provider and failed
+context. Empirically, wrapping `client.execute_workflow(...)` in the
+override still makes a real call to the configured provider and fails
 authentication.
 
 The reliable alternative: construct a *different* `Agent` directly with

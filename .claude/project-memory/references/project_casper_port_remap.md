@@ -1,6 +1,6 @@
 ---
 name: "Casper worktree port remap"
-description: "make dev/webui honor CASPER_PORT via compose.override.yaml; auto-heal deliberately not added"
+description: "make dev/webui honor CASPER_PORT via compose.override.yaml; no auto-heal by decision"
 type: project
 ---
 
@@ -14,8 +14,8 @@ and exports them (`TEMPORAL_ADDRESS`, `WEBUI_PORT`, `WORKER_METRICS_*`) to
 the host-side `uv run payments`/`webui` processes, so `make dev` and
 `make webui` bind the remapped ports. This works in a normal worktree
 because the Casper `setup` hook (`make worktree-ports`) writes the file
-once at worktree creation. Verified 2026-07-15 by launching the real host
-webui (binds `0.0.0.0:45850` for `CASPER_PORT=45850`).
+once at worktree creation. The host webui binds the remapped port (e.g.
+`0.0.0.0:45850` for `CASPER_PORT=45850`).
 
 Decision: do NOT add auto-heal to regenerate `compose.override.yaml` when
 it is missing (e.g. a worktree created via plain `git worktree add`, so the
