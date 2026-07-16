@@ -138,7 +138,7 @@ The codec always starts, even before encryption is configured: when
 public, insecure built-in default and logs a warning, so the demo works out of
 the box (the `/codec` route returns 502 only during the brief startup window).
 
-To decode encrypted payloads in Session 3:
+To decode encrypted payloads:
 
 1. Enable `payload-encryption` (`make feature-enable NAME=payload-encryption`).
 2. `cp .env.example .env` — the shipped file already sets matching

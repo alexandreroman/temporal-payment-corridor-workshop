@@ -148,7 +148,8 @@ services:
     # NOTE: The codec no longer fails fast on missing config. When
     # CODEC_ENCRYPTION_KEY / CODEC_SERVER_AUTH_TOKEN are unset it starts anyway
     # with an insecure built-in default and logs a warning, so `unless-stopped`
-    # is safe (no crash loop) and it comes up with the stack in every session.
+    # is safe (no crash loop) and it comes up with the stack whether or not
+    # encryption is configured.
     deploy:
       resources:
         limits:
