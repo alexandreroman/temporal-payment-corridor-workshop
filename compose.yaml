@@ -23,6 +23,13 @@ services:
       - payments
       - --namespace
       - memory
+      # Pre-register the custom Search Attributes used by the
+      # search-attributes feature, so it works without a manual
+      # `temporal operator search-attribute create` step.
+      - --search-attribute
+      - corridor=Keyword
+      - --search-attribute
+      - anomalyType=Keyword
     ports:
       - "7233:7233"  # gRPC endpoint for workers and clients
       # Web UI is not published directly: it is served through the gateway on

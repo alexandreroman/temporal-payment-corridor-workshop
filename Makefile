@@ -85,8 +85,12 @@ payments: ## Run the payments worker on the host with hot reload
 	uv run payments
 
 .PHONY: simulator
-simulator: ## Simulate a payment anomaly (SCENARIO=<name>; see `uv run simulator --list-scenarios`)
+simulator: ## Simulate a payment anomaly (SCENARIO=<name>; see `make simulator-list`)
 	uv run simulator $(if $(SCENARIO),--scenario $(SCENARIO))
+
+.PHONY: simulator-list
+simulator-list: ## List the available payment-anomaly scenarios
+	uv run simulator --list-scenarios
 
 .PHONY: webui
 webui: ## Run the web UI on the host with hot reload

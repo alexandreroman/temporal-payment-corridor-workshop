@@ -24,24 +24,50 @@ here — this note tracks only what remains to do.
   its `MEMORY.md` pointer. Keep the `MEMORY.md` index line
   generic — do not name individual pending items there.
 
-## Run a real agent (not yet implemented)
+## Compliance as a gate, not a competing proposer (not yet implemented)
 
-Fire a payment anomaly that **misses** corridor memory, forcing
-the child workflows to actually call the LLM (`source=llm`).
-Intended as a documented step plus a parameterizable simulator
-(anomaly from env / CLI flag, defaulting to the seeded happy
-path) — **not** a `FEATURE` toggle, since it is about *running*
-the app differently, not activating dormant code.
+Refactor the coordinator's proposal merge so the compliance agent
+*validates* the instruction agent's fix instead of proposing a
+competing correction. Recorded as future work to handle in a later
+session; not a `FEATURE` toggle for now.
 
-- **Why:** the default `simulator` always fires the pre-seeded
-  `US->IN` / `wrong_bic` anomaly, which hits passive corridor
-  memory and short-circuits before `agent.run()`, so the
-  headline capability (durable Pydantic AI agents) is never
-  exercised in the default demo and no API key is needed.
-- **How to apply:** use a memory-miss anomaly (e.g.
-  `currency_mismatch`); require the provider key
-  (`ANTHROPIC_API_KEY` etc.) for this step only; have learners
-  observe the model-request activity in the Web UI, a possibly
-  sub-threshold confidence routing into the [[human-approval]]
-  path, durable resume after a mid-call worker kill, and durable
-  retries from the now-always-on `_MODEL_ACTIVITY_CONFIG`.
+- **Why:** both agent child workflows return `CorrectionProposal`
+  and the coordinator keeps the highest-`confidence` one via
+  `_select_best` (`payments/workflows.py`). That conflates orthogonal
+  concerns — operational repair and compliance are not interchangeable
+  candidates, so a more-confident instruction fix can silently discard
+  a compliance violation. In a real cross-border correction system
+  compliance is a gate/veto (and a sanctions hit a hard hold), never
+  outvoted by confidence.
+- **How to apply:** give `ComplianceAgentWorkflow` a distinct output
+  (e.g. a `ComplianceVerdict` with `compliant`, `violations`,
+  `confidence`) instead of `CorrectionProposal`; the coordinator
+  applies the instruction agent's fix only when compliance clears it,
+  blocks/holds on any violation regardless of instruction confidence,
+  and routes the low-confidence case into the existing
+  [[human-approval]] path. Parallel fan-out may stay, but merging then
+  combines constraints and escalates same-field conflicts to a human —
+  never `max(confidence)`.
+- **Also change the agent, not just the workflow:** in
+  `payments/agents.py` the `compliance_agent` has
+  `output_type=AgentCorrection` and instructions telling it to
+  *propose a correction*. A verdict output means rewriting that
+  `output_type` (to the verdict model) and its prompt (validate, don't
+  propose), plus the `_propose` path in `payments/workflows.py`, which
+  currently assumes both agents return an `AgentCorrection`.
+- **Replay fixture will break:** any change to the coordinator's
+  workflow code invalidates the committed
+  `payments/testdata/coordinator-history.json`, so `test_replay.py`
+  fails until regenerated with `make capture-history` (memory service
+  must be running first — see [[Regenerating the replay fixture needs
+  the memory service on make's port]] for the port gotcha).
+- **Preserve progressive activation:** the merge logic sits amid the
+  coordinator's existing `FEATURE-ON/OFF` blocks
+  (`human-approval-signal`, `settlement-confirmation`); keep that
+  structure intact per [[Authoring toggleable FEATURE blocks]] rather
+  than rewriting the coordinator in place.
+- **Tests affected:** changing the compliance agent's `output_type`
+  touches `payments/test_worker.py` and `test_replay.py`; follow
+  [[Testing TemporalAgent-based workflows under start_local]] (register
+  a `TestModel` stand-in under the real workflow name; `Agent.override`
+  does not reach the model activity).

@@ -1,5 +1,8 @@
 # Temporal Payment Corridor Workshop
 
+[![CI](https://github.com/alexandreroman/temporal-payment-corridor-workshop/actions/workflows/ci.yml/badge.svg)](https://github.com/alexandreroman/temporal-payment-corridor-workshop/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 Repairs cross-border payments that arrive with an anomaly — a wrong
 BIC/SWIFT code, a missing intermediary bank, a currency mismatch — by
 coordinating specialized AI agents as durable Temporal workflows, with
@@ -11,19 +14,22 @@ end-to-end on a local dev server.
 > The payment/transfer domain model is intentionally simplified to keep
 > the workshop focused on durable execution with Temporal, not on
 > payments compliance. A real cross-border payment carries far more than
-> a single field — an inbound transfer to India (corridor `US->IN`), for
-> example, needs the beneficiary account number, the bank's SWIFT/BIC,
-> the branch IFSC code, an RBI/FEMA purpose code, and often a
-> correspondent bank, and India does not use IBAN at all. Here each
-> anomaly targets one field (e.g. a malformed BIC) so the correction
-> logic stays easy to follow.
+> a single field. Here each anomaly targets exactly one field — a wrong
+> BIC, a missing intermediary bank, or a currency mismatch — so the
+> correction logic stays easy to follow.
 
 ## Features
 
 - **Durable agents** — Pydantic AI agents wrapped as Temporal workflows,
   so every model call survives worker crashes and restarts.
-- **Coordinator + child workflows** — a parent workflow fans out to an
-  instruction agent and a compliance agent, each its own child workflow.
+- **Coordinator + child workflows** — a parent workflow fans out to two
+  specialized agents, each its own child workflow: the **instruction agent**
+  (a payments operations expert that repairs the instruction so it can
+  settle — a valid BIC/SWIFT, the required intermediary bank, a consistent
+  routing detail) and the **compliance agent** (a compliance officer that
+  keeps the fix within the rules — the settlement currency must match the
+  corridor destination, no sanctioned intermediary). The coordinator then
+  keeps the highest-confidence proposal.
 - **Passive corridor memory** — agents check a memory of known
   corridor-specific patterns before spending a model call; the seeded
   happy path never touches an LLM.
@@ -37,7 +43,7 @@ end-to-end on a local dev server.
 
 ## Prerequisites
 
-- **Python 3.12+** and [uv](https://docs.astral.sh/uv/)
+- **Python 3.13+** and [uv](https://docs.astral.sh/uv/)
 - **Docker** (or a compatible engine) with Compose — runs the Temporal
   dev server container
 - **LLM provider API key** — only needed once an anomaly misses corridor
@@ -62,12 +68,20 @@ instead of only by CI:
 make setup       # enable the local ruff pre-commit hook
 ```
 
-Start the Temporal dev server, then payments, the web UI, and the corridor
-memory service (all with hot reload) in one go — three host processes plus
-the Temporal container. The command prints the reachable URLs in a banner:
+There are two ways to run the app. For development, `make dev` starts the
+Temporal dev server plus payments, the web UI, and the corridor memory
+service (all on the host with hot reload) and prints the reachable URLs in a
+banner:
 
 ```bash
-make dev       # Temporal dev server, then payments + web UI + memory on the host
+make dev       # Temporal dev server + payments, web UI & memory (hot reload)
+```
+
+For a fully containerized run, `make app-up` brings the whole stack up in
+containers (`make app-down` tears it down):
+
+```bash
+make app-up    # bring up the full stack in containers
 ```
 
 Payments and the memory service run in two separate Temporal namespaces
@@ -81,27 +95,12 @@ Then, in another terminal, fire a payment anomaly:
 make simulator   # simulate an incoming payment anomaly
 ```
 
-`make dev` already serves the web UI (a temporal.io-styled landing page).
-Use `make webui` to run only the web UI — for example when iterating on the
-frontend against an already-running payments process:
-
-```bash
-make webui       # http://localhost:8000
-```
-
-Likewise, `make memory` runs only the corridor memory service (its HTTP API
-serves `/api/memory/v1` on http://localhost:8010):
-
-```bash
-make memory      # http://localhost:8010
-```
-
 By default the Temporal Web UI is at http://localhost:8233 — served through
 the gateway, the app's single published HTTP entry point — and the payments
 metrics at http://localhost:9464/metrics; `make dev` also prints these URLs
 in its banner. The default anomaly matches a pre-seeded corridor-memory
 pattern, so it is corrected end-to-end with no API key. Run `make help` to
-list all targets (`infra-up`, `infra-down`, `payments`, `lint`, ...).
+list all targets.
 
 ## Workshop features
 
@@ -133,79 +132,41 @@ Once `payload-encryption` is enabled (`make feature-enable
 NAME=payload-encryption`) payments encrypts every payload on the wire, so
 the Temporal Web UI shows raw ciphertext in Event History. A codec server
 decrypts payloads on demand — a small HTTP service that reuses the same
-encryption key (`CODEC_ENCRYPTION_KEY`) — and the Web UI calls it to
-display cleartext.
+encryption key — and the Web UI calls it to display cleartext.
 
 Both the codec server and the gateway are Compose services that come up with
-the stack (`make dev` / `make infra-up` / `make app-up`). The gateway is the
-app's single published HTTP entry point (`http://localhost:8233`): it serves
-the Temporal Web UI at `/` and the codec server at `/codec`. Because the UI
-page and the codec endpoint share this one origin, calls from the UI to
-`/codec` are same-origin, so the browser sends no CORS preflight and the codec
-server needs no CORS configuration.
+the stack (`make dev` / `make app-up`). The gateway is the app's single
+published HTTP entry point (`http://localhost:8233`): it serves the Temporal
+Web UI at `/` and the codec server at `/codec`, so calls from the UI to
+`/codec` are same-origin and need no CORS configuration.
 
-The codec always starts, even before encryption is configured: when
-`CODEC_ENCRYPTION_KEY` or `CODEC_SERVER_AUTH_TOKEN` is unset it falls back to a
-public, insecure built-in default and logs a warning, so the demo works out of
-the box (the `/codec` route returns 502 only during the brief startup window).
+You don't have to configure anything for the demo. When `CODEC_ENCRYPTION_KEY`
+and `CODEC_SERVER_AUTH_TOKEN` are unset, both the codec and the gateway fall
+back to matching public, insecure built-in defaults (logging a warning) — so
+decoding works out of the box, even before you create a `.env`. The dev server
+is already pointed at `/codec` via its `--ui-codec-endpoint
+http://localhost:8233/codec` flag, and the gateway injects the bearer token, so
+decrypted payloads appear in the Web UI with no manual configuration. Set your
+own `CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` in `.env` only when you
+want to actually secure the setup.
 
-To decode encrypted payloads:
-
-1. Enable `payload-encryption` (`make feature-enable NAME=payload-encryption`).
-2. `cp .env.example .env` — the shipped file already sets matching
-   `CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` demo values (replace
-   them with your own to secure the setup).
-3. (Re)start the stack so payments and the codec pick up the configuration — for
-   example `make dev` (or `make app-up`).
-
-The dev server is already pointed at `/codec` via its
-`--ui-codec-endpoint http://localhost:8233/codec` flag, and the gateway
-injects the bearer token, so decrypted payloads appear in the Web UI with no
-manual UI configuration. Thanks to the matching built-in defaults, decoding
-even works before you create a `.env` at all.
-
-### Authenticating the codec server
-
-Left open, the codec server decrypts payloads for anyone who can reach it — an
-unauthenticated decryption oracle. So it requires a shared bearer token on
-every request and rejects any call whose `Authorization` header does not carry
-that secret. When `CODEC_SERVER_AUTH_TOKEN` is unset the server does not fail;
-it falls back to a public, insecure built-in default (logging a warning) so the
-demo authenticates out of the box. Set your own token (`.env.example` ships one;
-regenerate it with `python -c "import secrets;
-print(secrets.token_urlsafe(32))"`) to actually secure the codec.
-
-The Web UI cannot send that static secret itself: it only forwards a signed-in
-user's access token, and a local `temporal server start-dev` has no signed-in
-user. The gateway is the trusted local client that supplies it, injecting
-`Authorization: Bearer $CODEC_SERVER_AUTH_TOKEN` on every request it forwards
-to `/codec` (and defaulting to the same built-in token when the variable is
-unset). This is a local-development convenience only: in production the Web UI
-forwards the signed-in user's real access token, so no gateway or shared secret
-is needed.
-
-If you prefer the command line, point the CLI at the codec through the gateway.
-No `--codec-auth` is needed — the gateway injects the token:
+The same goes for the CLI: with the feature active, point `temporal` at the
+codec through the gateway to read decrypted payloads. No `--codec-auth` is
+needed — the gateway injects the token:
 
 ```bash
-temporal workflow show --codec-endpoint http://localhost:8233/codec
+temporal workflow show \
+  --workflow-id <workflow-id> \
+  --codec-endpoint http://localhost:8233/codec
 ```
 
 ### Registering Search Attributes (search-attributes)
 
 Once `search-attributes` is enabled (`make feature-enable
 NAME=search-attributes`) the coordinator tags each workflow execution with a
-`corridor` and an `anomalyType` Search Attribute. Before you can filter or
-list executions by them, register the two custom attributes on the dev
-server:
-
-```bash
-temporal operator search-attribute create --name corridor --type Keyword
-temporal operator search-attribute create --name anomalyType --type Keyword
-```
-
-Without this step payments fails when it tries to upsert unregistered
-attributes. After registering, filter executions in the Web UI or with
+`corridor` and an `anomalyType` Search Attribute. Both custom attributes are
+pre-registered by the dev server on startup (`make dev` / `make app-up`), so
+there is no manual registration step — filter executions in the Web UI or with
 `temporal workflow list --query "corridor = '...'"`.
 
 Enabling a feature that changes workflow code — as `search-attributes` does
@@ -216,8 +177,8 @@ matches the new code path, so `payments/test_replay.py` failing after you
 enable such a feature is expected, not a regression. Regenerate the fixture
 for the new state with `make capture-history` if you want a passing replay
 test while the feature stays enabled. That capture drives the coordinator,
-which now reads corridor memory over HTTP, so `make memory` must be running
-first.
+which now reads corridor memory over HTTP, so the memory service must be
+running first (e.g. via `make dev`).
 
 ## Usage
 
@@ -237,12 +198,11 @@ scenario with `SCENARIO=<name>`:
 make simulator SCENARIO=memory-miss
 ```
 
-Run `uv run simulator --list-scenarios` to see them all. Every scenario other
-than `memory-hit` misses corridor memory and invokes the agents, so it needs
+Run `make simulator-list` to see them all. Every scenario other than
+`memory-hit` misses corridor memory and invokes the agents, so it needs
 `ANTHROPIC_API_KEY` (see [Configuration](#configuration)). Always launch the
 simulator through `make`: the target exports the ports from
-`compose.override.yaml`, whereas a bare `uv run simulator` uses the default
-`localhost:7233` and fails when the ports are remapped.
+`compose.override.yaml`, so it keeps working when the ports are remapped.
 
 Inspect the merged metrics endpoint:
 
@@ -253,63 +213,79 @@ curl -s http://localhost:9464/metrics | grep -E '^(temporal_|corridor_)'
 ## Configuration
 
 All configuration comes from environment variables, loaded from a local
-`.env` file when present (see [.env.example](.env.example)).
+`.env` file when present (see [.env.example](.env.example)). The essentials
+are the AI model the agents use and its matching provider key:
 
-| Variable                | Description                              | Default                       |
-| ----------------------- | ---------------------------------------- | ----------------------------- |
-| `TEMPORAL_ADDRESS`      | Temporal frontend address                | `localhost:7233`              |
-| `PAYMENTS_METRICS_HOST` | Host for the `/metrics` endpoint         | `0.0.0.0`                     |
-| `PAYMENTS_METRICS_PORT` | Port for the `/metrics` endpoint         | `9464`                        |
-| `CORRIDOR_MODEL`        | Pydantic AI model string for the agents  | `anthropic:claude-sonnet-5`   |
-| `ANTHROPIC_API_KEY`     | Provider key matching `CORRIDOR_MODEL`   | (required to run the agents)  |
+| Variable            | Description                             | Default                      |
+| ------------------- | --------------------------------------- | ---------------------------- |
+| `CORRIDOR_MODEL`    | Pydantic AI model string for the agents | `anthropic:claude-sonnet-5`  |
+| `ANTHROPIC_API_KEY` | Provider key matching `CORRIDOR_MODEL`  | (required to run the agents) |
+
+Swap `CORRIDOR_MODEL` and its provider key for any other Pydantic AI provider.
+See [.env.example](.env.example) for the remaining, rarely changed settings.
 
 ## Architecture
 
 The payment-correction service (`payments/`, namespace `payments`) hosts the
 coordinator, agents, and activities on one task queue. The coordinator
-orchestrates the agents; agents consult corridor memory before the LLM;
-activities perform all side effects and emit application metrics. Corridor
+orchestrates two specialized agents — the instruction agent repairs the
+payment instruction so it can settle, while the compliance agent guards the
+fix against currency and sanctions rules — and keeps the highest-confidence
+proposal. Each agent consults corridor memory before the LLM; activities
+perform all side effects and emit application metrics. Corridor
 memory is a separate service (`memory/`) that the `read_corridor_memory` and
 `write_corridor_memory` activities reach over HTTP (`/api/memory/v1`). With
 the `memory-workflow` FEATURE on, that service runs its own embedded worker
 and `MemoryWorkflow` on namespace `memory`; otherwise it serves a naive
 in-memory store.
 
+The correction of one payment plays out as this sequence — the coordinator
+fans out to both agents concurrently, each tries corridor memory before the
+LLM, and the coordinator applies the fix or escalates to a human:
+
 ```mermaid
-graph TD
-    S[simulator/main.py] -->|start workflow| C[PaymentCorrectionCoordinator]
-    C -->|child workflow| I[InstructionAgentWorkflow]
-    C -->|child workflow| K[ComplianceAgentWorkflow]
-    I --> M[read_corridor_memory]
-    K --> M
-    I -.->|on memory miss| L[(LLM via Pydantic AI)]
-    K -.->|on memory miss| L
-    C -->|apply| A[apply_correction]
-    C -.->|low confidence| H[Human approval signal]
-    M -->|HTTP /api/memory/v1| MEM[corridor-memory service memory/]
-    W[write_corridor_memory] -->|HTTP /api/memory/v1| MEM
+sequenceDiagram
+    participant Sim as simulator
+    participant Coord as PaymentCorrectionCoordinator
+    participant Agent as Instruction & Compliance<br/>agent child workflows
+    participant Mem as corridor-memory service
+    participant LLM as LLM (Pydantic AI)
+    participant Human as human reviewer
+
+    Sim->>Coord: start workflow (PaymentAnomaly)
+    par for each agent, concurrently
+        Coord->>Agent: execute child workflow
+        Agent->>Mem: read_corridor_memory (HTTP /api/memory/v1)
+        alt confident pattern in memory
+            Mem-->>Agent: known correction (source=memory)
+        else memory miss
+            Agent->>LLM: agent.run(prompt)
+            LLM-->>Agent: proposed correction (source=llm)
+        end
+        Agent-->>Coord: CorrectionProposal
+    end
+    Note over Coord: pick the highest-confidence proposal
+    alt confidence >= 0.75
+        Coord->>Coord: apply_correction (activity)
+    else confidence < 0.75
+        Coord->>Human: await decision (signal)
+        Human-->>Coord: ApprovalDecision
+        opt approved
+            Coord->>Coord: apply_correction (activity)
+        end
+    end
+    Coord-->>Sim: CorrectionOutcome
 ```
 
-| Module                   | Description                                                                                                                          |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `shared/models.py`       | Shared Pydantic models exchanged across the Temporal boundary                                                                        |
-| `payments/agents.py`     | Pydantic AI agents wrapped as durable `TemporalAgent`s                                                                               |
-| `payments/workflows.py`  | Coordinator and agent child workflows                                                                                                |
-| `payments/activities.py` | Applying the correction                                                                                                              |
-| `payments/memory.py`     | HTTP-client activities (`read_corridor_memory` / `write_corridor_memory`) calling the corridor-memory service over `/api/memory/v1`. |
-| `payments/worker.py`     | Builds the `Worker`: task queue + workflow/activity registration                                                                     |
-| `payments/main.py`       | Worker entrypoint: runtime, metrics, Logfire, hot reload                                                                             |
-| `webui/app.py`           | FastAPI web UI: routes, Logfire, temporal.io-styled landing page                                                                     |
-| `webui/main.py`          | Web UI entrypoint: uvicorn with hot reload                                                                                           |
-| `memory/app.py`          | FastAPI corridor-memory service: the `/api/memory/v1` routes                                                                         |
-| `memory/store.py`        | Naive in-memory corridor-pattern store (baseline backend)                                                                            |
-| `memory/workflow.py`     | `MemoryWorkflow` durable store for the `memory-workflow` FEATURE                                                                     |
-| `memory/main.py`         | Memory service entrypoint: uvicorn with hot reload                                                                                   |
-| `codec/app.py`           | FastAPI codec server: decrypts payloads for the Temporal Web UI                                                                      |
-| `codec/main.py`          | Codec server entrypoint: uvicorn without reload                                                                                      |
-| `Dockerfile.codec`       | Codec server image                                                                                                                   |
-| `gateway/Caddyfile`      | API gateway: single entry point, injects the codec bearer token                                                                      |
-| `simulator/main.py`      | Client that simulates an incoming payment anomaly                                                                                    |
+| Component     | Role                                                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `shared/`     | Pydantic models exchanged across the Temporal boundary                                                                   |
+| `payments/`   | Payment-correction service (namespace `payments`): coordinator, durable Pydantic AI agents, and activities on one task queue |
+| `memory/`     | Corridor-memory service (namespace `memory`): serves `/api/memory/v1`, backed by a naive in-memory store or the durable `MemoryWorkflow` |
+| `webui/`      | FastAPI web UI — the temporal.io-styled landing page                                                                     |
+| `codec/`      | Codec server that decrypts payloads for the Temporal Web UI (with `payload-encryption`)                                  |
+| `gateway/`    | API gateway — the single published HTTP entry point; injects the codec bearer token                                      |
+| `simulator/`  | Client that simulates an incoming payment anomaly                                                                        |
 
 ## License
 
