@@ -22,7 +22,7 @@ from shared.models import AnomalyType, CorridorPattern
 def _key(corridor: str, anomaly_type: AnomalyType) -> str:
     """Build the stable dict key for a (corridor, anomaly_type) pair.
 
-    A single flat string key (``"US->IN|wrong_iban"``) mirrors the key form
+    A single flat string key (``"US->IN|wrong_bic"``) mirrors the key form
     the future durable memory workflow uses, so the two backing stores stay
     interchangeable behind the same lookup/remember contract.
     """
@@ -43,11 +43,11 @@ def seed() -> dict[str, CorridorPattern]:
     memory alone, without ever calling an LLM.
     """
     return {
-        _key("US->IN", AnomalyType.WRONG_IBAN): CorridorPattern(
+        _key("US->IN", AnomalyType.WRONG_BIC): CorridorPattern(
             corridor="US->IN",
-            anomaly_type=AnomalyType.WRONG_IBAN,
-            field_to_fix="iban",
-            proposed_value="DE89370400440532013000",
+            anomaly_type=AnomalyType.WRONG_BIC,
+            field_to_fix="bic",
+            proposed_value="HDFCINBBXXX",
             confidence=0.95,
         ),
     }

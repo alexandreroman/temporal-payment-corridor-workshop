@@ -85,14 +85,14 @@ def test_lookup_returns_seeded_pattern_on_hit():
         async with _client() as client:
             response = await client.get(
                 "/api/memory/v1/lookup",
-                params={"corridor": "US->IN", "anomaly_type": "wrong_iban"},
+                params={"corridor": "US->IN", "anomaly_type": "wrong_bic"},
             )
         assert response.status_code == 200
         body = response.json()
         assert body["corridor"] == "US->IN"
-        assert body["anomaly_type"] == "wrong_iban"
-        assert body["field_to_fix"] == "iban"
-        assert body["proposed_value"] == "DE89370400440532013000"
+        assert body["anomaly_type"] == "wrong_bic"
+        assert body["field_to_fix"] == "bic"
+        assert body["proposed_value"] == "HDFCINBBXXX"
         assert body["confidence"] == 0.95
 
     asyncio.run(scenario())
@@ -103,7 +103,7 @@ def test_lookup_returns_null_on_miss():
         async with _client() as client:
             response = await client.get(
                 "/api/memory/v1/lookup",
-                params={"corridor": "US->GB", "anomaly_type": "wrong_iban"},
+                params={"corridor": "US->GB", "anomaly_type": "wrong_bic"},
             )
         # A miss is an ordinary answer: HTTP 200 with a JSON null body, not 404.
         assert response.status_code == 200

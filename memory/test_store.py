@@ -1,7 +1,7 @@
 """Tests for the naive in-memory corridor-memory store (the baseline backend).
 
 These exercise the plain module-level dict behind the HTTP service: the seeded
-US->IN / WRONG_IBAN pattern, lookup hit/miss, remember upserts with
+US->IN / WRONG_BIC pattern, lookup hit/miss, remember upserts with
 last-write-wins, and the read being non-mutating.
 
 The store keeps its patterns in a module-level dict, so an autouse fixture
@@ -32,16 +32,16 @@ def restore_store():
 
 
 def test_lookup_returns_seeded_pattern_on_hit():
-    pattern = store.lookup("US->IN", AnomalyType.WRONG_IBAN)
+    pattern = store.lookup("US->IN", AnomalyType.WRONG_BIC)
 
     assert pattern is not None
-    assert pattern.field_to_fix == "iban"
-    assert pattern.proposed_value == "DE89370400440532013000"
+    assert pattern.field_to_fix == "bic"
+    assert pattern.proposed_value == "HDFCINBBXXX"
     assert pattern.confidence == 0.95
 
 
 def test_lookup_returns_none_on_miss():
-    assert store.lookup("US->GB", AnomalyType.WRONG_IBAN) is None
+    assert store.lookup("US->GB", AnomalyType.WRONG_BIC) is None
 
 
 def test_remember_then_lookup_returns_the_new_pattern():
@@ -80,8 +80,8 @@ def test_remember_is_last_write_wins():
 def test_lookup_does_not_mutate_hit_count():
     # A lookup is a pure read: repeated lookups must never bump hit_count, so
     # the baseline matches the future durable query (which cannot mutate state).
-    first = store.lookup("US->IN", AnomalyType.WRONG_IBAN)
-    second = store.lookup("US->IN", AnomalyType.WRONG_IBAN)
+    first = store.lookup("US->IN", AnomalyType.WRONG_BIC)
+    second = store.lookup("US->IN", AnomalyType.WRONG_BIC)
 
     assert first is not None and second is not None
     assert first.hit_count == 0
@@ -90,17 +90,17 @@ def test_lookup_does_not_mutate_hit_count():
 
 def test_seed_returns_a_fresh_isolated_dict_each_call():
     first = store.seed()
-    assert set(first) == {"US->IN|wrong_iban"}
+    assert set(first) == {"US->IN|wrong_bic"}
 
     # Mutating the returned dict must not affect a later seed() or the live
     # store: seed() hands back a brand-new dict on every call.
-    first["US->IN|wrong_iban"].proposed_value = "TAMPERED"
-    first["injected"] = first["US->IN|wrong_iban"]
+    first["US->IN|wrong_bic"].proposed_value = "TAMPERED"
+    first["injected"] = first["US->IN|wrong_bic"]
 
     second = store.seed()
     assert "injected" not in second
-    assert second["US->IN|wrong_iban"].proposed_value == "DE89370400440532013000"
+    assert second["US->IN|wrong_bic"].proposed_value == "HDFCINBBXXX"
 
-    live = store.lookup("US->IN", AnomalyType.WRONG_IBAN)
+    live = store.lookup("US->IN", AnomalyType.WRONG_BIC)
     assert live is not None
-    assert live.proposed_value == "DE89370400440532013000"
+    assert live.proposed_value == "HDFCINBBXXX"

@@ -38,7 +38,7 @@ client = TestClient(
 
 # A representative plaintext payload, shaped like what the SDK puts on the
 # wire: a metadata "encoding" hint plus the serialized value in "data".
-_PLAINTEXT = b'{"iban":"DE89370400440532013000"}'
+_PLAINTEXT = b'{"bic":"HDFCINBBXXX"}'
 
 
 def _envelope(payload: Payload) -> str:

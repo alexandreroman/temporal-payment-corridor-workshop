@@ -97,12 +97,12 @@ def test_query_returns_seeded_pattern_on_hit():
             async with _worker(client):
                 handle = await _start_seeded(client)
                 pattern = await handle.query(
-                    MemoryWorkflow.lookup, args=["US->IN", AnomalyType.WRONG_IBAN]
+                    MemoryWorkflow.lookup, args=["US->IN", AnomalyType.WRONG_BIC]
                 )
 
         assert pattern is not None
-        assert pattern.field_to_fix == "iban"
-        assert pattern.proposed_value == "DE89370400440532013000"
+        assert pattern.field_to_fix == "bic"
+        assert pattern.proposed_value == "HDFCINBBXXX"
 
     asyncio.run(scenario())
 
@@ -114,7 +114,7 @@ def test_query_returns_none_on_miss():
             async with _worker(client):
                 handle = await _start_seeded(client)
                 pattern = await handle.query(
-                    MemoryWorkflow.lookup, args=["US->GB", AnomalyType.WRONG_IBAN]
+                    MemoryWorkflow.lookup, args=["US->GB", AnomalyType.WRONG_BIC]
                 )
 
         assert pattern is None
@@ -186,9 +186,9 @@ def test_continue_as_new_preserves_accumulated_patterns():
                     patterns = [
                         CorridorPattern(
                             corridor=f"US->C{i}",
-                            anomaly_type=AnomalyType.WRONG_IBAN,
-                            field_to_fix="iban",
-                            proposed_value=f"IBAN{i}",
+                            anomaly_type=AnomalyType.WRONG_BIC,
+                            field_to_fix="bic",
+                            proposed_value=f"BIC{i}",
                             confidence=0.5,
                         )
                         for i in range(MemoryWorkflow.MAX_UPDATES_BEFORE_CONTINUE)
@@ -213,7 +213,7 @@ def test_continue_as_new_preserves_accumulated_patterns():
                         assert stored == pattern
                     seeded = await handle.query(
                         MemoryWorkflow.lookup,
-                        args=["US->IN", AnomalyType.WRONG_IBAN],
+                        args=["US->IN", AnomalyType.WRONG_BIC],
                     )
                     assert seeded is not None
         finally:

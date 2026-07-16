@@ -48,15 +48,15 @@ if _env_var:
 class AgentCorrection(BaseModel):
     """Structured output every correction agent must return."""
 
-    field_to_fix: str = Field(description="Payment field to change, e.g. 'iban'.")
+    field_to_fix: str = Field(description="Payment field to change, e.g. 'bic'.")
     proposed_value: str = Field(description="The corrected value for that field.")
     rationale: str = Field(description="Short justification for the fix.")
     confidence: float = Field(ge=0.0, le=1.0, description="0=guess, 1=certain.")
 
 
 # --- InstructionAgent --------------------------------------------------
-# Fixes the *payment instruction* itself: malformed IBANs, a missing
-# intermediary/correspondent bank, wrong BIC, etc.
+# Fixes the *payment instruction* itself: a malformed BIC/SWIFT code, a missing
+# intermediary/correspondent bank, an inconsistent routing detail, etc.
 instruction_agent = Agent(
     MODEL,
     name="instruction_agent",
@@ -65,8 +65,8 @@ instruction_agent = Agent(
         "You are a cross-border payments operations expert. You are given a "
         "single payment anomaly on a corridor (an ordered country pair). "
         "Propose the smallest correct fix to the payment instruction so it "
-        "can settle: a valid IBAN, the required intermediary bank, or a "
-        "consistent BIC. Be conservative and report an honest confidence."
+        "can settle: a valid BIC/SWIFT code, the required intermediary bank, or a "
+        "consistent settlement detail. Be conservative and report an honest confidence."
     ),
 )
 

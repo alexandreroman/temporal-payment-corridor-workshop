@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 class AnomalyType(StrEnum):
     """The kinds of anomaly a cross-border payment can carry."""
 
-    WRONG_IBAN = "wrong_iban"
+    WRONG_BIC = "wrong_bic"
     MISSING_INTERMEDIARY_BANK = "missing_intermediary_bank"
     CURRENCY_MISMATCH = "currency_mismatch"
 
@@ -49,7 +49,7 @@ class CorrectionProposal(BaseModel):
     """A single agent's proposed fix for one anomaly."""
 
     agent_name: str
-    field_to_fix: str = Field(description="Payment field to change, e.g. 'iban'.")
+    field_to_fix: str = Field(description="Payment field to change, e.g. 'bic'.")
     proposed_value: str
     rationale: str
     confidence: float = Field(ge=0.0, le=1.0)

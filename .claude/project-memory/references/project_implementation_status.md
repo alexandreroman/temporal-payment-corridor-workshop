@@ -34,7 +34,7 @@ path) — **not** a `FEATURE` toggle, since it is about *running*
 the app differently, not activating dormant code.
 
 - **Why:** the default `simulator` always fires the pre-seeded
-  `US->IN` / `wrong_iban` anomaly, which hits passive corridor
+  `US->IN` / `wrong_bic` anomaly, which hits passive corridor
   memory and short-circuits before `agent.run()`, so the
   headline capability (durable Pydantic AI agents) is never
   exercised in the default demo and no API key is needed.

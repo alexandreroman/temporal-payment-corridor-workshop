@@ -17,7 +17,7 @@ async def _round_trip(codec: EncryptionCodec, payload: Payload) -> Payload:
 
 def test_encode_produces_ciphertext_then_decode_restores():
     codec = EncryptionCodec(Fernet.generate_key())
-    original = Payload(metadata={"encoding": b"json/plain"}, data=b'{"iban":"DE89"}')
+    original = Payload(metadata={"encoding": b"json/plain"}, data=b'{"bic":"HDFC"}')
 
     async def scenario() -> None:
         encoded = (await codec.encode([original]))[0]
