@@ -265,6 +265,7 @@ def test_list_anomalies_reads_each_running_workflow_via_query():
             "status": "processing",
             "workflow_id": "correction-pay-2",
             "start_time": "2019-12-31T23:59:00Z",
+            "outcome_summary": None,
         },
         {
             "payment_id": "pay-1",
@@ -273,6 +274,7 @@ def test_list_anomalies_reads_each_running_workflow_via_query():
             "status": "processing",
             "workflow_id": "correction-pay-1",
             "start_time": "2019-12-31T23:50:00Z",
+            "outcome_summary": None,
         },
     ]
 
@@ -302,6 +304,38 @@ def test_list_anomalies_awaiting_filter_is_empty_in_the_baseline():
     assert response.json() == []
 
 
+def test_list_anomalies_awaiting_filter_excludes_closed_rows():
+    """A completed row must not leak through the awaiting-approval filter."""
+    stub = _StubClient(
+        handles={
+            "correction-pay-done": _StubHandle(
+                "correction-pay-done",
+                anomaly=_anomaly("pay-done"),
+                describe_status=WorkflowExecutionStatus.COMPLETED,
+                result=_outcome("pay-done"),
+            ),
+            "correction-pay-run": _StubHandle(
+                "correction-pay-run", anomaly=_anomaly("pay-run")
+            ),
+        },
+        workflows=[_wf("correction-pay-done", 5), _wf("correction-pay-run", 1)],
+    )
+    api.app.state.temporal_client = stub
+
+    async def scenario() -> httpx.Response:
+        async with _http_client() as client:
+            return await client.get(
+                "/api/payments/v1/anomalies",
+                params={"awaiting_approval": "true"},
+            )
+
+    response = asyncio.run(scenario())
+
+    assert response.status_code == 200
+    # Neither the completed row nor the running-but-not-awaiting row qualifies.
+    assert response.json() == []
+
+
 def test_list_anomalies_sorts_newest_first():
     """Running rows come back ordered by start_time, newest first."""
     handles = {
@@ -326,6 +360,35 @@ def test_list_anomalies_sorts_newest_first():
     ids = [row["payment_id"] for row in response.json()]
     assert ids == ["pay-new", "pay-old"]
     assert response.json()[0]["start_time"] is not None
+
+
+def test_list_anomalies_includes_recent_completed_with_summary():
+    """A recently completed correction lists as applied with a summary line."""
+    applied = _StubHandle(
+        "correction-pay-done",
+        anomaly=_anomaly("pay-done"),
+        describe_status=WorkflowExecutionStatus.COMPLETED,
+        result=_outcome("pay-done"),  # applied=True in the helper
+    )
+    running = _StubHandle("correction-pay-run", anomaly=_anomaly("pay-run"))
+    stub = _StubClient(
+        handles={
+            "correction-pay-done": applied,
+            "correction-pay-run": running,
+        },
+        workflows=[_wf("correction-pay-done", 5), _wf("correction-pay-run", 1)],
+    )
+    api.app.state.temporal_client = stub
+
+    async def scenario() -> httpx.Response:
+        async with _http_client() as client:
+            return await client.get("/api/payments/v1/anomalies")
+
+    rows = {r["payment_id"]: r for r in asyncio.run(scenario()).json()}
+    assert rows["pay-done"]["status"] == "applied"
+    assert rows["pay-done"]["outcome_summary"]
+    assert rows["pay-run"]["status"] == "processing"
+    assert rows["pay-run"]["outcome_summary"] is None
 
 
 def test_get_anomaly_reports_running():

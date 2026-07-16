@@ -99,6 +99,16 @@ async def _query_awaiting(handle) -> bool:
 # endregion FEATURE-ON: human-approval-signal
 
 
+def _summarize_outcome(outcome: CorrectionOutcome) -> str:
+    """One human line describing how a correction ended."""
+    if outcome.applied and outcome.proposal is not None:
+        p = outcome.proposal
+        return f"fixed {p.field_to_fix} → {p.proposed_value} · {p.source.value}"
+    if outcome.verdict is not None and outcome.verdict.violations:
+        return f"held · {outcome.verdict.violations[0]}"
+    return outcome.message or "held"
+
+
 class AnomalyAcceptance(BaseModel):
     """Response of POST /anomalies: the accepted request's identifiers."""
 
@@ -115,6 +125,7 @@ class AnomalySummary(BaseModel):
     status: str
     workflow_id: str
     start_time: datetime
+    outcome_summary: str | None = None
 
 
 class AnomalyDetail(BaseModel):
@@ -208,12 +219,17 @@ async def submit_anomaly(anomaly: PaymentAnomaly) -> AnomalyAcceptance:
 
 @app.get("/api/payments/v1/anomalies")
 async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary]:
-    """List in-flight corrections; optionally only those awaiting a human.
+    """List corrections: in-flight plus recent closed history.
 
-    Two implementations, toggled by the ``search-attributes`` feature (REPLACE):
-    the baseline lists running executions and reads each one's summary via a
-    per-workflow query (the N+1 pattern); enabling search-attributes replaces it
-    with a single, server-side-filtered Visibility query.
+    Passing ``awaiting_approval`` narrows the result to running corrections
+    blocked on a human decision (closed rows never qualify).
+
+    Two implementations, toggled by the ``search-attributes`` feature (REPLACE).
+    For a *running* row the baseline reads its summary via a per-workflow query
+    (the N+1 pattern), while search-attributes removes that query by reading the
+    summary from the execution's search attributes. A *closed* row costs the
+    same ``describe()``/``result()`` round-trips in both variants: search
+    attributes carry no outcome, so the feature does not remove that cost.
     """
     client: Client = app.state.temporal_client
     summaries: list[AnomalySummary] = []
@@ -223,33 +239,93 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     # attributes, so corridor/anomaly-type/awaiting state come from one query per
     # workflow (N+1), and the awaiting filter runs here in Python. This is
     # exactly the cost the search-attributes feature removes.
-    query = f"WorkflowType = '{_WORKFLOW_TYPE}' AND ExecutionStatus = 'Running'"
+    query = f"WorkflowType = '{_WORKFLOW_TYPE}'"
+    seen = 0
     async for wf in client.list_workflows(query=query):
+        # NOTE: Cap the listing at the 20 newest executions. list_workflows
+        # returns newest-first by default, but we count rather than trust that
+        # ordering, since the newest-first guarantee is re-established by the
+        # sort at the tail of this function.
+        if seen >= 20:
+            break
+        seen += 1
         handle = client.get_workflow_handle(wf.id)
+        # NOTE: Now that the query lists closed executions too, each row costs a
+        # describe() to learn its status, and a completed row costs a further
+        # result() -- extra round-trips on top of the per-workflow
+        # describe_anomaly query. This cost is inherent to client-side listing:
+        # even with search-attributes on, a closed row still needs
+        # describe()/result() to recover its outcome, so that feature removes
+        # the running-row identity query but not this closed-row cost.
+        desc = await handle.describe()
         anomaly = await handle.query(PaymentCorrectionCoordinator.describe_anomaly)
-        awaiting = await _query_awaiting(handle)
-        if awaiting_approval and not awaiting:
-            continue
-        summaries.append(
-            AnomalySummary(
-                payment_id=anomaly.payment_id,
-                corridor=anomaly.corridor,
-                anomaly_type=anomaly.anomaly_type,
-                status="awaiting-approval" if awaiting else "processing",
-                workflow_id=wf.id,
-                start_time=wf.start_time,
+        if desc.status == WorkflowExecutionStatus.COMPLETED:
+            # A closed correction is never blocked on a human decision, so the
+            # awaiting-approval filter excludes it (README: "keeps only those
+            # blocked on a human decision").
+            if awaiting_approval:
+                continue
+            outcome: CorrectionOutcome = await handle.result()
+            summaries.append(
+                AnomalySummary(
+                    payment_id=anomaly.payment_id,
+                    corridor=anomaly.corridor,
+                    anomaly_type=anomaly.anomaly_type,
+                    status="applied" if outcome.applied else "held",
+                    workflow_id=wf.id,
+                    start_time=wf.start_time,
+                    outcome_summary=_summarize_outcome(outcome),
+                )
             )
-        )
+        elif desc.status in _CLOSED_NON_COMPLETED:
+            # Closed rows are never awaiting a human either; same filter as above.
+            if awaiting_approval:
+                continue
+            closed_status = desc.status.name.lower().replace("_", "-")
+            summaries.append(
+                AnomalySummary(
+                    payment_id=anomaly.payment_id,
+                    corridor=anomaly.corridor,
+                    anomaly_type=anomaly.anomaly_type,
+                    status=closed_status,
+                    workflow_id=wf.id,
+                    start_time=wf.start_time,
+                    outcome_summary=f"execution {closed_status}",
+                )
+            )
+        else:
+            awaiting = await _query_awaiting(handle)
+            if awaiting_approval and not awaiting:
+                continue
+            summaries.append(
+                AnomalySummary(
+                    payment_id=anomaly.payment_id,
+                    corridor=anomaly.corridor,
+                    anomaly_type=anomaly.anomaly_type,
+                    status="awaiting-approval" if awaiting else "processing",
+                    workflow_id=wf.id,
+                    start_time=wf.start_time,
+                )
+            )
     # endregion FEATURE-OFF: search-attributes
 
     # region FEATURE-ON: search-attributes
     # # NOTE: Server-side listing. The corridor/anomalyType/status search
     # # attributes are already on each execution, and the awaiting filter is
-    # # pushed into the Visibility query — one round-trip, no per-workflow query.
-    # query = f"WorkflowType = '{_WORKFLOW_TYPE}' AND ExecutionStatus = 'Running'"
+    # # pushed into the Visibility query — no per-workflow describe_anomaly query
+    # # for the running rows.
+    # query = f"WorkflowType = '{_WORKFLOW_TYPE}'"
     # if awaiting_approval:
     #     query += " AND status = 'awaiting-approval'"
+    # seen = 0
     # async for wf in client.list_workflows(query=query):
+    #     # NOTE: Cap the listing at the 20 newest executions. list_workflows
+    #     # returns newest-first by default, but we count rather than trust that
+    #     # ordering, since the newest-first guarantee is re-established by the
+    #     # sort at the tail of this function.
+    #     if seen >= 20:
+    #         break
+    #     seen += 1
     #     sa = wf.typed_search_attributes
     #     corridor = sa.get(SearchAttributeKey.for_keyword("corridor")) or ""
     #     anomaly_type = sa.get(SearchAttributeKey.for_keyword("anomalyType")) or ""
@@ -258,17 +334,60 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     #         # AnomalyType("") raise; without the anomalyType SA it is not
     #         # listable here.
     #         continue
-    #     wf_status = sa.get(SearchAttributeKey.for_keyword("status")) or "processing"
-    #     summaries.append(
-    #         AnomalySummary(
-    #             payment_id=wf.id.removeprefix("correction-"),
-    #             corridor=corridor,
-    #             anomaly_type=AnomalyType(anomaly_type),
-    #             status=wf_status,
-    #             workflow_id=wf.id,
-    #             start_time=wf.start_time,
+    #     handle = client.get_workflow_handle(wf.id)
+    #     # NOTE: A closed row still needs describe() to learn its status and,
+    #     # when completed, result() to recover its outcome -- extra round-trips
+    #     # per closed row. Search attributes remove the running-row
+    #     # describe_anomaly query, not this closed-row describe()/result() cost.
+    #     desc = await handle.describe()
+    #     if desc.status == WorkflowExecutionStatus.COMPLETED:
+    #         # A closed correction is never blocked on a human decision, so the
+    #         # awaiting-approval filter excludes it (README: "keeps only those
+    #         # blocked on a human decision"). The Visibility query already
+    #         # narrows to running rows server-side; this mirrors the baseline's
+    #         # per-row skip for readability.
+    #         if awaiting_approval:
+    #             continue
+    #         outcome: CorrectionOutcome = await handle.result()
+    #         summaries.append(
+    #             AnomalySummary(
+    #                 payment_id=wf.id.removeprefix("correction-"),
+    #                 corridor=corridor,
+    #                 anomaly_type=AnomalyType(anomaly_type),
+    #                 status="applied" if outcome.applied else "held",
+    #                 workflow_id=wf.id,
+    #                 start_time=wf.start_time,
+    #                 outcome_summary=_summarize_outcome(outcome),
+    #             )
     #         )
-    #     )
+    #     elif desc.status in _CLOSED_NON_COMPLETED:
+    #         # Closed rows are never awaiting a human either; same filter as above.
+    #         if awaiting_approval:
+    #             continue
+    #         closed_status = desc.status.name.lower().replace("_", "-")
+    #         summaries.append(
+    #             AnomalySummary(
+    #                 payment_id=wf.id.removeprefix("correction-"),
+    #                 corridor=corridor,
+    #                 anomaly_type=AnomalyType(anomaly_type),
+    #                 status=closed_status,
+    #                 workflow_id=wf.id,
+    #                 start_time=wf.start_time,
+    #                 outcome_summary=f"execution {closed_status}",
+    #             )
+    #         )
+    #     else:
+    #         wf_status = sa.get(SearchAttributeKey.for_keyword("status")) or "processing"
+    #         summaries.append(
+    #             AnomalySummary(
+    #                 payment_id=wf.id.removeprefix("correction-"),
+    #                 corridor=corridor,
+    #                 anomaly_type=AnomalyType(anomaly_type),
+    #                 status=wf_status,
+    #                 workflow_id=wf.id,
+    #                 start_time=wf.start_time,
+    #             )
+    #         )
     # endregion FEATURE-ON: search-attributes
 
     # NOTE: Newest-first ordering so the web UI's homepage shows the most
