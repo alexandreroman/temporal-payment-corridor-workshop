@@ -17,7 +17,7 @@ local dev server.
   corridor-specific patterns before spending a model call; the seeded
   happy path never touches an LLM.
 - **Human-in-the-loop** — low-confidence corrections wait for a human
-  decision via Signal (or Update), demonstrated as progressive steps.
+  decision via Signal, demonstrated as progressive steps.
 - **One metrics endpoint** — a single Prometheus/OpenMetrics endpoint
   serves both Temporal SDK metrics (`temporal_*`) and application metrics
   (`corridor_*`).

@@ -44,6 +44,19 @@ CONFIDENCE_THRESHOLD = 0.75
 
 TASK_QUEUE = "payment-corridor"
 
+# --- FEATURE-DEFAULT: approval-timeout ---
+# How long the coordinator waits for a human decision. None = wait forever.
+_APPROVAL_TIMEOUT: timedelta | None = None
+# --- END FEATURE-DEFAULT: approval-timeout ---
+# --- FEATURE: approval-timeout ---
+# # NOTE: Bounded human-in-the-loop: if no decision arrives within this window the
+# # coordinator stops waiting and auto-rejects. This is a *durable timer* —
+# # workflow.wait_condition(timeout=...) raises asyncio.TimeoutError when the
+# # deadline elapses, and the timer survives worker restarts like any other
+# # workflow state. Source: https://docs.temporal.io/develop/python/timers
+# _APPROVAL_TIMEOUT: timedelta | None = timedelta(minutes=5)
+# --- END FEATURE: approval-timeout ---
+
 # --- FEATURE: search-attributes ---
 # # NOTE: Typed Search Attribute keys used by PaymentCorrectionCoordinator below to
 # # tag each workflow execution with its corridor and anomaly type. This makes
@@ -150,9 +163,6 @@ class PaymentCorrectionCoordinator:
 
     def __init__(self) -> None:
         self._decision: ApprovalDecision | None = None
-        # --- FEATURE: saga-compensation ---
-        # self._compensations: list[CorrectionProposal] = []
-        # --- END FEATURE: saga-compensation ---
 
     @workflow.run
     async def run(self, anomaly: PaymentAnomaly) -> CorrectionOutcome:
@@ -206,7 +216,19 @@ class PaymentCorrectionCoordinator:
         if best.confidence < CONFIDENCE_THRESHOLD:
             # --- FEATURE: human-approval-signal ---
             # workflow.logger.info("Low confidence, awaiting human approval")
-            # await workflow.wait_condition(lambda: self._decision is not None)
+            # # _APPROVAL_TIMEOUT defaults to None (wait forever); enabling the
+            # # `approval-timeout` feature turns this into a real auto-reject deadline.
+            # try:
+            #     await workflow.wait_condition(
+            #         lambda: self._decision is not None, timeout=_APPROVAL_TIMEOUT
+            #     )
+            # except asyncio.TimeoutError:
+            #     return CorrectionOutcome(
+            #         payment_id=anomaly.payment_id,
+            #         applied=False,
+            #         proposal=best,
+            #         message="No decision within the approval window; auto-rejected.",
+            #     )
             # assert self._decision is not None
             # if not self._decision.approved:
             #     return CorrectionOutcome(
@@ -218,6 +240,7 @@ class PaymentCorrectionCoordinator:
             #     )
             # --- END FEATURE: human-approval-signal ---
 
+            # --- FEATURE-DEFAULT: human-approval-signal ---
             # Starting point (no oversight wired yet): refuse low-confidence
             # fixes outright.
             return CorrectionOutcome(
@@ -226,6 +249,7 @@ class PaymentCorrectionCoordinator:
                 proposal=best,
                 message="Confidence below threshold; human approval required.",
             )
+            # --- END FEATURE-DEFAULT: human-approval-signal ---
 
         reference = await workflow.execute_activity(
             apply_correction,
@@ -233,9 +257,6 @@ class PaymentCorrectionCoordinator:
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
-        # --- FEATURE: saga-compensation ---
-        # self._compensations.append(best)
-        # --- END FEATURE: saga-compensation ---
 
         return CorrectionOutcome(
             payment_id=anomaly.payment_id,
@@ -256,18 +277,3 @@ class PaymentCorrectionCoordinator:
     #     return self._decision
     #
     # --- END FEATURE: human-approval-signal ---
-
-    # --- FEATURE: human-approval-update ---
-    # # NOTE: Update is the request/response alternative to a fire-and-forget
-    # # Signal: the caller gets a validated, synchronous acknowledgement.
-    # @workflow.update
-    # async def submit_decision(self, decision: ApprovalDecision) -> str:
-    #     self._decision = decision
-    #     return "accepted" if decision.approved else "rejected"
-    #
-    # @submit_decision.validator
-    # def _validate(self, decision: ApprovalDecision) -> None:
-    #     if not decision.approver:
-    #         raise ValueError("approver is required")
-    #
-    # --- END FEATURE: human-approval-update ---

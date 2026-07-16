@@ -25,3 +25,4 @@
 - [Testing TemporalAgent-based workflows under start_local](references/reference_temporal_agent_testing.md) — Agent.override(model=...) doesn't reach the model activity; register a TestModel stand-in under the real workflow name instead. Fernet import needs imports_passed_through() too.
 - [Authoring toggleable FEATURE blocks](references/reference_feature_block_authoring.md) — single-# code vs double-# prose; pair REPLACE features with FEATURE-DEFAULT; commented body must match ruff output; verify enable→parse→disable round-trip.
 - [Import symbols from their canonical public module](references/feedback_canonical_imports.md) — import pydantic_data_converter from temporalio.contrib.pydantic, not the pydantic_ai re-export, to avoid Pylance reportPrivateImportUsage.
+- [Implementation status](references/project_implementation_status.md) — workshop feature-set work that is still pending (not yet implemented).
