@@ -40,7 +40,7 @@ def setup_logfire() -> logfire.Logfire:
     )
 
 
-# Configure Logfire before instrumenting the app, in the process that serves
+# NOTE: Configure Logfire before instrumenting the app, in the process that serves
 # requests (the uvicorn reload subprocess imports this module, not main.py).
 setup_logfire()
 

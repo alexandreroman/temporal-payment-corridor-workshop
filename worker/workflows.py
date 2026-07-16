@@ -45,7 +45,7 @@ CONFIDENCE_THRESHOLD = 0.75
 TASK_QUEUE = "payment-corridor"
 
 # --- FEATURE: search-attributes ---
-# # Typed Search Attribute keys used by PaymentCorrectionCoordinator below to
+# # NOTE: Typed Search Attribute keys used by PaymentCorrectionCoordinator below to
 # # tag each workflow execution with its corridor and anomaly type. This makes
 # # executions filterable and listable (in the Web UI, the `temporal workflow
 # # list` CLI, or the SDK) without scanning payloads.
@@ -157,7 +157,7 @@ class PaymentCorrectionCoordinator:
     @workflow.run
     async def run(self, anomaly: PaymentAnomaly) -> CorrectionOutcome:
         # --- FEATURE: search-attributes ---
-        # # Tag this execution with typed Search Attributes so it can be
+        # # NOTE: Tag this execution with typed Search Attributes so it can be
         # # filtered/listed by corridor and anomaly type. This replaces the
         # # deprecated dict form of upsert_search_attributes. anomaly.anomaly_type
         # # is an AnomalyType StrEnum, so it is converted with str(...) because
@@ -172,7 +172,7 @@ class PaymentCorrectionCoordinator:
         # )
         # --- END FEATURE: search-attributes ---
 
-        # Fan out to the specialized agents, each as its own child workflow.
+        # NOTE: Fan out to the specialized agents, each as its own child workflow.
         # gather(return_exceptions=True) makes the fan-out resilient: a single
         # agent failing degrades gracefully instead of failing the whole
         # correction. Each child gets an explicit execution timeout so a hung
@@ -258,7 +258,7 @@ class PaymentCorrectionCoordinator:
     # --- END FEATURE: human-approval-signal ---
 
     # --- FEATURE: human-approval-update ---
-    # # Update is the request/response alternative to a fire-and-forget
+    # # NOTE: Update is the request/response alternative to a fire-and-forget
     # # Signal: the caller gets a validated, synchronous acknowledgement.
     # @workflow.update
     # async def submit_decision(self, decision: ApprovalDecision) -> str:
@@ -269,4 +269,5 @@ class PaymentCorrectionCoordinator:
     # def _validate(self, decision: ApprovalDecision) -> None:
     #     if not decision.approver:
     #         raise ValueError("approver is required")
+    #
     # --- END FEATURE: human-approval-update ---

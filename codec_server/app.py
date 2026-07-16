@@ -41,7 +41,7 @@ from shared.encryption import EncryptionCodec, load_key
 # .env file when present (see .env.example). Load before reading any getenv.
 load_dotenv()
 
-# Fail fast at import time: a codec server with no key cannot do its one job
+# NOTE: Fail fast at import time: a codec server with no key cannot do its one job
 # (decrypting payloads for display). Raising here surfaces the misconfiguration
 # on startup instead of on the first Web UI request.
 _key = load_key()
@@ -56,7 +56,7 @@ if _key is None:
 # One codec instance shared by every request — it is stateless and thread-safe.
 _codec = EncryptionCodec(_key)
 
-# The Web UI's codec calls originate from the browser, so the server must send
+# NOTE: The Web UI's codec calls originate from the browser, so the server must send
 # permissive CORS headers or the browser blocks the response. Restrict it to
 # the Web UI's own origin and to the method/headers the sample uses. This is
 # deliberately narrow, but note it is browser-enforced and not a security

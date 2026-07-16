@@ -17,6 +17,7 @@
 - [Never reference company names](references/feedback_no_company_names.md) — no company/organization name may appear in code, docs, commits, memory, or prose; refer generically.
 - [Workshop content must be timeless](references/feedback_timeless_content.md) — no dates, times, headcounts, locations, or scheduling in any artifact; keep material reusable and undated.
 - [Code must be abundantly commented, with sources](references/feedback_code_comments.md) — thorough comments explaining important/production choices, each with a source link; the code is the teaching surface.
+- [NOTE: marker flags learner-attention comments](references/feedback_note_marker.md) — single literal `NOTE:` prefix marks the non-obvious comments a learner should study; baseline + FEATURE prose.
 - [Git commit messages: imperative verb-first](references/feedback_git_commit_style.md) — capitalized imperative verb, no conventional-commit type prefix; match repo history.
 - [Default to subagent-driven implementation](references/feedback_subagent_driven_default.md) — execute approved plans with subagent-driven development by default; source edits via skillbox:code-writer.
 - [Design specs are intentionally not version-controlled](references/reference_specs_local_only.md) — `docs/` is gitignored on purpose; specs stay local, their absence from git is normal.

@@ -32,7 +32,7 @@ from pydantic_ai.durable_exec.temporal import LogfirePlugin, PydanticAIPlugin
 # .env file when present (see .env.example). Load before reading any getenv.
 load_dotenv()
 
-# Imported after load_dotenv() so .env values (e.g. CORRIDOR_MODEL) are in
+# NOTE: Imported after load_dotenv() so .env values (e.g. CORRIDOR_MODEL) are in
 # place before agents.py reads them at import time (via the worker.workflows
 # -> worker.agents import chain that build_worker pulls in).
 from worker.worker import build_worker  # noqa: E402
@@ -80,7 +80,7 @@ async def main() -> None:
     client = await Client.connect(
         TEMPORAL_ADDRESS,
         runtime=runtime,
-        # PydanticAIPlugin installs the Pydantic data converter and auto-
+        # NOTE: PydanticAIPlugin installs the Pydantic data converter and auto-
         # registers each workflow's agents' activities. LogfirePlugin wires
         # Temporal's own tracing into Logfire. metrics=False because SDK and
         # app metrics are already exported via the Prometheus endpoint on the
@@ -92,7 +92,7 @@ async def main() -> None:
     )
     # --- END FEATURE-DEFAULT: payload-encryption ---
     # --- FEATURE: payload-encryption ---
-    # # Encrypt every payload crossing the Temporal boundary with a codec-
+    # # NOTE: Encrypt every payload crossing the Temporal boundary with a codec-
     # # enabled data converter. PydanticAIPlugin only installs its own data
     # # converter when the caller doesn't pass one, so keeping the plugin
     # # alongside an explicit data_converter is safe — verified empirically:
@@ -101,9 +101,7 @@ async def main() -> None:
     # # https://docs.temporal.io/production-deployment/data-encryption
     # key = load_key()
     # if not key:
-    #     raise RuntimeError(
-    #         "set CORRIDOR_ENCRYPTION_KEY to enable payload encryption"
-    #     )
+    #     raise RuntimeError("set CORRIDOR_ENCRYPTION_KEY to enable payload encryption")
     # client = await Client.connect(
     #     TEMPORAL_ADDRESS,
     #     runtime=runtime,
@@ -118,7 +116,7 @@ async def main() -> None:
     worker = build_worker(client)
 
     # --- FEATURE: corridor-memory-workflow ---
-    # # Start and seed the long-running corridor-memory workflow so the offline
+    # # NOTE: Start and seed the long-running corridor-memory workflow so the offline
     # # demo still finds the pre-seeded US->IN pattern once reads are routed
     # # through the workflow instead of the in-process dict. The seed is the
     # # in-process `_MEMORY` converted to the workflow's internal key form.
