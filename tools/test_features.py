@@ -107,9 +107,9 @@ def helper():
 
 
 def _make_repo(root: Path) -> None:
-    (root / "worker").mkdir()
-    (root / "worker" / "a.py").write_text(CROSS_FILE_A, encoding="utf-8")
-    (root / "worker" / "b.py").write_text(CROSS_FILE_B, encoding="utf-8")
+    (root / "payments").mkdir()
+    (root / "payments" / "a.py").write_text(CROSS_FILE_A, encoding="utf-8")
+    (root / "payments" / "b.py").write_text(CROSS_FILE_B, encoding="utf-8")
 
 
 def test_iter_source_files_scans_only_known_roots(tmp_path):
@@ -132,16 +132,16 @@ def test_set_feature_enables_across_files_and_reverts(tmp_path):
         tmp_path, "multi", enable=True, dry_run=False, do_format=False
     )
     assert len(changed) == 2
-    assert "self.on = True" in (tmp_path / "worker" / "a.py").read_text()
+    assert "self.on = True" in (tmp_path / "payments" / "a.py").read_text()
     set_feature(tmp_path, "multi", enable=False, dry_run=False, do_format=False)
-    assert (tmp_path / "worker" / "a.py").read_text() == CROSS_FILE_A
+    assert (tmp_path / "payments" / "a.py").read_text() == CROSS_FILE_A
 
 
 def test_set_feature_dry_run_writes_nothing(tmp_path):
     _make_repo(tmp_path)
     changed = set_feature(tmp_path, "multi", enable=True, dry_run=True, do_format=False)
     assert len(changed) == 2  # would-change files reported
-    assert (tmp_path / "worker" / "a.py").read_text() == CROSS_FILE_A  # untouched
+    assert (tmp_path / "payments" / "a.py").read_text() == CROSS_FILE_A  # untouched
 
 
 def test_set_feature_reverts_when_enable_yields_invalid_python(tmp_path):
@@ -149,8 +149,8 @@ def test_set_feature_reverts_when_enable_yields_invalid_python(tmp_path):
 
     from tools.features import MalformedError, set_feature
 
-    (tmp_path / "worker").mkdir()
-    f = tmp_path / "worker" / "prose.py"
+    (tmp_path / "payments").mkdir()
+    f = tmp_path / "payments" / "prose.py"
     original = (
         "def run():\n"
         "    # region FEATURE-ON: docs-only\n"

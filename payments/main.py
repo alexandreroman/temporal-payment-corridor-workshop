@@ -9,7 +9,7 @@ single ``/metrics`` endpoint serves both:
   * Temporal SDK / worker metrics  -> ``temporal_*``
   * Application metrics             -> ``corridor_*``
 
-Run with:  ``uv run worker``  (needs ``temporal server start-dev`` up).
+Run with:  ``uv run payments``  (needs ``temporal server start-dev`` up).
 """
 
 from __future__ import annotations
@@ -33,11 +33,15 @@ from pydantic_ai.durable_exec.temporal import LogfirePlugin, PydanticAIPlugin
 load_dotenv()
 
 # NOTE: Imported after load_dotenv() so .env values (e.g. CORRIDOR_MODEL) are in
-# place before agents.py reads them at import time (via the worker.workflows
-# -> worker.agents import chain that build_worker pulls in).
-from worker.worker import build_worker  # noqa: E402
+# place before agents.py reads them at import time (via the payments.workflows
+# -> payments.agents import chain that build_worker pulls in).
+from payments.worker import build_worker  # noqa: E402
 
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
+# NOTE: the payment-correction worker runs in its own Temporal namespace,
+# distinct from the memory service's namespace (MEMORY_TEMPORAL_NAMESPACE). The
+# two bounded contexts never share a namespace.
+PAYMENTS_TEMPORAL_NAMESPACE = os.getenv("PAYMENTS_TEMPORAL_NAMESPACE", "payments")
 WORKER_METRICS_HOST = os.getenv("WORKER_METRICS_HOST", "0.0.0.0")
 WORKER_METRICS_PORT = int(os.getenv("WORKER_METRICS_PORT", "9464"))
 WORKER_METRICS_BIND = f"{WORKER_METRICS_HOST}:{WORKER_METRICS_PORT}"
@@ -80,6 +84,7 @@ async def main() -> None:
     client = await Client.connect(
         TEMPORAL_ADDRESS,
         runtime=runtime,
+        namespace=PAYMENTS_TEMPORAL_NAMESPACE,
         # NOTE: PydanticAIPlugin installs the Pydantic data converter and auto-
         # registers each workflow's agents' activities. LogfirePlugin wires
         # Temporal's own tracing into Logfire. metrics=False because SDK and
@@ -105,6 +110,7 @@ async def main() -> None:
     # client = await Client.connect(
     #     TEMPORAL_ADDRESS,
     #     runtime=runtime,
+    #     namespace=PAYMENTS_TEMPORAL_NAMESPACE,
     #     data_converter=build_data_converter(EncryptionCodec(key)),
     #     plugins=[
     #         PydanticAIPlugin(),
@@ -114,29 +120,6 @@ async def main() -> None:
     # endregion FEATURE-ON: payload-encryption
 
     worker = build_worker(client)
-
-    # region FEATURE-ON: corridor-memory-workflow
-    # # NOTE: Start and seed the long-running corridor-memory workflow so the offline
-    # # demo still finds the pre-seeded US->IN pattern once reads are routed
-    # # through the workflow instead of the in-process dict. The seed is the
-    # # in-process `_MEMORY` converted to the workflow's internal key form.
-    # # `USE_EXISTING` makes the start idempotent: on a worker restart against
-    # # the same dev server we attach to the already-running execution rather
-    # # than erroring or spawning a duplicate.
-    # # Source: https://docs.temporal.io/develop/python/temporal-clients#start-workflow-execution
-    # from temporalio.common import WorkflowIDConflictPolicy
-    # from worker.memory import _MEMORY, CorridorMemoryWorkflow
-    # from worker.workflows import TASK_QUEUE
-    #
-    # seed = {CorridorMemoryWorkflow._key(c, a): p for (c, a), p in _MEMORY.items()}
-    # await client.start_workflow(
-    #     CorridorMemoryWorkflow.run,
-    #     args=[seed],
-    #     id=CorridorMemoryWorkflow.WORKFLOW_ID,
-    #     task_queue=TASK_QUEUE,
-    #     id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
-    # )
-    # endregion FEATURE-ON: corridor-memory-workflow
 
     metrics_url = f"http://{WORKER_METRICS_BIND}/metrics"
     print(f"Worker polling '{worker.task_queue}' — metrics on {metrics_url}")
@@ -149,7 +132,7 @@ def _run_worker() -> None:
 
 
 def dev() -> None:
-    """Console-script entry point (`uv run worker`): run with hot reload.
+    """Console-script entry point (`uv run payments`): run with hot reload.
 
     watchfiles restarts ``_run_worker`` in a fresh subprocess whenever a
     source file changes (it ignores .venv, .git, __pycache__ by default).

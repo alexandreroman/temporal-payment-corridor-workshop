@@ -23,18 +23,22 @@ from pydantic_ai.durable_exec.temporal import PydanticAIPlugin
 #
 # endregion FEATURE-ON: payload-encryption
 from shared.models import AnomalyType, PaymentAnomaly
-from worker.workflows import TASK_QUEUE, PaymentCorrectionCoordinator
+from payments.workflows import TASK_QUEUE, PaymentCorrectionCoordinator
 
 # Configuration from environment / local .env (see .env.example).
 load_dotenv()
 
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
+# NOTE: start the coordinator in the same namespace as the payment-correction
+# worker, distinct from the memory service's namespace.
+PAYMENTS_TEMPORAL_NAMESPACE = os.getenv("PAYMENTS_TEMPORAL_NAMESPACE", "payments")
 
 
 async def main() -> None:
     # region FEATURE-OFF: payload-encryption
     client = await Client.connect(
         TEMPORAL_ADDRESS,
+        namespace=PAYMENTS_TEMPORAL_NAMESPACE,
         # Same data converter as the worker, so Pydantic models round-trip.
         plugins=[PydanticAIPlugin()],
     )
@@ -52,6 +56,7 @@ async def main() -> None:
     #     raise RuntimeError("set CODEC_ENCRYPTION_KEY to enable payload encryption")
     # client = await Client.connect(
     #     TEMPORAL_ADDRESS,
+    #     namespace=PAYMENTS_TEMPORAL_NAMESPACE,
     #     data_converter=build_data_converter(EncryptionCodec(key)),
     #     plugins=[PydanticAIPlugin()],
     # )

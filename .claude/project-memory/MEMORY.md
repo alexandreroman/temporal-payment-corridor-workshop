@@ -10,7 +10,7 @@
 
 - [Dev workflow: hot reload and HTML preview](references/feedback_dev_workflow.md) — use `make dev`/`make webui` for hot reload; preview HTML via Casper Browser when available.
 - [Casper worktree port remap](references/project_casper_port_remap.md) — make dev/webui honor CASPER_PORT via compose.override.yaml (setup hook seeds it); no auto-heal by decision.
-- [Docker images run modules from source](references/project_docker_build.md) — images install deps only and run `python -m worker.main`/`webui.main`; never build the wheel (readme field breaks the build).
+- [Docker images run modules from source](references/project_docker_build.md) — images install deps only and run `python -m payments.main`/`webui.main`; never build the wheel (readme field breaks the build).
 - [Module layout: packages per domain with thin main.py](references/project_module_layout.md) — package-per-domain, thin main.py + isolated definition; Logfire config lives in webui/app.py (reload subprocess), not main.py.
 - [Config conventions: host/port env pairs and local-only Logfire](references/project_config_conventions.md) — endpoints use split `*_HOST`+`*_PORT` env vars; Logfire runs local-only (`send_to_logfire=False`, no token).
 - [Generated text and code must be in English](references/feedback_english_only.md) — all output (code, comments, docs, commits, prose) is written in English, whatever the conversation language.
@@ -31,3 +31,4 @@
 - [Memory entries are present-tense standing facts](references/feedback_memory_present_tense.md) — phrase every entry as a current fact; never narrate past events ("renamed from", "the user asked").
 - [codec package is a support tool, not a FEATURE surface](references/feedback_codec_server_not_a_feature.md) — codec-server behavior (e.g. bearer-token auth) is plain always-on code; FEATURE blocks belong only in app components; features.py ROOTS excludes codec.
 - [Gateway is the single HTTP entry point; codec is always-on infra](references/project_gateway_topology.md) — Caddy on :8233 routes `/`→Web UI, `/codec`→codec (non-profiled service, `restart: unless-stopped`); same-origin, no CORS; codec warns and falls back to insecure defaults (token `changeme`) when unset; key is CODEC_ENCRYPTION_KEY.
+- [Testing the memory service across the FEATURE toggle](references/reference_memory_service_testing.md) — HTTP tests need a store-backed client stub to pass both toggle states; MemoryWorkflow tests run unsandboxed; state is seeded in @workflow.init (no barrier query).

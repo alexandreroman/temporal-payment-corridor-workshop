@@ -2,8 +2,8 @@
 
 Keeps the object construction — task queue, workflow and activity
 registration — separate from the runtime/observability bootstrap in
-``worker/main.py``. Importing this module triggers the workflow import
-chain (``worker.workflows`` -> ``worker.agents``), and ``agents`` reads
+``payments/main.py``. Importing this module triggers the workflow import
+chain (``payments.workflows`` -> ``payments.agents``), and ``agents`` reads
 environment variables at import time, so callers must ``load_dotenv()``
 before importing it.
 """
@@ -13,18 +13,14 @@ from __future__ import annotations
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from worker.activities import apply_correction
+from payments.activities import apply_correction
 
 # region FEATURE-ON: settlement-confirmation
-# from worker.activities import confirm_settlement
+# from payments.activities import confirm_settlement
 # endregion FEATURE-ON: settlement-confirmation
 
-from worker.memory import (
-    CorridorMemoryWorkflow,
-    read_corridor_memory,
-    write_corridor_memory,
-)
-from worker.workflows import (
+from payments.memory import read_corridor_memory, write_corridor_memory
+from payments.workflows import (
     TASK_QUEUE,
     ComplianceAgentWorkflow,
     InstructionAgentWorkflow,
@@ -46,7 +42,6 @@ def build_worker(client: Client) -> Worker:
             PaymentCorrectionCoordinator,
             InstructionAgentWorkflow,
             ComplianceAgentWorkflow,
-            CorridorMemoryWorkflow,
         ],
         activities=[
             read_corridor_memory,

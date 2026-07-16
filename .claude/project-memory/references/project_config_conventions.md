@@ -15,7 +15,7 @@ the point of use, never as a single `host:port` string.
 - Web UI: `WEBUI_HOST` + `WEBUI_PORT`.
 - Worker metrics: `WORKER_METRICS_HOST` (default `0.0.0.0`) +
   `WORKER_METRICS_PORT` (default `9464`), combined into the
-  `PrometheusConfig` bind address in `worker/main.py`.
+  `PrometheusConfig` bind address in `payments/main.py`.
 
 The older single `METRICS_BIND_ADDRESS=host:port` form is gone. When
 adding a new endpoint, follow the two-var shape and mirror the
@@ -23,7 +23,7 @@ adding a new endpoint, follow the two-var shape and mirror the
 
 ## Logfire is local-only
 
-Both `worker/main.py` and `webui/app.py` call `logfire.configure(...)`
+Both `payments/main.py` and `webui/app.py` call `logfire.configure(...)`
 with `send_to_logfire=False`. Spans are produced locally for
 instrumentation but nothing is shipped to any backend. There is no
 `LOGFIRE_TOKEN` and no token-conditional behavior — do not reintroduce

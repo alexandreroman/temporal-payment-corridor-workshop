@@ -6,7 +6,7 @@ type: reference
 
 # retry-alerting metric is tagged with field + source
 
-The `retry-alerting` FEATURE block in `worker/activities.py`
+The `retry-alerting` FEATURE block in `payments/activities.py`
 emits the counter `corridor_correction_retries_alerted` tagged
 with `field` (proposal.field_to_fix) and `source`
 (proposal.source), NOT with corridor / anomaly type.
