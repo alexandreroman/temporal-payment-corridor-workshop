@@ -17,6 +17,10 @@ from __future__ import annotations
 
 from temporalio import activity
 
+# --- FEATURE: non-retryable-validation ---
+# from temporalio.exceptions import ApplicationError
+# --- END FEATURE: non-retryable-validation ---
+
 from shared.models import CorrectionProposal
 
 # --- FEATURE: settlement-confirmation ---
@@ -37,6 +41,34 @@ def _correction_reference(field_to_fix: str, workflow_id: str) -> str:
     return f"corr-{field_to_fix}-{workflow_id}"
 
 
+# --- FEATURE: non-retryable-validation ---
+# # NOTE: Hand-operated fault switch for the workshop. Flip to True to force the
+# # non-retryable path without touching the seeded (valid) correction; a learner
+# # does this by hand. Default False keeps the happy path green.
+# _SIMULATE_INVALID_CORRECTION = False
+#
+#
+# def _is_valid_iban(value: str) -> bool:
+#     """Cheap structural check that ``value`` looks like an IBAN.
+#
+#     NOTE: This is a lightweight FORMAT screen (length + coarse layout), NOT a
+#     full ISO 13616 mod-97 checksum validation. It is kept deliberately simple
+#     and readable for the workshop; a production system must verify the checksum.
+#     Source: https://en.wikipedia.org/wiki/International_Bank_Account_Number
+#     """
+#     compact = value.replace(" ", "").upper()
+#     # An IBAN is 15-34 characters: a 2-letter country code, 2 check digits, then
+#     # a country-specific account number (BBAN).
+#     if not 15 <= len(compact) <= 34:
+#         return False
+#     if not (compact[:2].isalpha() and compact[2:4].isdigit()):
+#         return False
+#     return compact[4:].isalnum()
+#
+#
+# --- END FEATURE: non-retryable-validation ---
+
+
 @activity.defn
 async def apply_correction(proposal: CorrectionProposal) -> str:
     """Apply the approved correction to the downstream payment system.
@@ -53,6 +85,24 @@ async def apply_correction(proposal: CorrectionProposal) -> str:
     )
     applied.add(1, {"field": proposal.field_to_fix, "source": proposal.source})
     confidence.record(proposal.confidence, {"source": proposal.source})
+
+    # --- FEATURE: non-retryable-validation ---
+    # # A malformed correction is a PERMANENT error: retrying it wastes time and
+    # # can never self-heal, so we stop immediately instead of burning the retry
+    # # budget. This deliberately contrasts with the RetryPolicy(maximum_attempts=3)
+    # # the coordinator attaches to this activity, which only helps for TRANSIENT
+    # # failures.
+    # if _SIMULATE_INVALID_CORRECTION or not _is_valid_iban(proposal.proposed_value):
+    #     # NOTE: non_retryable=True tells Temporal to fail the activity at once and
+    #     # skip the remaining retry attempts. Use it for errors that can never
+    #     # succeed on a retry (bad input, validation failures), as opposed to
+    #     # transient ones (a network blip) that the RetryPolicy is meant to absorb.
+    #     # Source: https://docs.temporal.io/references/failures#non-retryable-errors
+    #     raise ApplicationError(
+    #         f"Malformed correction, refusing to apply: {proposal.proposed_value!r}",
+    #         non_retryable=True,
+    #     )
+    # --- END FEATURE: non-retryable-validation ---
 
     # NOTE: Idempotency key from the (unique) coordinator workflow id, NOT hash():
     # a retry of this activity must not apply a second, differently-referenced
