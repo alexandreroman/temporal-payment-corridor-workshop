@@ -90,4 +90,4 @@ plugin) for all code tasks:
   in activities or inside the durable agents.
 - **Config via environment** — read configuration from environment
   variables (local `.env`), never hard-code endpoints or keys.
-- Line length: 80 columns for text/Markdown, 120 for code.
+- Line length: 80 columns for text/Markdown, 88 for code.

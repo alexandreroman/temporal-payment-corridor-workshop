@@ -28,8 +28,9 @@ end-to-end on a local dev server.
   settle — a valid BIC/SWIFT, the required intermediary bank, a consistent
   routing detail) and the **compliance agent** (a compliance officer that
   keeps the fix within the rules — the settlement currency must match the
-  corridor destination, no sanctioned intermediary). The coordinator then
-  keeps the highest-confidence proposal.
+  corridor destination, no sanctioned intermediary). The coordinator
+  applies the instruction fix only when the compliance agent clears it and
+  the confidence is high enough; otherwise it holds for human review.
 - **Passive corridor memory** — agents check a memory of known
   corridor-specific patterns before spending a model call; the seeded
   happy path never touches an LLM.
@@ -279,11 +280,15 @@ two processes that share one package: the payments worker hosts the
 coordinator, agents, and activities on one task queue, while the payments HTTP
 API (`/api/payments/v1`) is a Temporal client that starts and observes
 corrections for external callers. The coordinator
-orchestrates two specialized agents — the instruction agent repairs the
-payment instruction so it can settle, while the compliance agent guards the
-fix against currency and sanctions rules — and keeps the highest-confidence
-proposal. Each agent consults corridor memory before the LLM; activities
-perform all side effects and emit application metrics. Corridor
+orchestrates two specialized agents — the instruction agent proposes a fix
+to the payment instruction so it can settle, while the compliance agent
+returns a verdict guarding the fix against currency and sanctions rules — and
+applies the fix only when the verdict clears it and confidence ≥ 0.75
+(fail-closed otherwise). Each agent consults corridor memory before the LLM;
+activities perform all side effects and emit application metrics. After an
+LLM-reasoned correction is applied, the coordinator writes the learned
+pattern back via `write_corridor_memory` so the next matching anomaly can
+skip the model. Corridor
 memory is a separate service (`memory/`) that the `read_corridor_memory` and
 `write_corridor_memory` activities reach over HTTP (`/api/memory/v1`). With
 the `memory-workflow` FEATURE on, that service runs its own embedded worker
@@ -316,12 +321,15 @@ sequenceDiagram
             Agent->>LLM: agent.run(prompt)
             LLM-->>Agent: proposed correction (source=llm)
         end
-        Agent-->>Coord: CorrectionProposal
+        Agent-->>Coord: CorrectionProposal / ComplianceVerdict
     end
-    Note over Coord: pick the highest-confidence proposal
-    alt confidence >= 0.75
+    Note over Coord: gate: apply only if compliant AND confidence >= 0.75
+    alt compliant and confidence >= 0.75
         Coord->>Coord: apply_correction (activity)
-    else confidence < 0.75
+        opt LLM-reasoned fix
+            Coord->>Mem: write_corridor_memory (learn the pattern)
+        end
+    else violation, missing verdict, or low confidence
         Coord->>Human: await decision (signal)
         Human-->>Coord: ApprovalDecision
         opt approved
