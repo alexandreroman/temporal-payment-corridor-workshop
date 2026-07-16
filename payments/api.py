@@ -252,17 +252,20 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     # attributes, so corridor/anomaly-type/awaiting state come from one query per
     # workflow (N+1), and the awaiting filter runs here in Python. This is
     # exactly the cost the search-attributes feature removes.
-    query = f"WorkflowType = '{_WORKFLOW_TYPE}' ORDER BY StartTime DESC"
+    query = f"WorkflowType = '{_WORKFLOW_TYPE}'"
     seen = 0
     async for wf in client.list_workflows(query=query):
-        # NOTE: Cap the listing at the 20 newest executions. "ORDER BY
-        # StartTime DESC" makes the Visibility query select newest-first, so
-        # `seen` only needs to count rows this loop actually emits -- it is
-        # incremented right before each summaries.append below, never here.
-        # That way a row skipped by an awaiting-approval continue-guard never
-        # spends a cap slot that an older, genuinely-matching row needed. The
-        # sort at the tail of this function is a display backstop, not the
-        # source of the ordering.
+        # NOTE: The dev server's standard Visibility store rejects "ORDER BY"
+        # (RPCError: "operation is not supported: 'ORDER BY' clause"), so this
+        # query cannot ask Visibility for newest-first order; list_workflows
+        # returns executions in the store's default order instead. `seen`
+        # counts only rows this loop actually emits -- incremented right
+        # before each summaries.append below, never here -- so a row skipped
+        # by an awaiting-approval continue-guard never spends a cap slot that
+        # a later, genuinely-matching row needed. The summaries.sort() at the
+        # tail of this function re-establishes newest-first order for
+        # display; it does not change which 20 executions got selected.
+        # Source: https://docs.temporal.io/visibility
         if seen >= 20:
             break
         handle = client.get_workflow_handle(wf.id)
@@ -336,17 +339,19 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     # query = f"WorkflowType = '{_WORKFLOW_TYPE}'"
     # if awaiting_approval:
     #     query += " AND status = 'awaiting-approval'"
-    # query += " ORDER BY StartTime DESC"
     # seen = 0
     # async for wf in client.list_workflows(query=query):
-    #     # NOTE: Cap the listing at the 20 newest executions. "ORDER BY
-    #     # StartTime DESC" makes the Visibility query select newest-first, so
-    #     # `seen` only needs to count rows this loop actually emits -- it is
-    #     # incremented right before each summaries.append below, never here.
-    #     # That way a row skipped by an awaiting-approval continue-guard never
-    #     # spends a cap slot that an older, genuinely-matching row needed. The
-    #     # sort at the tail of this function is a display backstop, not the
-    #     # source of the ordering.
+    #     # NOTE: The dev server's standard Visibility store rejects "ORDER BY"
+    #     # (RPCError: "operation is not supported: 'ORDER BY' clause"), so this
+    #     # query cannot ask Visibility for newest-first order; list_workflows
+    #     # returns executions in the store's default order instead. `seen`
+    #     # counts only rows this loop actually emits -- incremented right
+    #     # before each summaries.append below, never here -- so a row skipped
+    #     # by an awaiting-approval continue-guard never spends a cap slot that
+    #     # a later, genuinely-matching row needed. The summaries.sort() at the
+    #     # tail of this function re-establishes newest-first order for
+    #     # display; it does not change which 20 executions got selected.
+    #     # Source: https://docs.temporal.io/visibility
     #     if seen >= 20:
     #         break
     #     sa = wf.typed_search_attributes
