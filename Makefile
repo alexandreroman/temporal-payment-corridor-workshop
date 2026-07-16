@@ -114,6 +114,11 @@ app-logs: ## Follow logs from every stack container
 
 ##@ Worktree
 
+.PHONY: worktree-init
+worktree-init: ## Initialise a worktree: install deps and remap host ports off CASPER_PORT
+	uv sync
+	@$(MAKE) worktree-ports
+
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
