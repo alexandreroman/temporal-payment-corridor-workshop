@@ -38,9 +38,9 @@ load_dotenv()
 from payments.worker import build_worker  # noqa: E402
 
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
-# NOTE: the payment-correction worker runs in its own Temporal namespace,
-# distinct from the memory service's namespace (MEMORY_TEMPORAL_NAMESPACE). The
-# two bounded contexts never share a namespace.
+# NOTE: payments runs in its own Temporal namespace, distinct from the memory
+# service's namespace (MEMORY_TEMPORAL_NAMESPACE). The two bounded contexts
+# never share a namespace.
 PAYMENTS_TEMPORAL_NAMESPACE = os.getenv("PAYMENTS_TEMPORAL_NAMESPACE", "payments")
 PAYMENTS_METRICS_HOST = os.getenv("PAYMENTS_METRICS_HOST", "0.0.0.0")
 PAYMENTS_METRICS_PORT = int(os.getenv("PAYMENTS_METRICS_PORT", "9464"))

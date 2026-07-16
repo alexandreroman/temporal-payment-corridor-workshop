@@ -15,7 +15,7 @@ FROM python:3.13-slim AS runtime
 WORKDIR /app
 ENV PATH="/app/.venv/bin:$PATH"
 # tini as PID 1: forwards SIGINT/SIGTERM to the app and reaps zombies so
-# `docker stop` and rolling restarts shut the worker down gracefully.
+# `docker stop` and rolling restarts shut payments down gracefully.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends tini \
  && rm -rf /var/lib/apt/lists/*

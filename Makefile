@@ -1,9 +1,9 @@
 # Developer task runner. Run `make` (or `make help`) to list the targets.
 #
 # Two ways to run the stack:
-#   * `make dev`    — Temporal in a container; worker + web UI on the host
+#   * `make dev`    — Temporal in a container; payments + web UI on the host
 #                     with hot reload (fast inner loop).
-#   * `make app-up` — the full stack (Temporal + worker + web UI) in
+#   * `make app-up` — the full stack (Temporal + payments + web UI) in
 #                     containers.
 #
 # CASPER_PORT: when set (Casper workspaces), `make worktree-ports` writes a
@@ -81,7 +81,7 @@ infra-logs: ## Follow logs from the Temporal dev server
 ##@ App (host, hot reload)
 
 .PHONY: payments
-payments: ## Run the Temporal worker on the host with hot reload
+payments: ## Run the payments worker on the host with hot reload
 	uv run payments
 
 .PHONY: simulator
@@ -97,7 +97,7 @@ memory: ## Run the corridor memory service on the host with hot reload
 	uv run memory
 
 .PHONY: dev
-dev: .venv infra-up ## Start Temporal, then run worker + web UI on the host with hot reload
+dev: .venv infra-up ## Start Temporal, then run payments + web UI on the host with hot reload
 	$(show_urls)
 	@$(MAKE) -j payments webui memory
 
@@ -108,7 +108,7 @@ dev: .venv infra-up ## Start Temporal, then run worker + web UI on the host with
 ##@ Stack (containers)
 
 .PHONY: app-up
-app-up: ## Bring up the full stack in containers (temporal + worker + web UI)
+app-up: ## Bring up the full stack in containers (temporal + payments + web UI)
 	docker compose up -d
 	$(show_urls)
 

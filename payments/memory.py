@@ -31,8 +31,8 @@ MEMORY_PORT = int(os.getenv("MEMORY_PORT", "8010"))
 # 0.0.0.0 ("listen on every interface"). A client cannot *connect* to 0.0.0.0
 # on macOS, so we normalize the connect target back to loopback. In containers
 # this env var carries a routable address instead — each service gets its own
-# MEMORY_HOST (e.g. the Compose service name of the memory container), so the
-# worker connects to that host rather than to loopback.
+# MEMORY_HOST (e.g. the Compose service name of the memory container), so
+# payments connects to that host rather than to loopback.
 _connect_host = "127.0.0.1" if MEMORY_HOST in ("0.0.0.0", "") else MEMORY_HOST
 _BASE_URL = f"http://{_connect_host}:{MEMORY_PORT}"
 

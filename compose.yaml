@@ -1,7 +1,7 @@
 # Local development infrastructure — NOT for production.
 #
 # Runs the Temporal dev server (server, built-in database and Web UI in a
-# single process) as a container. The worker and starter run on the host
+# single process) as a container. Payments and the starter run on the host
 # via uv and connect to localhost:7233. Manage this with `make infra-up`.
 
 services:
@@ -17,8 +17,8 @@ services:
       # Compose address): the browser, not the server, calls it.
       - --ui-codec-endpoint
       - http://localhost:8233/codec
-      # Pre-create one namespace per bounded context: the payment-correction
-      # worker and the memory service never share a namespace.
+      # Pre-create one namespace per bounded context: payments and the
+      # memory service never share a namespace.
       - --namespace
       - payments
       - --namespace

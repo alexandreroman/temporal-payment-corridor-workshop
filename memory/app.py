@@ -49,7 +49,7 @@ load_dotenv()
 
 
 def setup_logfire() -> logfire.Logfire:
-    """Configure Logfire the same local-only way the worker and web UI do.
+    """Configure Logfire the same local-only way payments and the web UI do.
 
     ``send_to_logfire=False`` keeps Logfire local-only: spans are produced
     locally for instrumentation but nothing is shipped to any backend.

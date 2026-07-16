@@ -18,13 +18,13 @@ Honest caveats (they hold no matter which scenario runs):
   nudge the model toward a low-confidence proposal, but the outcome depends on
   the model's response — it is not guaranteed. Watching the coordinator
   actually *pause* for a human verdict additionally requires the
-  ``human-approval-signal`` feature enabled on the worker; with that feature
+  ``human-approval-signal`` feature enabled on payments; with that feature
   off, a sub-threshold proposal yields the "human approval required" refusal
   outcome (``applied=False``), which the simulator prints.
 
 This module is pure and import-safe: no Temporal, no network, no I/O. That
-keeps it trivially testable and lets ``--list-scenarios`` work with no worker
-or dev server running.
+keeps it trivially testable and lets ``--list-scenarios`` work with no
+payments or dev server running.
 """
 
 from __future__ import annotations

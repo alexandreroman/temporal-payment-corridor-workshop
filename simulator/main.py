@@ -6,7 +6,7 @@ default ``memory-hit`` scenario matches a pre-seeded corridor-memory pattern,
 so it is corrected end-to-end without any LLM call (no API key required). The
 scenario definitions live in ``simulator/scenarios.py``.
 
-Run with:  ``uv run simulator``  (worker and dev server must be running).
+Run with:  ``uv run simulator``  (payments and the dev server must be running).
 """
 
 from __future__ import annotations
@@ -31,8 +31,8 @@ from payments.workflows import TASK_QUEUE, PaymentCorrectionCoordinator
 load_dotenv()
 
 TEMPORAL_ADDRESS = os.getenv("TEMPORAL_ADDRESS", "localhost:7233")
-# NOTE: start the coordinator in the same namespace as the payment-correction
-# worker, distinct from the memory service's namespace.
+# NOTE: start the coordinator in the same namespace as payments, distinct
+# from the memory service's namespace.
 PAYMENTS_TEMPORAL_NAMESPACE = os.getenv("PAYMENTS_TEMPORAL_NAMESPACE", "payments")
 
 
@@ -44,12 +44,12 @@ async def main(scenario: Scenario) -> None:
     client = await Client.connect(
         TEMPORAL_ADDRESS,
         namespace=PAYMENTS_TEMPORAL_NAMESPACE,
-        # Same data converter as the worker, so Pydantic models round-trip.
+        # Same data converter as payments, so Pydantic models round-trip.
         plugins=[PydanticAIPlugin()],
     )
     # endregion FEATURE-OFF: payload-encryption
     # region FEATURE-ON: payload-encryption
-    # # NOTE: Encrypt payloads across the Temporal boundary, matching the worker's
+    # # NOTE: Encrypt payloads across the Temporal boundary, matching payments'
     # # data converter. PydanticAIPlugin only installs its own data converter
     # # when the caller doesn't pass one, so keeping the plugin alongside an
     # # explicit data_converter is safe — verified empirically: dropping
@@ -86,7 +86,7 @@ async def main(scenario: Scenario) -> None:
         )
 
     # NOTE: teaching aside (always-on documentation, not a toggleable feature block):
-    # once the `human-approval-signal` feature is enabled in the worker, a
+    # once the `human-approval-signal` feature is enabled in payments, a
     # proposal whose confidence is below CONFIDENCE_THRESHOLD is no longer
     # applied automatically. Instead the coordinator pauses and waits for a
     # human verdict, which arrives out-of-band — sent by a *separate* client,

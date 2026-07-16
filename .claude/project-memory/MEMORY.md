@@ -28,6 +28,7 @@
 - [Authoring toggleable FEATURE blocks](references/reference_feature_block_authoring.md) — single-# code vs double-# prose; pair REPLACE features with FEATURE-OFF; commented body must match ruff output; verify enable→parse→disable round-trip.
 - [Feature blocks use VS Code folding regions](references/project_feature_regions_folding.md) — markers are `# region FEATURE-ON:`/`FEATURE-OFF:`; FEATURE-ON auto-folds on open, FEATURE-OFF stays expanded (explicit-folding); CLI toggles text, learner expands manually.
 - [Import symbols from their canonical public module](references/feedback_canonical_imports.md) — import pydantic_data_converter from temporalio.contrib.pydantic, not the pydantic_ai re-export, to avoid Pylance reportPrivateImportUsage.
+- [Payments component naming vs Temporal Worker primitive](references/project_payments_component_naming.md) — prose calls the deployable component "payments"; `Worker`/`worker` stays reserved for the Temporal SDK primitive and its identifiers.
 - [Implementation status](references/project_implementation_status.md) — workshop feature-set work that is still pending (not yet implemented).
 - [retry-alerting metric tags](references/reference_retry_alert_metric_tags.md) — corridor_correction_retries_alerted is tagged field/source (proposal has no corridor/anomaly type), matching sibling corridor_* metrics.
 - [Memory entries are present-tense standing facts](references/feedback_memory_present_tense.md) — phrase every entry as a current fact; never narrate past events ("renamed from", "the user asked").

@@ -40,7 +40,7 @@ forwards the user's real token and needs no gateway/secret.
   logs a WARNING and falls back to insecure built-in demo defaults
   (token `changeme`, plus a demo Fernet key), so it always starts —
   even in Sessions 1-2 and even with no `.env`. `.env.example` ships
-  the same demo values so `cp .env.example .env` is coherent (worker
+  the same demo values so `cp .env.example .env` is coherent (payments
   encrypts with the key the codec expects). There is NO `make codec`
   target; the codec starts with `make dev` / `infra-up` / `app-up`.
 - `gateway` intentionally does NOT `depends_on` codec, so `/codec`
@@ -54,7 +54,7 @@ forwards the user's real token and needs no gateway/secret.
   (`--codec-endpoint http://localhost:8233/codec`, no `--codec-auth`).
 - `make worktree-ports` gives the gateway `CASPER_PORT` itself
   (primary entry point, mapped to its 8233); temporal-grpc `+1`,
-  worker-metrics `+2`, webui `+3`; temporal publishes only 7233.
+  payments-metrics `+2`, webui `+3`; temporal publishes only 7233.
 
 Pairs with [[project_docker_build]] and
 [[feedback_codec_server_not_a_feature]].

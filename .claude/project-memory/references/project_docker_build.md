@@ -10,7 +10,8 @@ The `Dockerfile.payments` and `Dockerfile.webui` images install
 dependencies only (`uv sync --frozen --no-dev --no-install-project`) and
 run the packages directly from `/app` (`CMD ["python", "-m",
 "payments.main"]` / `CMD ["python", "-m", "webui.main"]`). Each image
-copies only the packages it needs: worker copies `shared/` + `payments/`;
+copies only the packages it needs: the payments image copies `shared/` +
+`payments/`;
 webui copies `webui/` (its `templates/` and `static/` live inside the
 package, resolved via `Path(__file__).parent`). They must NOT
 build/install the project package (no `uv sync --no-editable`).

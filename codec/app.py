@@ -3,7 +3,7 @@
 The Web UI only ever sees the encrypted payloads stored in Event History,
 so raw ciphertext is all it can display. A *remote codec server* fixes that:
 the Web UI POSTs the encrypted payloads to this HTTP service, which decrypts
-them with the same key the worker uses and returns the plaintext for display
+them with the same key payments uses and returns the plaintext for display
 (and encrypts on the way back, for the "send" flows).
 
 This is a FastAPI port of the official aiohttp sample — the wire protocol is
@@ -47,7 +47,7 @@ load_dotenv()
 # Insecure, publicly-known dev defaults used only when the real values are
 # unset. They MUST match the fallbacks baked into gateway/Caddyfile (token) and
 # the values shipped in .env.example (both), so `cp .env.example .env` — or even
-# an empty environment — yields a coherent setup where the worker encrypts with
+# an empty environment — yields a coherent setup where payments encrypts with
 # the key the codec expects and the gateway injects the token the codec expects.
 _DEFAULT_ENCRYPTION_KEY = "M80yQxCwjIWwuApHeRjQQoRARc0PhUh6FAEfukmEhlk="
 _DEFAULT_AUTH_TOKEN = "changeme"
