@@ -15,8 +15,8 @@ from collections.abc import Sequence
 from dataclasses import replace
 
 from cryptography.fernet import Fernet
-from pydantic_ai.durable_exec.temporal import pydantic_data_converter
 from temporalio.api.common.v1 import Payload
+from temporalio.contrib.pydantic import pydantic_data_converter
 from temporalio.converter import DataConverter, PayloadCodec
 
 # Marker written into the wire payload's metadata so decode() can recognize

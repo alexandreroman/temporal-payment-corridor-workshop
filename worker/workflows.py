@@ -10,6 +10,7 @@ instances) instead of re-importing them.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from datetime import timedelta
 
 from temporalio import workflow
@@ -59,7 +60,7 @@ TASK_QUEUE = "payment-corridor"
 
 
 def _select_best(
-    results: list[CorrectionProposal | BaseException],
+    results: Sequence[CorrectionProposal | BaseException],
 ) -> CorrectionProposal | None:
     """Pick the highest-confidence proposal, tolerating agent failures.
 
