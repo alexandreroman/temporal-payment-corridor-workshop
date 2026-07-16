@@ -183,7 +183,7 @@ def set_feature_in_text(text: str, name: str, enable: bool) -> str:
     return "\n".join(lines)
 
 
-ROOTS: tuple[str, ...] = ("shared", "worker", "webui", "simulator")
+ROOTS: tuple[str, ...] = ("shared", "payments", "webui", "simulator", "memory")
 
 
 def iter_source_files(root_dir: Path) -> list[Path]:

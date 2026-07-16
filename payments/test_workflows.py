@@ -6,7 +6,7 @@ Temporal server started for the duration of the test. That is heavier than
 a unit test, but it is the only way to exercise the actual `workflow.defn`
 classes (child workflows, activities, the sandbox, the data converter)
 rather than the plain Python functions already covered by
-``worker/test_worker.py``.
+``payments/test_worker.py``.
 
 No ``pytest-asyncio`` dependency is configured in this project (see
 ``pyproject.toml``), so async scenarios are driven with ``asyncio.run``
@@ -15,7 +15,7 @@ inside plain, synchronous test functions — the same style as
 
 Mocking the model
 ------------------
-The two production agents (``worker.agents.instruction_agent`` and
+The two production agents (``payments.agents.instruction_agent`` and
 ``compliance_agent``) call a real hosted model. Pydantic AI offers
 ``Agent.override(model=...)`` to swap the model for the duration of a call,
 which is the documented way to test an agent without a network call.
@@ -45,15 +45,15 @@ from __future__ import annotations
 import asyncio
 from datetime import timedelta
 
-from temporalio import workflow
+from temporalio import activity, workflow
 from temporalio.client import Client
 from temporalio.common import SearchAttributeKey
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
-# Mirrors the passthrough convention in worker/workflows.py and
-# worker/agents.py: these modules are imported normally (not re-executed by
+# Mirrors the passthrough convention in payments/workflows.py and
+# payments/agents.py: these modules are imported normally (not re-executed by
 # the sandbox on every workflow task) because they hold objects — the
 # TemporalAgent instances below — whose identity and internal state must be
 # shared between workflow invocations. cryptography's Fernet also needs to
@@ -71,23 +71,47 @@ with workflow.unsafe.imports_passed_through():
         CorrectionOutcome,
         CorrectionProposal,
         CorrectionSource,
+        CorridorPattern,
         PaymentAnomaly,
     )
-    from worker.activities import apply_correction
+    from memory import store as memory_store
+    from payments.activities import apply_correction
 
     # region FEATURE-ON: settlement-confirmation
-    # from worker.activities import confirm_settlement
+    # from payments.activities import confirm_settlement
     # endregion FEATURE-ON: settlement-confirmation
 
-    from worker.agents import AgentCorrection
-    from worker.memory import read_corridor_memory, write_corridor_memory
-    from worker.workflows import (
+    from payments.agents import AgentCorrection
+    from payments.workflows import (
         ComplianceAgentWorkflow,
         PaymentCorrectionCoordinator,
         _propose,
     )
 
 TASK_QUEUE = "payment-corridor-test"
+
+
+# --- In-process corridor-memory activity doubles -------------------------
+#
+# In production these two activities are HTTP clients to the corridor-memory
+# service (see payments/memory.py). Starting that service is unnecessary for
+# these workflow-orchestration tests, so we register doubles under the same
+# activity names that run the service's own store logic (memory/store.py)
+# directly, in-process. That keeps the scenarios hermetic and offline while
+# preserving the exact hit/miss behaviour the coordinator depends on (the
+# store is pre-seeded with the US->IN / WRONG_IBAN pattern).
+
+
+@activity.defn(name="read_corridor_memory")
+async def read_corridor_memory(
+    corridor: str, anomaly_type: AnomalyType
+) -> CorridorPattern | None:
+    return memory_store.lookup(corridor, anomaly_type)
+
+
+@activity.defn(name="write_corridor_memory")
+async def write_corridor_memory(pattern: CorridorPattern) -> None:
+    memory_store.remember(pattern)
 
 
 # --- Test doubles registered in place of InstructionAgentWorkflow --------
@@ -137,7 +161,7 @@ async def _local_env_client(env: WorkflowEnvironment) -> Client:
     ``env.client`` uses the default data converter, which cannot serialize
     the Pydantic models crossing the Temporal boundary here. Every test
     below instead connects its own client with ``PydanticAIPlugin``, exactly
-    like ``worker/main.py`` does — the plugin installs the Pydantic data
+    like ``payments/main.py`` does — the plugin installs the Pydantic data
     converter and also wires the sandbox passthrough that TemporalAgent-
     based workflows need to pass validation at ``Worker`` construction.
     """
@@ -159,8 +183,9 @@ def test_instruction_agent_returns_llm_proposal_on_memory_miss():
                 workflows=[_FakeInstructionAgentWorkflow],
                 activities=[read_corridor_memory, write_corridor_memory],
             ):
-                # "US->GB" / WRONG_IBAN is not in worker.memory._MEMORY, so
-                # this is a guaranteed miss that falls through to the agent.
+                # "US->GB" / WRONG_IBAN is not in the corridor-memory store's
+                # seed, so this is a guaranteed miss that falls through to the
+                # agent.
                 anomaly = PaymentAnomaly(
                     payment_id="pay-miss-1",
                     corridor="US->GB",

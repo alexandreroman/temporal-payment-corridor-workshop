@@ -29,7 +29,8 @@ WEBUI_URL_PORT     := $(shell sed -nE 's/.*"([0-9]+):8000".*/\1/p' compose.overr
 TEMPORAL_UI_PORT   := $(shell sed -nE 's/.*"([0-9]+):8233".*/\1/p' compose.override.yaml | head -n1)
 TEMPORAL_GRPC_PORT := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.override.yaml | head -n1)
 METRICS_PORT       := $(shell sed -nE 's/.*"([0-9]+):9464".*/\1/p' compose.override.yaml | head -n1)
-# Point the host-side dev flow (uv run worker/webui) at the remapped ports.
+MEMORY_URL_PORT    := $(shell sed -nE 's/.*"([0-9]+):8010".*/\1/p' compose.override.yaml | head -n1)
+# Point the host-side dev flow (uv run payments/webui) at the remapped ports.
 # Assign unconditionally (:=, not ?=): the override file is the source of truth
 # for published ports, so these must beat the .env baseline already exported
 # above. Plain := (not `override`) still lets an explicit `make VAR=...` win.
@@ -37,11 +38,13 @@ TEMPORAL_ADDRESS     := localhost:$(TEMPORAL_GRPC_PORT)
 WEBUI_PORT           := $(WEBUI_URL_PORT)
 WORKER_METRICS_HOST  := 0.0.0.0
 WORKER_METRICS_PORT  := $(METRICS_PORT)
-export TEMPORAL_ADDRESS WEBUI_PORT WORKER_METRICS_HOST WORKER_METRICS_PORT
+MEMORY_PORT          := $(MEMORY_URL_PORT)
+export TEMPORAL_ADDRESS WEBUI_PORT WORKER_METRICS_HOST WORKER_METRICS_PORT MEMORY_PORT
 else
 WEBUI_URL_PORT     := 8000
 TEMPORAL_UI_PORT   := 8233
 METRICS_PORT       := 9464
+MEMORY_URL_PORT    := 8010
 endif
 
 # Banner listing where to reach the running components.
@@ -49,6 +52,7 @@ define show_urls
 	@echo ""
 	@echo "The stack is up. Open:"
 	@echo "  Web UI             http://localhost:$(WEBUI_URL_PORT)"
+	@echo "  Corridor memory    http://localhost:$(MEMORY_URL_PORT)"
 	@echo "  Temporal Web UI    http://localhost:$(TEMPORAL_UI_PORT)  (via gateway)"
 	@echo "  Worker metrics     http://localhost:$(METRICS_PORT)/metrics"
 endef
@@ -76,9 +80,9 @@ infra-logs: ## Follow logs from the Temporal dev server
 
 ##@ App (host, hot reload)
 
-.PHONY: worker
-worker: ## Run the Temporal worker on the host with hot reload
-	uv run worker
+.PHONY: payments
+payments: ## Run the Temporal worker on the host with hot reload
+	uv run payments
 
 .PHONY: simulator
 simulator: ## Simulate an incoming payment anomaly
@@ -88,10 +92,14 @@ simulator: ## Simulate an incoming payment anomaly
 webui: ## Run the web UI on the host with hot reload
 	uv run webui
 
+.PHONY: memory
+memory: ## Run the corridor memory service on the host with hot reload
+	uv run memory
+
 .PHONY: dev
 dev: .venv infra-up ## Start Temporal, then run worker + web UI on the host with hot reload
 	$(show_urls)
-	@$(MAKE) -j worker webui
+	@$(MAKE) -j payments webui memory
 
 .venv: pyproject.toml uv.lock
 	uv sync
@@ -127,8 +135,8 @@ worktree-init: ## Initialise a worktree: install deps and remap host ports off C
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
-		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n  gateway:\n    ports: !override\n      - "%s:8233"\n  worker:\n    ports: !override\n      - "%s:9464"\n  webui:\n    ports: !override\n      - "%s:8000"\n' \
-			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 3)) > compose.override.yaml; \
+		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n  gateway:\n    ports: !override\n      - "%s:8233"\n  payments:\n    ports: !override\n      - "%s:9464"\n  webui:\n    ports: !override\n      - "%s:8000"\n  memory:\n    ports: !override\n      - "%s:8010"\n' \
+			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 3)) $$((CASPER_PORT + 4)) > compose.override.yaml; \
 		echo "Wrote compose.override.yaml (CASPER_PORT=$$CASPER_PORT)"; \
 	fi
 
@@ -178,7 +186,7 @@ gateway: ## (Re)start the API gateway — single entry point (Web UI + /codec) a
 	docker compose up -d gateway
 
 .PHONY: capture-history
-capture-history: ## Regenerate worker/testdata/coordinator-history.json for the replay test
+capture-history: ## Regenerate payments/testdata/coordinator-history.json for the replay test (needs `make memory` running)
 	uv run python -m tools.capture_history
 
 ##@ Helpers

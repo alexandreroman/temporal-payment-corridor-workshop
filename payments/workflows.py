@@ -23,18 +23,18 @@ from temporalio.common import RetryPolicy
 with workflow.unsafe.imports_passed_through():
     from pydantic_ai.durable_exec.temporal import PydanticAIWorkflow
 
-    from worker.activities import apply_correction
+    from payments.activities import apply_correction
 
     # region FEATURE-ON: settlement-confirmation
-    # from worker.activities import confirm_settlement
+    # from payments.activities import confirm_settlement
     # endregion FEATURE-ON: settlement-confirmation
 
-    from worker.agents import (
+    from payments.agents import (
         AgentCorrection,
         compliance_temporal_agent,
         instruction_temporal_agent,
     )
-    from worker.memory import read_corridor_memory
+    from payments.memory import read_corridor_memory
 
     from shared.models import (
         ApprovalDecision,
@@ -272,7 +272,7 @@ class PaymentCorrectionCoordinator:
         # #
         # # NOTE: Enabling this feature adds a workflow step (this activity call),
         # # so the coordinator's event history changes. The committed replay test
-        # # (worker/test_replay.py) replays worker/testdata/coordinator-history.json,
+        # # (payments/test_replay.py) replays payments/testdata/coordinator-history.json,
         # # captured with the feature DISABLED, so it diverges and fails here BY
         # # DESIGN -- that is expected, not a bug. In production the safe way to add
         # # a step to already-running workflows is versioning/patching

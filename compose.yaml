@@ -17,6 +17,12 @@ services:
       # Compose address): the browser, not the server, calls it.
       - --ui-codec-endpoint
       - http://localhost:8233/codec
+      # Pre-create one namespace per bounded context: the payment-correction
+      # worker and the memory service never share a namespace.
+      - --namespace
+      - payments
+      - --namespace
+      - memory
     ports:
       - "7233:7233"  # gRPC endpoint for workers and clients
       # Web UI is not published directly: it is served through the gateway on
@@ -32,18 +38,22 @@ services:
           memory: 512M
     restart: unless-stopped
 
-  worker:
+  payments:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile.payments
     # Optional so a fresh clone can `make dev` without first copying `.env`.
     env_file:
       - path: .env
         required: false
     environment:
       TEMPORAL_ADDRESS: temporal:7233
+      PAYMENTS_TEMPORAL_NAMESPACE: payments
       WORKER_METRICS_HOST: 0.0.0.0
       WORKER_METRICS_PORT: 9464
+      # Reach the memory service over HTTP (its Compose service name + port).
+      MEMORY_HOST: memory
+      MEMORY_PORT: 8010
     ports:
       - "9464:9464" # Prometheus/OpenMetrics — http://localhost:9464/metrics
     healthcheck:
@@ -53,6 +63,9 @@ services:
       retries: 3
     depends_on:
       temporal:
+        condition: service_healthy
+      # The correction activities call the memory service over HTTP.
+      memory:
         condition: service_healthy
     deploy:
       resources:
@@ -80,6 +93,38 @@ services:
       timeout: 10s
       retries: 3
     depends_on:
+      temporal:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: on-failure
+
+  memory:
+    build:
+      context: .
+      dockerfile: Dockerfile.memory
+    # Optional so a fresh clone can `make dev` without first copying `.env`.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      MEMORY_HOST: 0.0.0.0
+      MEMORY_PORT: 8010
+      # Only used when the memory-workflow FEATURE is enabled (the service then
+      # runs an embedded worker on its own namespace); harmless otherwise.
+      TEMPORAL_ADDRESS: temporal:7233
+      MEMORY_TEMPORAL_NAMESPACE: memory
+    ports:
+      - "8010:8010" # http — corridor memory API (/api/memory/v1)
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8010/healthz')\""]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      # Needed only when the memory-workflow FEATURE is enabled; harmless off.
       temporal:
         condition: service_healthy
     deploy:

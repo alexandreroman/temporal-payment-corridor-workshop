@@ -8,6 +8,7 @@ requires-python = ">=3.12"
 dependencies = [
     "cryptography>=43",
     "fastapi>=0.139.0",
+    "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "logfire[fastapi]>=4.37.0",
     "pydantic-ai[temporal]>=2.10.0",
@@ -17,13 +18,13 @@ dependencies = [
 ]
 
 [project.scripts]
-worker = "worker.main:dev"
+payments = "payments.main:dev"
 simulator = "simulator.main:cli"
 webui = "webui.main:dev"
+memory = "memory.main:dev"
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "pytest>=9.1.1",
     "ruff>=0.15.21",
 ]
@@ -36,4 +37,4 @@ build-backend = "hatchling.build"
 # Package layout: ship each functional module as a package. Package data
 # (webui templates/static) is picked up because it lives inside the webui
 # package directory.
-packages = ["shared", "worker", "webui", "simulator"]
+packages = ["shared", "payments", "webui", "simulator", "memory"]

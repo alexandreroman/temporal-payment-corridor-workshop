@@ -10,7 +10,7 @@ gets stuck. A replay test catches that class of bug at test time instead of
 in a running deployment.
 
 This test does not run the workflow — it feeds a PREVIOUSLY CAPTURED
-history (``worker/testdata/coordinator-history.json``, produced by
+history (``payments/testdata/coordinator-history.json``, produced by
 ``tools/capture_history.py``; see that module's docstring for the
 regeneration procedure) to :class:`temporalio.worker.Replayer`, which
 re-executes it against whatever ``PaymentCorrectionCoordinator`` and its
@@ -21,7 +21,7 @@ succeeds.
 No ``pytest-asyncio`` dependency is configured in this project (see
 ``pyproject.toml``), so the async replay is driven with ``asyncio.run``
 inside a plain, synchronous test function — the same style as
-``worker/test_workflows.py``.
+``payments/test_workflows.py``.
 """
 
 from __future__ import annotations
@@ -35,8 +35,7 @@ from temporalio.worker import Replayer
 
 from pydantic_ai.durable_exec.temporal import PydanticAIPlugin
 
-from worker.memory import CorridorMemoryWorkflow
-from worker.workflows import (
+from payments.workflows import (
     ComplianceAgentWorkflow,
     InstructionAgentWorkflow,
     PaymentCorrectionCoordinator,
@@ -54,16 +53,14 @@ def _load_fixture_history() -> WorkflowHistory:
 def test_coordinator_replays_captured_history():
     """The current workflow code replays a real, previously recorded history.
 
-    All four workflow types that can appear in the coordinator's execution
-    (parent + two agent children + the long-running corridor-memory
-    workflow) are registered, even though this particular captured history
-    only exercises the parent and its two agent children — Replayer
-    validates every registered workflow's determinism, not just the ones a
-    given history happens to touch.
+    All three workflow types that can appear in the coordinator's execution
+    (parent + two agent children) are registered. Replayer validates every
+    registered workflow's determinism, not just the ones a given history
+    happens to touch.
 
     ``PydanticAIPlugin`` must be passed explicitly, exactly like every real
-    ``Client``/``Worker`` in this project (see ``worker/main.py``,
-    ``worker/test_workflows.py``). ``Replayer`` never connects to a server,
+    ``Client``/``Worker`` in this project (see ``payments/main.py``,
+    ``payments/test_workflows.py``). ``Replayer`` never connects to a server,
     so nothing installs the plugin for it automatically. Two things depend
     on it here: the Pydantic data converter (needed to decode the recorded
     ``PaymentAnomaly`` / ``CorrectionOutcome`` payloads), and the sandbox
@@ -79,7 +76,6 @@ def test_coordinator_replays_captured_history():
                 PaymentCorrectionCoordinator,
                 InstructionAgentWorkflow,
                 ComplianceAgentWorkflow,
-                CorridorMemoryWorkflow,
             ],
             plugins=[PydanticAIPlugin()],
         )

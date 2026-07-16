@@ -51,12 +51,18 @@ instead of only by CI:
 make setup       # enable the local ruff pre-commit hook
 ```
 
-Start the Temporal dev server, then the worker and the web UI (all with hot
-reload) in one go. The command prints the reachable URLs in a banner:
+Start the Temporal dev server, then the worker, the web UI, and the corridor
+memory service (all with hot reload) in one go — three host processes plus
+the Temporal container. The command prints the reachable URLs in a banner:
 
 ```bash
-make dev       # Temporal dev server, then worker + web UI on the host
+make dev       # Temporal dev server, then worker + web UI + memory on the host
 ```
+
+The worker and the memory service run in two separate Temporal namespaces
+(`payments` and `memory`); the dev server pre-creates both. The worker never
+talks to the memory service over Temporal — it calls the memory HTTP API
+(`/api/memory/v1`) instead.
 
 Then, in another terminal, fire a payment anomaly:
 
@@ -72,12 +78,19 @@ frontend against an already-running worker:
 make webui       # http://localhost:8000
 ```
 
+Likewise, `make memory` runs only the corridor memory service (its HTTP API
+serves `/api/memory/v1` on http://localhost:8010):
+
+```bash
+make memory      # http://localhost:8010
+```
+
 By default the Temporal Web UI is at http://localhost:8233 — served through
 the gateway, the app's single published HTTP entry point — and the worker
 metrics at http://localhost:9464/metrics; `make dev` also prints these URLs
 in its banner. The default anomaly matches a pre-seeded corridor-memory
 pattern, so it is corrected end-to-end with no API key. Run `make help` to
-list all targets (`infra-up`, `infra-down`, `worker`, `lint`, ...).
+list all targets (`infra-up`, `infra-down`, `payments`, `lint`, ...).
 
 ## Workshop features
 
@@ -187,11 +200,13 @@ attributes. After registering, filter executions in the Web UI or with
 Enabling a feature that changes workflow code — as `search-attributes` does
 by adding a Search Attribute upsert inside the coordinator — intentionally
 invalidates the committed replay fixture
-(`worker/testdata/coordinator-history.json`). The captured history no longer
-matches the new code path, so `worker/test_replay.py` failing after you
+(`payments/testdata/coordinator-history.json`). The captured history no longer
+matches the new code path, so `payments/test_replay.py` failing after you
 enable such a feature is expected, not a regression. Regenerate the fixture
 for the new state with `make capture-history` if you want a passing replay
-test while the feature stays enabled.
+test while the feature stays enabled. That capture drives the coordinator,
+which now reads corridor memory over HTTP, so `make memory` must be running
+first.
 
 ## Usage
 
@@ -225,10 +240,15 @@ All configuration comes from environment variables, loaded from a local
 
 ## Architecture
 
-A single worker process hosts every workflow and activity on one task
-queue. The coordinator orchestrates the agents; agents consult corridor
-memory before the LLM; activities perform all side effects and emit
-application metrics.
+The payment-correction worker (`payments/`, namespace `payments`) hosts the
+coordinator, agents, and activities on one task queue. The coordinator
+orchestrates the agents; agents consult corridor memory before the LLM;
+activities perform all side effects and emit application metrics. Corridor
+memory is a separate service (`memory/`) that the `read_corridor_memory` and
+`write_corridor_memory` activities reach over HTTP (`/api/memory/v1`). With
+the `memory-workflow` FEATURE on, that service runs its own embedded worker
+and `MemoryWorkflow` on namespace `memory`; otherwise it serves a naive
+in-memory store.
 
 ```mermaid
 graph TD
@@ -241,24 +261,30 @@ graph TD
     K -.->|on memory miss| L
     C -->|apply| A[apply_correction]
     C -.->|low confidence| H[Human approval signal]
+    M -->|HTTP /api/memory/v1| MEM[corridor-memory service memory/]
+    W[write_corridor_memory] -->|HTTP /api/memory/v1| MEM
 ```
 
-| Module                 | Description                                                          |
-| ---------------------- | -------------------------------------------------------------------- |
-| `shared/models.py`     | Shared Pydantic models exchanged across the Temporal boundary        |
-| `worker/agents.py`     | Pydantic AI agents wrapped as durable `TemporalAgent`s               |
-| `worker/workflows.py`  | Coordinator and agent child workflows                                |
-| `worker/activities.py` | Applying the correction                                              |
-| `worker/memory.py`     | Passive corridor memory: store, read/write activities, and workflow  |
-| `worker/worker.py`     | Builds the `Worker`: task queue + workflow/activity registration     |
-| `worker/main.py`       | Worker entrypoint: runtime, metrics, Logfire, hot reload             |
-| `webui/app.py`         | FastAPI web UI: routes, Logfire, temporal.io-styled landing page     |
-| `webui/main.py`        | Web UI entrypoint: uvicorn with hot reload                           |
-| `codec/app.py`         | FastAPI codec server: decrypts payloads for the Temporal Web UI      |
-| `codec/main.py`        | Codec server entrypoint: uvicorn without reload                     |
-| `Dockerfile.codec`     | Codec server image                                                  |
-| `gateway/Caddyfile`    | API gateway: single entry point, injects the codec bearer token     |
-| `simulator/main.py`    | Client that simulates an incoming payment anomaly                    |
+| Module                   | Description                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `shared/models.py`       | Shared Pydantic models exchanged across the Temporal boundary                                                                        |
+| `payments/agents.py`     | Pydantic AI agents wrapped as durable `TemporalAgent`s                                                                               |
+| `payments/workflows.py`  | Coordinator and agent child workflows                                                                                                |
+| `payments/activities.py` | Applying the correction                                                                                                              |
+| `payments/memory.py`     | HTTP-client activities (`read_corridor_memory` / `write_corridor_memory`) calling the corridor-memory service over `/api/memory/v1`. |
+| `payments/worker.py`     | Builds the `Worker`: task queue + workflow/activity registration                                                                     |
+| `payments/main.py`       | Worker entrypoint: runtime, metrics, Logfire, hot reload                                                                             |
+| `webui/app.py`           | FastAPI web UI: routes, Logfire, temporal.io-styled landing page                                                                     |
+| `webui/main.py`          | Web UI entrypoint: uvicorn with hot reload                                                                                           |
+| `memory/app.py`          | FastAPI corridor-memory service: the `/api/memory/v1` routes                                                                         |
+| `memory/store.py`        | Naive in-memory corridor-pattern store (baseline backend)                                                                            |
+| `memory/workflow.py`     | `MemoryWorkflow` durable store for the `memory-workflow` FEATURE                                                                     |
+| `memory/main.py`         | Memory service entrypoint: uvicorn with hot reload                                                                                   |
+| `codec/app.py`           | FastAPI codec server: decrypts payloads for the Temporal Web UI                                                                      |
+| `codec/main.py`          | Codec server entrypoint: uvicorn without reload                                                                                      |
+| `Dockerfile.codec`       | Codec server image                                                                                                                   |
+| `gateway/Caddyfile`      | API gateway: single entry point, injects the codec bearer token                                                                      |
+| `simulator/main.py`      | Client that simulates an incoming payment anomaly                                                                                    |
 
 ## License
 

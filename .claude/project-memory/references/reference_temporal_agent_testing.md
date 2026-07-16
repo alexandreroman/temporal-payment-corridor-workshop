@@ -6,7 +6,7 @@ type: reference
 
 # Testing TemporalAgent-based workflows under start_local
 
-`worker/test_workflows.py` runs real workflow code against
+`payments/test_workflows.py` runs real workflow code against
 `temporalio.testing.WorkflowEnvironment.start_local()`. Two non-obvious
 things were learned getting that green, both worth knowing before writing
 more tests in this area.
@@ -41,6 +41,6 @@ sandboxed workflow runner re-imports that module's dependencies, and
 `cryptography`'s Rust extension cannot survive being loaded a second time.
 Fix: import `Fernet` inside the same
 `with workflow.unsafe.imports_passed_through():` block already used for
-`pydantic_ai`, `shared.encryption`, `shared.models`, and `worker.*` (the
-same convention `worker/workflows.py` / `worker/agents.py` /
-`worker/memory.py` already follow).
+`pydantic_ai`, `shared.encryption`, `shared.models`, and `payments.*` (the
+same convention `payments/workflows.py` / `payments/agents.py` /
+`payments/memory.py` already follow).

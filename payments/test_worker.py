@@ -1,6 +1,6 @@
 from shared.models import CorrectionProposal, CorrectionSource
-from worker.activities import _correction_reference
-from worker.workflows import _select_best
+from payments.activities import _correction_reference
+from payments.workflows import _select_best
 
 
 def test_correction_reference_is_stable_for_same_inputs():

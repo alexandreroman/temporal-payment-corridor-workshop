@@ -18,7 +18,7 @@ See [README.md](README.md) for full documentation.
 
 ```bash
 uv sync            # install dependencies
-make dev           # Temporal dev server (Docker) + worker & web UI (hot reload)
+make dev           # Temporal dev server (Docker) + worker, web UI & memory (hot reload)
 make simulator     # simulate an incoming payment anomaly
 make check         # lint + tests
 ```
@@ -32,13 +32,18 @@ component definition isolated in its own file.
 
 - `shared/models.py` — shared Pydantic models exchanged across the
   Temporal boundary
-- `worker/` — Temporal worker. `main.py` bootstraps infra (runtime,
+- `payments/` — Temporal worker. `main.py` bootstraps infra (runtime,
   metrics, Logfire, client, hot reload); `worker.py` builds the `Worker`
   (task queue + workflow/activity registration); `agents.py`,
   `activities.py`, `workflows.py`, `memory.py` hold the durable logic
 - `webui/` — FastAPI web UI. `main.py` bootstraps infra + uvicorn;
   `app.py` defines the app and routes; `templates/` and `static/` hold
   the HTML/CSS
+- `memory/` — FastAPI corridor-memory service (its own process and
+  Temporal namespace, reached only over HTTP). `main.py` bootstraps
+  uvicorn; `app.py` defines the `/api/memory/v1` routes; `store.py` is the
+  in-memory baseline backend; `workflow.py` holds `MemoryWorkflow`, the
+  durable backend enabled by the `memory-workflow` FEATURE
 - `simulator/main.py` — client that simulates an incoming payment anomaly
 
 ## Agents
