@@ -456,14 +456,17 @@ def test_coordinator_exposes_listing_query_surface():
                     execution_timeout=timedelta(seconds=30),
                 )
 
-                # Baseline query surface (search-attributes OFF): available
-                # whether or not any feature is enabled.
+                # region FEATURE-OFF: search-attributes
+                # Baseline query surface (search-attributes OFF): describe_anomaly
+                # is REPLACE-removed when search-attributes is enabled, so this
+                # assertion pairs with the workflow's own FEATURE-OFF region.
                 described = await handle.query(
                     PaymentCorrectionCoordinator.describe_anomaly
                 )
                 assert described.payment_id == anomaly.payment_id
                 assert described.corridor == anomaly.corridor
                 assert described.anomaly_type == anomaly.anomaly_type
+                # endregion FEATURE-OFF: search-attributes
 
                 # region FEATURE-ON: human-approval-signal
                 # # With human oversight wired, the low-confidence correction
