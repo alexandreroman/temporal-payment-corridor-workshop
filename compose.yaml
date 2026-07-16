@@ -30,7 +30,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    env_file: .env
+    # Optional so a fresh clone can `make dev` without first copying `.env`.
+    env_file:
+      - path: .env
+        required: false
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       WORKER_METRICS_HOST: 0.0.0.0
@@ -55,7 +58,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.webui
-    env_file: .env
+    # Optional so a fresh clone can `make dev` without first copying `.env`.
+    env_file:
+      - path: .env
+        required: false
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       WEBUI_HOST: 0.0.0.0

@@ -253,6 +253,7 @@ class PaymentCorrectionCoordinator:
     # @workflow.query
     # def decision(self) -> ApprovalDecision | None:
     #     return self._decision
+    #
     # --- END FEATURE: human-approval-signal ---
 
     # --- FEATURE: human-approval-update ---

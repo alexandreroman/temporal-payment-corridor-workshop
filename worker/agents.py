@@ -31,9 +31,9 @@ from pydantic_ai.durable_exec.temporal import TemporalAgent
 
 # Model is resolved at import time from the environment so attendees can
 # switch providers without touching code. Any Pydantic AI model string
-# works, e.g. 'anthropic:claude-sonnet-4-5', 'openai:gpt-5.2',
+# works, e.g. 'anthropic:claude-sonnet-5', 'openai:gpt-5.2',
 # 'google-gla:gemini-2.5-pro'.
-MODEL = os.getenv("CORRIDOR_MODEL", "anthropic:claude-sonnet-4-5")
+MODEL = os.getenv("CORRIDOR_MODEL", "anthropic:claude-sonnet-5")
 
 # Pydantic AI resolves the provider (and validates its API key) when the
 # Agent is constructed. The seeded happy path never calls a model, so we set

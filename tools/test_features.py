@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from tools.features import (
     MalformedError,
     collect,
@@ -189,3 +191,44 @@ def test_cli_enable_reports_changed_files(tmp_path, capsys, monkeypatch):
     monkeypatch.setenv("FEATURES_NO_FORMAT", "1")  # skip ruff in tests
     assert main(["enable", "multi"]) == 0
     assert "enabled 'multi'" in capsys.readouterr().out
+
+
+# --- Regression guard against prose (or otherwise non-code) inside a FEATURE
+# block. Feature bodies ship commented out, so a body that is not valid Python
+# stays hidden until a learner enables the feature and it uncomments into a
+# SyntaxError. These cases toggle every feature in the *real* repository, so
+# such a regression fails CI instead of surfacing mid-workshop.
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+# Collected once at import time; parametrization needs the feature names now.
+_REPO_FEATURES = collect(REPO_ROOT)
+
+
+def _files_touched_by(name: str) -> list[Path]:
+    """Distinct files carrying feature ``name``, in first-seen order."""
+    ordered: dict[Path, None] = {}
+    for path, _region in _REPO_FEATURES[name]:
+        ordered.setdefault(path, None)
+    return list(ordered)
+
+
+@pytest.mark.parametrize("enable", [True, False], ids=["enable", "disable"])
+@pytest.mark.parametrize("name", sorted(_REPO_FEATURES))
+def test_toggling_repo_feature_keeps_every_file_valid_python(name, enable):
+    for path in _files_touched_by(name):
+        text = path.read_text(encoding="utf-8")
+        try:
+            toggled = set_feature_in_text(text, name, enable=enable)
+        except MalformedError as exc:
+            pytest.fail(
+                f"feature '{name}' in {path}: set_feature_in_text raised "
+                f"MalformedError (enable={enable}): {exc}"
+            )
+        try:
+            compile(toggled, str(path), "exec")
+        except SyntaxError as exc:
+            state = "enabled" if enable else "disabled"
+            pytest.fail(
+                f"feature '{name}' in {path}: the {state} form is invalid Python: {exc}"
+            )

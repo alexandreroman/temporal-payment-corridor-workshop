@@ -84,18 +84,29 @@ async def main() -> None:
             f"(confidence {p.confidence:.2f}, via {p.source} / {p.agent_name})"
         )
 
-    # --- FEATURE: human-approval-signal ---
-    # When a proposal needs human sign-off, the coordinator waits for a
-    # decision. Send it from a second client (or here, after starting the
-    # workflow without awaiting its result):
+    # Teaching note (always-on documentation, not a toggleable feature block):
+    # once the `human-approval-signal` feature is enabled in the worker, a
+    # proposal whose confidence is below CONFIDENCE_THRESHOLD is no longer
+    # applied automatically. Instead the coordinator pauses and waits for a
+    # human verdict, which arrives out-of-band — sent by a *separate* client,
+    # not by this simulator (which only starts the workflow and awaits its
+    # result). For example, an ops process holding a workflow handle can
+    # approve the correction with:
     #
-    # from shared.models import ApprovalDecision
-    # handle = client.get_workflow_handle("correction-...")
-    # await handle.signal(
-    #     PaymentCorrectionCoordinator.approve_correction,
-    #     ApprovalDecision(approved=True, approver="ops@bank.example"),
-    # )
-    # --- END FEATURE: human-approval-signal ---
+    #     handle = client.get_workflow_handle(f"correction-{payment_id}")
+    #     await handle.signal(
+    #         PaymentCorrectionCoordinator.approve_correction,
+    #         ApprovalDecision(approved=True, approver="ops@bank.example"),
+    #     )
+    #
+    # or straight from the Temporal CLI:
+    #
+    #     temporal workflow signal \
+    #         --workflow-id correction-<payment_id> \
+    #         --name approve_correction \
+    #         --input '{"approved": true, "approver": "ops@bank.example"}'
+    #
+    # Source: https://docs.temporal.io/develop/python/message-passing#send-signal-from-client
 
 
 def cli() -> None:
