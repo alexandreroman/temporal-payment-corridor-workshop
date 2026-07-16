@@ -192,7 +192,7 @@ async def _local_env_client(env: WorkflowEnvironment) -> Client:
     ``env.client`` uses the default data converter, which cannot serialize
     the Pydantic models crossing the Temporal boundary here. Every test
     below instead connects its own client with ``PydanticAIPlugin``, exactly
-    like ``payments/main.py`` does — the plugin installs the Pydantic data
+    like ``payments/main_worker.py`` does — the plugin installs the Pydantic data
     converter and also wires the sandbox passthrough that TemporalAgent-
     based workflows need to pass validation at ``Worker`` construction.
     """

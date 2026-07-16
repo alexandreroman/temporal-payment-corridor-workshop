@@ -78,7 +78,7 @@ and the corridor memory service (all on the host with hot reload) and prints
 the reachable URLs in a banner:
 
 ```bash
-make dev       # Temporal dev server + payments, web UI & memory (hot reload)
+make dev       # Temporal dev server + payments worker & API, web UI & memory (hot reload)
 ```
 
 For a fully containerized run, `make app-up` brings the whole stack up in
@@ -238,12 +238,12 @@ the same convention as the corridor-memory service's `/api/memory/v1`. Every
 request goes through the gateway; the API's own bind address
 (`PAYMENTS_API_HOST`/`PAYMENTS_API_PORT`, default `0.0.0.0:8020`) is internal.
 
-| Method & path | Purpose |
-| ------------- | ------- |
-| `POST /api/payments/v1/anomalies` | Submit a `PaymentAnomaly`; starts a correction. Returns `202` with `{payment_id, workflow_id}`; a duplicate payment returns `409`. |
-| `GET /api/payments/v1/anomalies` | List in-flight corrections; `?awaiting_approval=true` keeps only those blocked on a human decision. |
-| `GET /api/payments/v1/anomalies/{payment_id}` | One correction's state — running, or completed with its outcome; an unknown payment returns `404`. |
-| `POST /api/payments/v1/anomalies/{payment_id}/approval` | Relay an `ApprovalDecision` to a waiting correction. Present only when the `human-approval-signal` feature is enabled. |
+| Method & path                                           | Purpose                                                                                                                            |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/payments/v1/anomalies`                       | Submit a `PaymentAnomaly`; starts a correction. Returns `202` with `{payment_id, workflow_id}`; a duplicate payment returns `409`. |
+| `GET /api/payments/v1/anomalies`                        | List in-flight corrections; `?awaiting_approval=true` keeps only those blocked on a human decision.                                |
+| `GET /api/payments/v1/anomalies/{payment_id}`           | One correction's state — running, or completed with its outcome; an unknown payment returns `404`.                                 |
+| `POST /api/payments/v1/anomalies/{payment_id}/approval` | Relay an `ApprovalDecision` to a waiting correction. Present only when the `human-approval-signal` feature is enabled.             |
 
 The listing endpoint has two implementations toggled by the
 `search-attributes` feature: enabled, it filters running executions
@@ -335,8 +335,8 @@ sequenceDiagram
 | Component     | Role                                                                                                                     |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `shared/`     | Pydantic models exchanged across the Temporal boundary                                                                   |
-| `payments/`   | Payment-correction component (namespace `payments`): a Temporal worker (coordinator, durable Pydantic AI agents, activities on one task queue) plus the `/api/payments/v1` HTTP API that starts and observes corrections |
-| `memory/`     | Corridor-memory service (namespace `memory`): serves `/api/memory/v1`, backed by a naive in-memory store or the durable `MemoryWorkflow` |
+| `payments/`   | Payment-correction component (namespace `payments`): a Temporal worker plus the `/api/payments/v1` HTTP API              |
+| `memory/`     | Corridor-memory service (namespace `memory`): serves `/api/memory/v1` over an in-memory store or `MemoryWorkflow`        |
 | `webui/`      | FastAPI web UI — the temporal.io-styled landing page                                                                     |
 | `codec/`      | Codec server that decrypts payloads for the Temporal Web UI (with `payload-encryption`)                                  |
 | `gateway/`    | API gateway — the single published HTTP entry point; injects the codec bearer token                                      |

@@ -59,7 +59,7 @@ def test_coordinator_replays_captured_history():
     happens to touch.
 
     ``PydanticAIPlugin`` must be passed explicitly, exactly like every real
-    ``Client``/``Worker`` in this project (see ``payments/main.py``,
+    ``Client``/``Worker`` in this project (see ``payments/main_worker.py``,
     ``payments/test_workflows.py``). ``Replayer`` never connects to a server,
     so nothing installs the plugin for it automatically. Two things depend
     on it here: the Pydantic data converter (needed to decode the recorded

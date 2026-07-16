@@ -2,7 +2,7 @@
 
 Keeps the object construction — task queue, workflow and activity
 registration — separate from the runtime/observability bootstrap in
-``payments/main.py``. Importing this module triggers the workflow import
+``payments/main_worker.py``. Importing this module triggers the workflow import
 chain (``payments.workflows`` -> ``payments.agents``), and ``agents`` reads
 environment variables at import time, so callers must ``load_dotenv()``
 before importing it.

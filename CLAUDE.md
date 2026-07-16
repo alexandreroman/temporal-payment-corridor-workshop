@@ -18,7 +18,7 @@ See [README.md](README.md) for full documentation.
 
 ```bash
 uv sync            # install dependencies
-make dev           # Temporal dev server (Docker) + payments, web UI & memory (hot reload)
+make dev           # Temporal dev server (Docker) + payments worker & API, web UI & memory (hot reload)
 make simulator     # simulate an incoming payment anomaly
 make check         # lint + tests
 ```

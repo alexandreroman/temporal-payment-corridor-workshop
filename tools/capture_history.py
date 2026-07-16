@@ -41,7 +41,7 @@ from dotenv import load_dotenv
 
 # Load .env before importing payments.worker: that import chain reaches
 # payments.agents, which reads CORRIDOR_MODEL at import time. Mirrors the
-# import order payments/main.py uses for the same reason. The seeded anomaly
+# import order payments/main_worker.py uses for the same reason. The seeded anomaly
 # captured below never actually calls a model, so the value doesn't matter
 # here, but keeping the same order avoids a surprise if that ever changes.
 load_dotenv()
@@ -84,7 +84,7 @@ async def _capture() -> WorkflowHistory:
         # env.client uses the default data converter, which cannot serialize
         # the Pydantic models crossing the Temporal boundary here (same
         # reasoning as payments/test_workflows.py). Connect a fresh client
-        # with PydanticAIPlugin, exactly like payments/main.py does.
+        # with PydanticAIPlugin, exactly like payments/main_worker.py does.
         client = await Client.connect(
             env.client.service_client.config.target_host,
             plugins=[PydanticAIPlugin()],
