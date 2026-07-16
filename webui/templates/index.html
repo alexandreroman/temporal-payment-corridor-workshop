@@ -48,10 +48,9 @@
     <div class="mx-auto max-w-4xl px-6 py-12">
       <!-- Header -->
       <header class="flex items-center gap-4">
-        <svg viewBox="0 0 24 24" class="h-11 w-11" fill="none" stroke="#7C5CFC" stroke-width="1.5">
-          <path d="M3 8h18M3 16h18" opacity="0.4" />
-          <path d="M6 4l12 16M6 20L18 4" opacity="0.9" stroke-linecap="round" />
-        </svg>
+        <!-- The app's border-crossing mark, shared from /static/logo.svg (same asset as the favicon). -->
+        <!-- Decorative only: the empty alt keeps it out of the accessibility tree (the h1 names the app). -->
+        <img src="/static/logo.svg" alt="" class="h-11 w-11" />
         <div>
           <div class="flex items-center gap-4">
             <h1 class="text-2xl font-bold tracking-tight">Payment Corridor</h1>
