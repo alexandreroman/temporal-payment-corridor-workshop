@@ -391,6 +391,106 @@ def test_list_anomalies_includes_recent_completed_with_summary():
     assert rows["pay-run"]["outcome_summary"] is None
 
 
+def test_list_anomalies_caps_at_20_newest_rows():
+    """The default listing caps at 20 rows, dropping the oldest beyond that."""
+    workflow_ids = [f"correction-pay-{i}" for i in range(21)]
+    handles = {
+        wid: _StubHandle(wid, anomaly=_anomaly(wid.removeprefix("correction-")))
+        for wid in workflow_ids
+    }
+    # pay-0 is newest (0 minutes ago); pay-20 is oldest (20 minutes ago), matching
+    # the newest-first order the "ORDER BY StartTime DESC" query relies on.
+    workflows = [_wf(wid, minutes_ago) for minutes_ago, wid in enumerate(workflow_ids)]
+    stub = _StubClient(handles=handles, workflows=workflows)
+    api.app.state.temporal_client = stub
+
+    async def scenario() -> httpx.Response:
+        async with _http_client() as client:
+            return await client.get("/api/payments/v1/anomalies")
+
+    response = asyncio.run(scenario())
+
+    assert response.status_code == 200
+    rows = response.json()
+    assert len(rows) == 20
+    # pay-20 (the oldest of the 21 stubbed rows) is the one dropped by the cap.
+    assert [row["payment_id"] for row in rows] == [f"pay-{i}" for i in range(20)]
+
+
+def test_list_anomalies_cap_does_not_evict_an_old_awaiting_row(monkeypatch):
+    """An old awaiting row survives the cap behind 20 newer non-awaiting rows.
+
+    Regression test for the cap-before-filter bug: `seen` must count only rows
+    the loop actually emits. If it counted every execution list_workflows
+    yields (before the awaiting-approval continue-guard runs), 20 newer
+    non-awaiting rows would exhaust the cap before the loop ever reaches this
+    older, genuinely-awaiting row.
+    """
+    old_awaiting_id = "correction-pay-old"
+    newer_ids = [f"correction-pay-{i}" for i in range(20)]
+
+    handles = {
+        old_awaiting_id: _StubHandle(old_awaiting_id, anomaly=_anomaly("pay-old")),
+    }
+    for wid in newer_ids:
+        handles[wid] = _StubHandle(
+            wid, anomaly=_anomaly(wid.removeprefix("correction-"))
+        )
+
+    # Newest first: the 20 newer rows (0..19 minutes ago), then the much older
+    # awaiting row last, mirroring what "ORDER BY StartTime DESC" would yield.
+    workflows = [_wf(wid, minutes_ago) for minutes_ago, wid in enumerate(newer_ids)]
+    workflows.append(_wf(old_awaiting_id, 1_000))
+    stub = _StubClient(handles=handles, workflows=workflows)
+    api.app.state.temporal_client = stub
+
+    # The baseline's _query_awaiting is a no-op returning False; stand in for
+    # human-approval-signal here so exactly the old row reports as awaiting.
+    async def fake_query_awaiting(handle) -> bool:
+        return handle.id == old_awaiting_id
+
+    monkeypatch.setattr(api, "_query_awaiting", fake_query_awaiting)
+
+    async def scenario() -> httpx.Response:
+        async with _http_client() as client:
+            return await client.get(
+                "/api/payments/v1/anomalies",
+                params={"awaiting_approval": "true"},
+            )
+
+    response = asyncio.run(scenario())
+
+    assert response.status_code == 200
+    ids = [row["payment_id"] for row in response.json()]
+    assert ids == ["pay-old"]
+
+
+def test_list_anomalies_includes_a_failed_row_with_execution_status():
+    """A failed correction lists with the closed-execution status and summary."""
+    failed = _StubHandle(
+        "correction-pay-failed",
+        anomaly=_anomaly("pay-failed"),
+        describe_status=WorkflowExecutionStatus.FAILED,
+    )
+    stub = _StubClient(
+        handles={"correction-pay-failed": failed},
+        workflows=[_wf("correction-pay-failed", 1)],
+    )
+    api.app.state.temporal_client = stub
+
+    async def scenario() -> httpx.Response:
+        async with _http_client() as client:
+            return await client.get("/api/payments/v1/anomalies")
+
+    rows = asyncio.run(scenario()).json()
+
+    assert len(rows) == 1
+    # Matches the _CLOSED_NON_COMPLETED branch in list_anomalies exactly:
+    # closed_status = desc.status.name.lower().replace("_", "-").
+    assert rows[0]["status"] == "failed"
+    assert rows[0]["outcome_summary"] == "execution failed"
+
+
 def test_get_anomaly_reports_running():
     """A still-running correction is reported as running, with no outcome."""
     stub = _StubClient(

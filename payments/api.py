@@ -246,16 +246,19 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     # attributes, so corridor/anomaly-type/awaiting state come from one query per
     # workflow (N+1), and the awaiting filter runs here in Python. This is
     # exactly the cost the search-attributes feature removes.
-    query = f"WorkflowType = '{_WORKFLOW_TYPE}'"
+    query = f"WorkflowType = '{_WORKFLOW_TYPE}' ORDER BY StartTime DESC"
     seen = 0
     async for wf in client.list_workflows(query=query):
-        # NOTE: Cap the listing at the 20 newest executions. list_workflows
-        # returns newest-first by default, but we count rather than trust that
-        # ordering, since the newest-first guarantee is re-established by the
-        # sort at the tail of this function.
+        # NOTE: Cap the listing at the 20 newest executions. "ORDER BY
+        # StartTime DESC" makes the Visibility query select newest-first, so
+        # `seen` only needs to count rows this loop actually emits -- it is
+        # incremented right before each summaries.append below, never here.
+        # That way a row skipped by an awaiting-approval continue-guard never
+        # spends a cap slot that an older, genuinely-matching row needed. The
+        # sort at the tail of this function is a display backstop, not the
+        # source of the ordering.
         if seen >= 20:
             break
-        seen += 1
         handle = client.get_workflow_handle(wf.id)
         # NOTE: Now that the query lists closed executions too, each row costs a
         # describe() to learn its status, and a completed row costs a further
@@ -273,6 +276,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
             if awaiting_approval:
                 continue
             outcome: CorrectionOutcome = await handle.result()
+            seen += 1
             summaries.append(
                 AnomalySummary(
                     payment_id=anomaly.payment_id,
@@ -289,6 +293,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
             if awaiting_approval:
                 continue
             closed_status = desc.status.name.lower().replace("_", "-")
+            seen += 1
             summaries.append(
                 AnomalySummary(
                     payment_id=anomaly.payment_id,
@@ -304,6 +309,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
             awaiting = await _query_awaiting(handle)
             if awaiting_approval and not awaiting:
                 continue
+            seen += 1
             summaries.append(
                 AnomalySummary(
                     payment_id=anomaly.payment_id,
@@ -324,15 +330,19 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     # query = f"WorkflowType = '{_WORKFLOW_TYPE}'"
     # if awaiting_approval:
     #     query += " AND status = 'awaiting-approval'"
+    # query += " ORDER BY StartTime DESC"
     # seen = 0
     # async for wf in client.list_workflows(query=query):
-    #     # NOTE: Cap the listing at the 20 newest executions. list_workflows
-    #     # returns newest-first by default, but we count rather than trust that
-    #     # ordering, since the newest-first guarantee is re-established by the
-    #     # sort at the tail of this function.
+    #     # NOTE: Cap the listing at the 20 newest executions. "ORDER BY
+    #     # StartTime DESC" makes the Visibility query select newest-first, so
+    #     # `seen` only needs to count rows this loop actually emits -- it is
+    #     # incremented right before each summaries.append below, never here.
+    #     # That way a row skipped by an awaiting-approval continue-guard never
+    #     # spends a cap slot that an older, genuinely-matching row needed. The
+    #     # sort at the tail of this function is a display backstop, not the
+    #     # source of the ordering.
     #     if seen >= 20:
     #         break
-    #     seen += 1
     #     sa = wf.typed_search_attributes
     #     corridor = sa.get(SearchAttributeKey.for_keyword("corridor")) or ""
     #     anomaly_type = sa.get(SearchAttributeKey.for_keyword("anomalyType")) or ""
@@ -356,6 +366,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     #         if awaiting_approval:
     #             continue
     #         outcome: CorrectionOutcome = await handle.result()
+    #         seen += 1
     #         summaries.append(
     #             AnomalySummary(
     #                 payment_id=wf.id.removeprefix("correction-"),
@@ -372,6 +383,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     #         if awaiting_approval:
     #             continue
     #         closed_status = desc.status.name.lower().replace("_", "-")
+    #         seen += 1
     #         summaries.append(
     #             AnomalySummary(
     #                 payment_id=wf.id.removeprefix("correction-"),
@@ -384,7 +396,9 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     #             )
     #         )
     #     else:
-    #         wf_status = sa.get(SearchAttributeKey.for_keyword("status")) or "processing"
+    #         status_sa = sa.get(SearchAttributeKey.for_keyword("status"))
+    #         wf_status = status_sa or "processing"
+    #         seen += 1
     #         summaries.append(
     #             AnomalySummary(
     #                 payment_id=wf.id.removeprefix("correction-"),
