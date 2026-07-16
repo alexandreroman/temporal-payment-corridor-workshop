@@ -135,6 +135,13 @@ class AnomalyDetail(BaseModel):
     workflow_id: str
     status: str
     outcome: CorrectionOutcome | None = None
+    # NOTE: Typed loosely as `object` rather than the not-yet-existing
+    # `ReviewState` model. The human-approval-signal feature (a later task)
+    # introduces `ReviewState` in shared/models.py and retypes this field as
+    # `ReviewState | None`, populating it with the pending proposal +
+    # verdict for the approval panel. Until then there is never a pending
+    # review, so this always serializes as `null`.
+    review: object | None = None
 
 
 @asynccontextmanager

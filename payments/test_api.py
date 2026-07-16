@@ -415,6 +415,7 @@ def test_get_anomaly_reports_running():
         "workflow_id": "correction-pay-1",
         "status": "running",
         "outcome": None,
+        "review": None,
     }
 
 
@@ -467,9 +468,27 @@ def test_get_anomaly_reports_a_closed_non_completed_state():
         "workflow_id": "correction-pay-1",
         "status": "failed",
         "outcome": None,
+        "review": None,
     }
     # result() raises on a closed non-completed run, so the route must skip it.
     assert handle.result_called is False
+
+
+def test_get_anomaly_detail_has_null_review_in_baseline():
+    """The detail response carries review: null until human-approval-signal ships."""
+    handle = _StubHandle(
+        "correction-pay-1",
+        describe_status=WorkflowExecutionStatus.RUNNING,
+    )
+    stub = _StubClient(handles={"correction-pay-1": handle})
+    api.app.state.temporal_client = stub
+
+    async def scenario() -> httpx.Response:
+        async with _http_client() as client:
+            return await client.get("/api/payments/v1/anomalies/pay-1")
+
+    body = asyncio.run(scenario()).json()
+    assert body["review"] is None
 
 
 def test_get_unknown_anomaly_returns_404():
