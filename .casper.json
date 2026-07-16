@@ -2,7 +2,7 @@
   "workspace": {
     "copyFiles": [".env"],
     "scripts": {
-      "setup": "make worktree-ports",
+      "setup": "uv sync && make worktree-ports",
       "run": "make app-up",
       "dev": "make dev",
       "stop": "make app-down",
