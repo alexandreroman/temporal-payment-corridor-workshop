@@ -30,6 +30,8 @@ services:
       - corridor=Keyword
       - --search-attribute
       - anomalyType=Keyword
+      - --search-attribute
+      - status=Keyword
     ports:
       - "7233:7233"  # gRPC endpoint for workers and clients
       # Web UI is not published directly: it is served through the gateway on
