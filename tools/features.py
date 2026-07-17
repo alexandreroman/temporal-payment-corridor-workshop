@@ -148,9 +148,12 @@ def feature_state(regions: list[Region]) -> str:
     is_disabled = all(region_state(r) == "disabled" for r in feats) and all(
         region_state(r) == "enabled" for r in defs
     )
-    if is_enabled and not is_disabled:
+    # is_enabled and is_disabled are mutually exclusive here: the both-empty
+    # case already returned above, and a region cannot be simultaneously
+    # enabled and disabled, so a plain check on each is enough.
+    if is_enabled:
         return "enabled"
-    if is_disabled and not is_enabled:
+    if is_disabled:
         return "disabled"
     return "inconsistent"
 

@@ -45,22 +45,12 @@ plus the corridor memory service on the host, with hot reload:
 make dev
 ```
 
-`make dev` prints a banner with the two user-facing URLs (the Web UI and
-the Temporal Web UI). The full set of reachable endpoints (defaults):
+`make dev` prints a banner with the two URLs you need:
 
-| URL                                     | What                                                   |
-| --------------------------------------- | ------------------------------------------------------ |
-| <http://localhost:8080>                 | Web UI (served **through the gateway**, in the banner) |
-| <http://localhost:8080/temporal>        | Temporal Web UI (through the gateway, in the banner)   |
-| <http://localhost:8080/api/payments/v1> | Payments HTTP API (through the gateway)                |
-| <http://localhost:9464/metrics>         | Payments metrics (dev only; not published in a container) |
-
-> The gateway is the app's single published HTTP entry point. The
-> **Web UI** (static files, no process of its own), the **Temporal** Web
-> UI, the payments API, and (later) the codec server are all reached
-> through it. The corridor memory service has no host port at all — it
-> is reached only in-network, as `memory:8010`. See
-> [`gateway/`](../gateway/) and step [09](09-payload-encryption.md).
+| URL                              | What            |
+| -------------------------------- | --------------- |
+| <http://localhost:8080>          | Web UI          |
+| <http://localhost:8080/temporal> | Temporal Web UI |
 
 ![The `make dev` banner listing the two user-facing URLs](images/01-make-dev-banner.png)
 
