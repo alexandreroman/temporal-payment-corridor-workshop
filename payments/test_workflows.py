@@ -60,6 +60,11 @@ from temporalio.worker import Worker
 # be here: its Rust extension module cannot survive being re-imported inside
 # the sandbox (it crashes with a low-level SystemError).
 with workflow.unsafe.imports_passed_through():
+    # NOTE: pydantic imports annotated_types lazily when it validates a
+    # constrained model, so it must be passed through too (see
+    # payments/workflows.py).
+    import annotated_types  # noqa: F401
+
     from cryptography.fernet import Fernet
     from pydantic_ai import Agent
     from pydantic_ai.durable_exec.temporal import PydanticAIPlugin, TemporalAgent

@@ -22,6 +22,20 @@ from temporalio.exceptions import ActivityError
 # endregion FEATURE-ON: search-attributes
 
 with workflow.unsafe.imports_passed_through():
+    # NOTE: pydantic imports `annotated_types` lazily — never at its own import
+    # time, only when a model carrying field constraints (e.g. `Field(ge=...,
+    # le=...)`) has its schema built or validated. Our agents' output models
+    # (`AgentCorrection`, `ComplianceCheck`) carry such constraints, so the
+    # import fires the first time an agent runs inside the workflow — after the
+    # sandbox's initial load — which Temporal flags as "Module annotated_types
+    # was imported after initial workflow load". `PydanticAIPlugin` passes
+    # `pydantic` and `pydantic_core` through the sandbox but not this lazy
+    # dependency, so we pass it through here: importing it in this block loads
+    # it at initial workflow load and marks it passthrough, silencing the
+    # warning.
+    # Source: https://docs.temporal.io/develop/python/python-sdk-sandbox#passthrough-modules
+    import annotated_types  # noqa: F401
+
     from pydantic_ai.durable_exec.temporal import PydanticAIWorkflow
 
     from payments.activities import apply_correction
