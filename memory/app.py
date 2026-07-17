@@ -8,11 +8,7 @@ intentionally-naive in-memory implementation in ``memory/store.py``; the
 (``memory/workflow.py``) reached through an embedded worker wired up below.
 
 The server startup lives in ``memory/main.py``; this module defines the
-``app`` object, imported as ``memory.app:app`` by uvicorn. Logfire is
-configured here (not in ``main.py``) because uvicorn's reload runs the app in
-a fresh subprocess that imports this module directly, never ``main.py``. For
-the same reason the ``memory-workflow`` FEATURE wires its Temporal client and
-embedded worker here, in a FastAPI lifespan.
+``app`` object.
 """
 
 from __future__ import annotations
@@ -60,8 +56,7 @@ def setup_logfire() -> logfire.Logfire:
     )
 
 
-# NOTE: Configure Logfire before instrumenting the app, in the process that serves
-# requests (the uvicorn reload subprocess imports this module, not main.py).
+# Configure Logfire before instrumenting the app.
 setup_logfire()
 
 

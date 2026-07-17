@@ -5,9 +5,6 @@ and start the uvicorn server. The application itself is defined in
 ``memory/app.py`` and referenced as an import string so hot reload can run it
 in a fresh subprocess.
 
-Logfire is configured in ``memory/app.py`` (not here) because uvicorn's reload
-imports the app module directly in that subprocess, never this bootstrap.
-
 Run with:
   * ``uv run memory``        — dev server with hot reload.
   * ``python -m memory.main`` — production server, no reload (container entry).
@@ -45,8 +42,7 @@ def run() -> None:
     The app object is passed directly (not as an import string) since there is
     no reload subprocess to spawn. The import is deferred to here so the common
     ``dev()`` / ``uv run memory`` path never imports the app module in the
-    supervisor process; importing ``memory.app`` also configures Logfire
-    in-process, which is correct in production where there is no subprocess.
+    supervisor process.
     """
     from memory.app import app
 

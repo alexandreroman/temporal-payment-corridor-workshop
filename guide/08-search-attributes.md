@@ -90,8 +90,7 @@ The typed keys are defined near the top of the file
 (`SearchAttributeKey.for_keyword(...)`). The `status` attribute carries the
 correction **lifecycle** (`processing` → `awaiting-approval`), driven by
 the `_set_status(...)` helper — a no-op in the baseline that now actually
-upserts. This is the second seam from step
-[03](03-human-approval-signal.md) coming to life.
+upserts.
 
 > [!NOTE]
 > The call is deterministic and workflow-safe, so it belongs in workflow

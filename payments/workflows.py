@@ -148,14 +148,7 @@ def _gate(
 
 
 def _beneficiary_bank_id(anomaly: PaymentAnomaly) -> str | None:
-    """The memory-key discriminator for this anomaly.
-
-    NOTE: returns the beneficiary bank id verbatim. It is None for anomaly
-    types whose correction is corridor-wide (currency_mismatch,
-    missing_intermediary_bank carry no bank id), so their key degrades to
-    corridor|anomaly_type; a wrong_bic anomaly carries a bank id and keys a
-    beneficiary-specific pattern.
-    """
+    """Return the beneficiary bank id, or None when the anomaly carries none."""
     return anomaly.beneficiary.bank_id
 
 
@@ -247,13 +240,6 @@ async def _verify_compliance(agent, anomaly: PaymentAnomaly) -> ComplianceVerdic
     without a model call, mirroring _propose. This is what keeps the seeded
     happy path (US->IN / WRONG_BIC) fully offline: neither agent calls the
     model. On a miss, the durable compliance agent produces the verdict.
-
-    NOTE: Presuming a high-confidence stored pattern is compliant — now keyed on the
-    beneficiary bank — is a workshop simplification. A production system would separate
-    sanctions/AML screening (party-keyed) from corridor/currency policy, and would
-    expire and re-screen clearances on a TTL rather than trust a stored pattern
-    indefinitely. Keying compliance on the beneficiary bank here means an unknown bank
-    is re-checked by the model rather than waved through on a corridor-level hit.
     """
     pattern = await workflow.execute_activity(
         read_corridor_memory,
@@ -306,11 +292,9 @@ class PaymentCorrectionCoordinator:
 
     def __init__(self) -> None:
         self._decision: ApprovalDecision | None = None
-        # Stored so the listing and detail paths can read it back via the
-        # describe_anomaly() query.
+        # The anomaly under correction, exposed via the describe_anomaly() query.
         self._anomaly: PaymentAnomaly | None = None
-        # True only while the coordinator is blocked on a human decision; read by
-        # the awaiting_approval() query on the client-side listing path.
+        # True only while the coordinator is blocked on a human decision.
         self._awaiting: bool = False
         # region FEATURE-ON: human-approval-signal
         # # Pending proposal + verdict shown to a human reviewer while the
@@ -526,12 +510,7 @@ class PaymentCorrectionCoordinator:
 
     @workflow.query
     def describe_anomaly(self) -> PaymentAnomaly:
-        """Return the anomaly under correction.
-
-        NOTE: The listing path reads corridor/anomaly-type per running
-        workflow through this query, and the detail path reads the full
-        payment back for the approval panel.
-        """
+        """Return the anomaly under correction."""
         assert self._anomaly is not None
         return self._anomaly
 

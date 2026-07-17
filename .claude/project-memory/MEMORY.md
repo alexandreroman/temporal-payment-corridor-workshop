@@ -18,6 +18,7 @@
 - [Never reference company names](references/feedback_no_company_names.md) — no company/organization name may appear in code, docs, commits, memory, or prose; refer generically.
 - [Workshop content must be timeless](references/feedback_timeless_content.md) — no dates, times, headcounts, locations, or scheduling in any artifact; keep material reusable and undated.
 - [Code must be abundantly commented, with sources](references/feedback_code_comments.md) — thorough comments explaining important/production choices, each with a source link; the code is the teaching surface.
+- [Docs and comments stay focused on Temporal](references/feedback_docs_temporal_focus.md) — strip app plumbing AND learner-irrelevant content (contributor steps, API route catalogs, meta conventions) from README/guide/comments; README must link to the guide; keep Temporal teaching, sources, NOTE: markers.
 - [NOTE: marker flags learner-attention comments](references/feedback_note_marker.md) — single literal `NOTE:` prefix marks the non-obvious comments a learner should study; baseline + FEATURE prose.
 - [search-attributes is tagging-only](references/project_search_attributes_scope.md) — SA only upserts attributes in the workflow; never rewires the API/Web UI listing, so the payment context always survives.
 - [search-attributes status lifecycle is terminal-valued](references/project_search_attributes_status_lifecycle.md) — coordinator publishes a terminal status ("applied"/"held") before every return; SA-enabled tests must register all three keys.

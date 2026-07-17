@@ -10,6 +10,11 @@ a passive corridor memory and human oversight for low-confidence fixes.
 It doubles as a hands-on Temporal + Pydantic AI training that runs
 end-to-end on a local dev server.
 
+> [!TIP]
+> **New here? Start with the [learner guide](guide/README.md).** It walks
+> you from the running baseline to a production-shaped system, one Temporal
+> concept at a time. This README is the reference documentation.
+
 > [!NOTE]
 > The payment/transfer domain model is intentionally simplified to keep
 > the workshop focused on durable execution with Temporal, not on
@@ -23,21 +28,14 @@ end-to-end on a local dev server.
 - **Durable agents** — Pydantic AI agents wrapped as Temporal workflows,
   so every model call survives worker crashes and restarts.
 - **Coordinator + child workflows** — a parent workflow fans out to two
-  specialized agents, each its own child workflow: the **instruction agent**
-  (a payments operations expert that repairs the instruction so it can
-  settle — a valid BIC/SWIFT, the required intermediary bank, a consistent
-  routing detail) and the **compliance agent** (a compliance officer that
-  keeps the fix within the rules — the settlement currency must match the
-  corridor destination, no sanctioned intermediary). The coordinator
-  applies the instruction fix only when the compliance agent clears it and
-  the confidence is high enough; otherwise it holds for human review.
-- **Passive corridor memory** — agents check a memory of known
-  corridor-specific patterns before spending a model call; the seeded
-  happy path never touches an LLM. Memory is keyed on the beneficiary bank for
-  `wrong_bic`, so a stored fix applies to that payee's bank, not the whole
-  corridor. Treating a stored pattern as compliance-cleared is a workshop
-  simplification — a real system separates sanctions screening from corridor
-  policy and re-screens on a TTL.
+  specialized agents, each running as its own child workflow: an
+  **instruction agent** that proposes a fix, and a **compliance agent**
+  that returns a verdict on it. The coordinator applies the fix only when
+  compliance clears it and confidence is high enough; otherwise it holds
+  for human review.
+- **Passive corridor memory** — agents check a memory of known correction
+  patterns before spending a model call, so the seeded happy path never
+  touches an LLM and runs with no API key.
 - **Human-in-the-loop** — low-confidence corrections wait for a human
   decision via Signal, demonstrated as progressive steps.
 - **One metrics endpoint** — a single Prometheus/OpenMetrics endpoint
@@ -76,20 +74,10 @@ uv sync
 cp .env.example .env   # optional: adjust configuration
 ```
 
-Contributors should enable the local pre-commit hook once. It runs ruff
-formatting and lint before each commit, so a slip is caught locally
-instead of only by CI:
-
-```bash
-make setup       # enable the local ruff pre-commit hook
-```
-
-There are two ways to run the app. For development, `make dev` starts the
-Temporal dev server and the gateway in containers, runs the payments worker
-and its HTTP API plus the corridor memory service on the host with hot
-reload, and prints the reachable URLs in a banner. The Web UI itself is
-static files served by the gateway from a mounted volume, so there is no
-web UI process to run in either mode:
+There are two ways to run the app. For development, `make dev` brings up
+the stack — the Temporal dev server, the payments worker and its HTTP API,
+and the corridor memory service — with hot reload, and prints the reachable
+URLs in a banner:
 
 ```bash
 make dev       # Temporal dev server + gateway + payments worker & API & memory
@@ -102,10 +90,8 @@ containers (`make app-down` tears it down):
 make app-up    # bring up the full stack in containers
 ```
 
-Payments and the memory service run in two separate Temporal namespaces
-(`payments` and `memory`); the dev server pre-creates both. Payments never
-talks to the memory service over Temporal — it calls the memory HTTP API
-(`/api/memory/v1`) instead.
+Payments and the corridor memory service run in two separate Temporal
+namespaces (`payments` and `memory`), both pre-created by the dev server.
 
 Then, in another terminal, fire a payment anomaly:
 
@@ -113,19 +99,14 @@ Then, in another terminal, fire a payment anomaly:
 make simulator   # simulate an incoming payment anomaly
 ```
 
-By default the payment-corridor Web UI (the homepage) is at
-http://localhost:8080 — the gateway's root and the app's single published
-HTTP entry point. The Temporal Web UI is at http://localhost:8080/temporal
-and the payments HTTP API at http://localhost:8080/api/payments/v1, both
-through the same gateway; `make dev` prints the Web UI and Temporal Web UI
-URLs in its banner. In dev mode the payments metrics are scrapable at
-http://localhost:9464/metrics — never routed through the gateway, and not
-published in container mode. The homepage lists payment-anomaly corrections
-and auto-refreshes every few seconds; once `human-approval-signal` is
-enabled it also lets you approve or reject corrections held for human
-review. The default anomaly matches a pre-seeded corridor-memory pattern,
-so it is corrected end-to-end with no API key. Run `make help` to list all
-targets.
+By default the Web UI (the homepage) is at http://localhost:8080 and the
+Temporal Web UI at http://localhost:8080/temporal; `make dev` prints both
+URLs in its banner. With `make dev`, payments metrics are also scrapable on
+localhost at http://localhost:9464/metrics. The homepage lists corrections and
+auto-refreshes; once `human-approval-signal` is enabled it also lets you
+approve or reject corrections held for human review. The default anomaly
+matches a pre-seeded corridor-memory pattern, so it is corrected end-to-end
+with no API key. Run `make help` to list all targets.
 
 ## Workshop features
 
@@ -155,32 +136,20 @@ the dormant `# region FEATURE-ON:` regions while the base implementation
 
 Once `payload-encryption` is enabled (`make feature-enable
 NAME=payload-encryption`) payments encrypts every payload on the wire, so
-the Temporal Web UI shows raw ciphertext in Event History. A codec server
-decrypts payloads on demand — a small HTTP service that reuses the same
-encryption key — and the Temporal Web UI calls it to display cleartext.
-
-Both the codec server and the gateway are Compose services that come up with
-the stack (`make dev` / `make app-up`). The gateway is the app's single
-published HTTP entry point (`http://localhost:8080`): it serves the
-payment-corridor Web UI at `/`, the Temporal Web UI at `/temporal`, the
-payments API at `/api/payments/v1`, and the codec server at `/codec`, so
-calls from the UI to `/codec` are same-origin and need no CORS
-configuration.
+the Temporal Web UI shows raw ciphertext in Event History. A **codec
+server** — a small HTTP service that reuses the same encryption key —
+decrypts payloads on demand, and the Temporal Web UI calls it to display
+cleartext.
 
 You don't have to configure anything for the demo. When
-`CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` are unset, both the
-codec and the gateway fall back to matching public, insecure built-in
-defaults (logging a warning) — so decoding works out of the box, even
-before you create a `.env`. The dev server is already pointed at `/codec`
-via its `--ui-codec-endpoint http://localhost:8080/codec` flag, and the
-gateway injects the bearer token, so decrypted payloads appear in the
-Temporal Web UI with no manual configuration. Set your own
-`CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` in `.env` only when you
-want to actually secure the setup.
+`CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` are unset, the codec
+falls back to public, insecure built-in defaults (logging a warning), so
+decoding works out of the box — decrypted payloads appear in the Temporal
+Web UI with no manual configuration. Set your own values in `.env` only
+when you want to actually secure the setup.
 
 The same goes for the CLI: with the feature active, point `temporal` at the
-codec through the gateway to read decrypted payloads. No `--codec-auth` is
-needed — the gateway injects the token:
+codec to read decrypted payloads:
 
 ```bash
 temporal workflow show \
@@ -226,9 +195,8 @@ workflow: correction-pmt-9f3c1a2b
 accepted: submitted to http://localhost:8080/api/payments/v1/anomalies
 ```
 
-Follow the correction on the homepage (http://localhost:8080), or in the
-Temporal Web UI at http://localhost:8080/temporal, or fetch its outcome
-from `GET /api/payments/v1/anomalies/<payment_id>` once it completes.
+Follow the correction on the homepage (http://localhost:8080) or in the
+Temporal Web UI at http://localhost:8080/temporal.
 
 By default this sends the offline `memory-hit` scenario. Pick another named
 scenario with `SCENARIO=<name>`:
@@ -240,49 +208,13 @@ make simulator SCENARIO=memory-miss
 Run `make simulator-list` to see them all. Every scenario other than
 `memory-hit` misses corridor memory and invokes the agents, so it needs
 `ANTHROPIC_API_KEY` (see [Configuration](#configuration)). Always launch the
-simulator through `make`: the target exports the ports from
-`compose.override.yaml`, so it keeps working when the ports are remapped.
+simulator through `make` so it targets the right ports.
 
 Inspect the merged metrics endpoint:
 
 ```bash
 curl -s http://localhost:9464/metrics | grep -E '^(temporal_|corridor_)'
 ```
-
-## Payments HTTP API
-
-The payments component runs as two processes that share one package: the
-**payments worker** (`uv run payments`), a Temporal worker hosting the
-coordinator, agents, and activities; and the **payments HTTP API** (`uv run
-payments-api`), a Temporal *client* — no worker — that starts corrections,
-lists in-flight ones over the Visibility API, and relays human approvals.
-`make dev` and `make app-up` run both.
-
-The API is the single external entry point for payment requests: clients and
-the simulator submit and observe corrections over HTTP through the gateway
-under `/api/payments/v1`, never by opening a Temporal client of their own —
-the same convention as the corridor-memory service's `/api/memory/v1`. Every
-request goes through the gateway; the API's own bind address
-(`PAYMENTS_API_HOST`/`PAYMENTS_API_PORT`, default `0.0.0.0:8020`) is internal.
-
-| Method & path                                           | Purpose                                                                                                                            |
-| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /api/payments/v1/anomalies`                       | Submit a `PaymentAnomaly`; starts a correction. Returns `202` with `{payment_id, workflow_id}`; a duplicate payment returns `409`. |
-| `GET /api/payments/v1/anomalies`                        | List in-flight corrections; `?awaiting_approval=true` keeps only those blocked on a human decision.                                |
-| `GET /api/payments/v1/anomalies/{payment_id}`           | One correction's state — running, or completed with its outcome; an unknown payment returns `404`.                                 |
-| `POST /api/payments/v1/anomalies/{payment_id}/approval` | Relay an `ApprovalDecision` to a waiting correction. Present only when the `human-approval-signal` feature is enabled.             |
-
-The listing endpoint reads each correction directly — a per-workflow query
-for running rows, `describe()`/`result()` for closed ones — and does not
-depend on the `search-attributes` feature. Filtering the fleet by corridor,
-anomaly type, or status is an operator concern, handled through the Temporal
-CLI and Web UI (see the guide's step 08), not this endpoint.
-
-Because these routes are served through the gateway, the simulator reaches
-them at `http://<GATEWAY_HOST>:<GATEWAY_PORT>/api/payments/v1` (default
-`localhost:8080`). Container mode routes `/api/payments/v1/*` to the
-`payments-api` Compose service; dev mode routes it to the host-run API via
-`host.docker.internal`, wired automatically by the generated Compose override.
 
 ## Configuration
 
@@ -372,7 +304,7 @@ sequenceDiagram
 | `memory/`     | Corridor-memory service (namespace `memory`): serves `/api/memory/v1` over an in-memory store or `MemoryWorkflow`        |
 | `webui/`      | Static Web UI (temporal.io-styled landing page), served by the gateway                                                   |
 | `codec/`      | Codec server that decrypts payloads for the Temporal Web UI (with `payload-encryption`)                                  |
-| `gateway/`    | API gateway — the single published HTTP entry point; injects the codec bearer token                                      |
+| `gateway/`    | API gateway — the single published HTTP entry point                                                                      |
 | `simulator/`  | Client that simulates an incoming payment anomaly                                                                        |
 
 ## License

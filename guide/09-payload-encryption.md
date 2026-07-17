@@ -1,18 +1,17 @@
-# 09 — Encrypting payloads (codec + gateway)
+# 09 — Encrypting payloads (codec server)
 
 > [!NOTE]
 > **Goal of this step.** Encrypt every payload that crosses the Temporal
 > boundary, so sensitive fields (bank identifiers, amounts) rest in Event
-> History as ciphertext — then use a **codec server** behind the gateway
-> to decrypt them on demand in the Web UI.
+> History as ciphertext — then use a **codec server** to decrypt them on
+> demand in the Web UI.
 
 ## At a glance
 
 - **Feature:** `payload-encryption`
 - **Files touched:** [`payments/main_worker.py`](../payments/main_worker.py),
   [`payments/api.py`](../payments/api.py) (uses
-  [`shared/encryption.py`](../shared/encryption.py), [`codec/`](../codec/),
-  [`gateway/`](../gateway/))
+  [`shared/encryption.py`](../shared/encryption.py), [`codec/`](../codec/))
 - **Temporal concepts:** `PayloadCodec`, data converters, the codec server,
   encryption at the boundary
 - **Docs:** [Data encryption](https://docs.temporal.io/production-deployment/data-encryption)
@@ -55,10 +54,9 @@ make feature-enable NAME=payload-encryption
 > for the workshop — [`.env.example`](../.env.example) ships a working
 > (public, **insecure**) dev default, so the `cp .env.example .env` from
 > step [01](01-getting-started.md) already covers it. On the *decode* side
-> the codec server and the gateway fall back to that same key (and to
-> `CODEC_SERVER_AUTH_TOKEN`'s default) when unset, logging a warning, so
-> the Web UI decodes out of the box. Set your own values in `.env` when you
-> want to actually secure the setup.
+> the codec server falls back to that same key when unset, logging a
+> warning, so the Web UI decodes out of the box. Set your own values in
+> `.env` when you want to actually secure the setup.
 
 ## Step 3 — Read the code
 
@@ -94,14 +92,10 @@ Read the `NOTE:` — the `PydanticAIPlugin` stays alongside the explicit
 when you do not pass one, and dropping it breaks `TemporalAgent` sandbox
 validation at worker start-up.
 
-**The codec server and the gateway** — the codec server
-([`codec/`](../codec/)) is a small HTTP service that reuses the same key to
-decrypt payloads on demand; the gateway ([`gateway/`](../gateway/)) routes
-`/codec` to it. Both come up with the stack. The gateway is the single
-published entry point (`http://localhost:8080`): it serves the Web UI at
-`/` and the codec at `/codec`, so the UI's calls to `/codec` are
-**same-origin** — no CORS — and the gateway **injects the bearer token**
-so you never configure `--codec-auth`.
+**The codec server** — [`codec/`](../codec/) is a small HTTP service that
+reuses the same key to decrypt payloads on demand; the Web UI and the CLI
+call it to display cleartext. It comes up with the stack and needs no extra
+configuration.
 
 ## Step 4 — Run and observe
 
@@ -116,15 +110,13 @@ and inspect Event History — payloads now show as raw ciphertext.
 
 ![Encrypted (ciphertext) payloads in Event History before decoding](images/09-ciphertext.png)
 
-**Decoded:** the dev server is already pointed at the codec through the
-gateway (via its `--ui-codec-endpoint http://localhost:8080/codec` flag),
-so the Web UI decrypts payloads for display automatically — the same
-Event History now shows cleartext.
+**Decoded:** the dev server is already pointed at the codec server, so the
+Web UI decrypts payloads for display automatically — the same Event History
+now shows cleartext.
 
 ![The same payloads shown as cleartext after the codec decodes them](images/09-decoded.png)
 
-**From the CLI**, point `temporal` at the codec through the gateway (no
-`--codec-auth` needed — the gateway injects the token):
+**From the CLI**, point `temporal` at the codec to read decrypted payloads:
 
 ```bash
 temporal workflow show \
@@ -134,8 +126,8 @@ temporal workflow show \
 ```
 
 > [!CAUTION]
-> **Run the `temporal` CLI from the host, never a container** —
-> `localhost:8080/codec` reaches the gateway only from the host.
+> **Run the `temporal` CLI from the host, never a container** — the
+> `localhost` codec endpoint is reachable only from the host.
 
 ## Step 5 — The production caveat
 
@@ -150,7 +142,7 @@ close that gap.
 ## Step 6 — Checkpoint
 
 - [ ] Event History shows ciphertext with the feature on.
-- [ ] The Web UI decodes payloads through the gateway `/codec` route.
+- [ ] The Web UI decodes payloads through the codec server.
 - [ ] You can explain why the codec server must be authenticated in
       production.
 

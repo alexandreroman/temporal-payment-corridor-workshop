@@ -80,11 +80,8 @@ Read the `NOTE:` blocks and note three things:
     verdict) the approval panel renders, or `None` when not awaiting.
 - `_APPROVAL_TIMEOUT` defaults to `None` (wait forever). Step
   [04](04-approval-timeout.md) turns it into a real deadline.
-- The waiting state is published through **two seams**: the in-memory
-  `_awaiting` flag (read by the `awaiting_approval` query) and the status
-  Search Attribute via `_set_status(...)` (a no-op until step
-  [08](08-search-attributes.md)). A `finally` block resets both once the
-  wait resolves.
+- The waiting state is exposed through the `awaiting_approval` query, and a
+  `finally` block clears it once the wait resolves.
 
 **In [`payments/api.py`](../payments/api.py):** a new route relays the
 decision as a signal:
@@ -97,9 +94,7 @@ async def approve_anomaly(payment_id: str, decision: ApprovalDecision) -> None:
 ```
 
 Read its `NOTE:` — this is a *fire-and-forget* signal: it returns once
-delivered; the coordinator resumes and finishes asynchronously. The
-`_query_awaiting` helper also switches from a stub to a real query call,
-so the listing endpoint can report which corrections are blocked.
+delivered; the coordinator resumes and finishes asynchronously.
 
 ## Step 4 — Run and observe
 

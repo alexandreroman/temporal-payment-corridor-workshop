@@ -19,7 +19,7 @@ execution concept at a time:
 | `retry-alerting`           | Reacting to retries; custom metrics                                                        |
 | `settlement-confirmation`  | Long-running activities; heartbeats, cancellation, replay & versioning                     |
 | `search-attributes`        | Fleet-wide visibility; filter the fleet via Visibility API                                 |
-| `payload-encryption`       | Payload codecs; the codec server behind a gateway                                          |
+| `payload-encryption`       | Payload codecs; the codec server                                                           |
 | `memory-workflow`          | The Entity Workflow pattern; update/query, continue-as-new                                 |
 
 Along the way you learned to read Event History, scrape one metrics

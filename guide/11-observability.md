@@ -70,13 +70,6 @@ Every process configures Pydantic Logfire the same way:
 > `logfire.instrument_fastapi(app)`, and the worker calls
 > `instance.instrument_pydantic_ai()` so agent runs are traced too.
 
-Note *where* Logfire is configured: in the modules that actually serve
-requests (`payments/api.py`, `memory/app.py`), not in the thin `main.py`
-bootstraps — because uvicorn's reload imports the app module in a
-subprocess that never runs `main.py`. The Web UI has no such module: it
-is static files served directly by the gateway, with no Python process
-of its own.
-
 ## The Temporal Web UI
 
 Reached through the gateway at <http://localhost:8080/temporal>. This is
@@ -96,9 +89,8 @@ it to:
 
 **Decoding encrypted payloads.** With `payload-encryption` on (step
 [09](09-payload-encryption.md)), Event History shows ciphertext until the
-UI calls the codec server. The dev server is already pointed at
-`/codec` through the gateway, which injects the bearer token — so decoded
-payloads appear with no manual configuration.
+UI calls the codec server — already wired up in dev, so decoded payloads
+appear with no manual configuration.
 
 ## Logging discipline
 
@@ -111,7 +103,7 @@ does not double-log on replay), which `print` cannot be.
 
 - [ ] You can scrape both `temporal_*` and `corridor_*` from `/metrics`.
 - [ ] You can name which metric each activity emits and how it is tagged.
-- [ ] You know why Logfire is configured in the app module, not `main.py`.
+- [ ] You can explain why Logfire runs local-only (`send_to_logfire=False`).
 
 ---
 
