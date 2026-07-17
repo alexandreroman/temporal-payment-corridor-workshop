@@ -32,7 +32,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 
-from shared.models import AnomalyType, PaymentAnomaly
+from shared.models import AnomalyType, Beneficiary, PaymentAnomaly
 
 
 @dataclass(frozen=True)
@@ -54,6 +54,8 @@ class Scenario:
     amount: float
     currency: str
     anomaly_type: AnomalyType
+    beneficiary_name: str
+    beneficiary_bank_id: str | None = None
     details: dict[str, str] = field(default_factory=dict)
 
 
@@ -68,6 +70,8 @@ SCENARIOS: dict[str, Scenario] = {
         amount=15000.0,
         currency="USD",
         anomaly_type=AnomalyType.WRONG_BIC,
+        beneficiary_name="Acme Textiles Pvt Ltd",
+        beneficiary_bank_id="HDFCINBB",
         # "HDFC" is a malformed BIC: a real ISO 9362 BIC/SWIFT code is 8 or 11 chars.
         # This pair matches the seeded US->IN pattern in memory/store.py.
         details={"beneficiary": "Acme Textiles Pvt Ltd", "bic": "HDFC"},
@@ -82,6 +86,8 @@ SCENARIOS: dict[str, Scenario] = {
         # Enough context (a named UK bank) for an agent to confidently derive a
         # valid BIC, so the fix comes from the LLM rather than from memory.
         anomaly_type=AnomalyType.WRONG_BIC,
+        beneficiary_name="Globex Trading Ltd",
+        beneficiary_bank_id="BARCGB22",
         details={
             "beneficiary": "Globex Trading Ltd",
             "bank": "Barclays",
@@ -96,6 +102,7 @@ SCENARIOS: dict[str, Scenario] = {
         amount=15000.0,
         currency="USD",
         anomaly_type=AnomalyType.MISSING_INTERMEDIARY_BANK,
+        beneficiary_name="Globex Trading Ltd",
         details={
             "beneficiary": "Globex Trading Ltd",
             "bank": "Barclays",
@@ -111,6 +118,7 @@ SCENARIOS: dict[str, Scenario] = {
         amount=15000.0,
         currency="USD",
         anomaly_type=AnomalyType.CURRENCY_MISMATCH,
+        beneficiary_name="Globex Trading Ltd",
         details={"beneficiary": "Globex Trading Ltd", "bank": "Barclays"},
     ),
     "low-confidence": Scenario(
@@ -121,6 +129,7 @@ SCENARIOS: dict[str, Scenario] = {
         amount=15000.0,
         currency="USD",
         anomaly_type=AnomalyType.WRONG_BIC,
+        beneficiary_name="private individual",
         # Deliberately sparse and ambiguous: no bank name and a BIC fragment too
         # short to disambiguate, so the agent has little to anchor a confident
         # fix on. Best-effort only — see the module-level caveat.
@@ -144,5 +153,9 @@ def build_anomaly(scenario: Scenario) -> PaymentAnomaly:
         amount=scenario.amount,
         currency=scenario.currency,
         anomaly_type=scenario.anomaly_type,
+        beneficiary=Beneficiary(
+            name=scenario.beneficiary_name,
+            bank_id=scenario.beneficiary_bank_id,
+        ),
         details=dict(scenario.details),
     )

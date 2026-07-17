@@ -40,6 +40,7 @@ class PaymentAnomaly(BaseModel):
     amount: float
     currency: str = Field(description="ISO-4217 currency code, e.g. 'EUR'.")
     anomaly_type: AnomalyType
+    beneficiary: Beneficiary
     # Free-form fields describing the payment as received. Kept loose on
     # purpose: this is exactly the messy input the agents reason about.
     details: dict[str, str] = Field(default_factory=dict)
@@ -94,6 +95,21 @@ class ApprovalDecision(BaseModel):
 # endregion FEATURE-ON: human-approval-signal
 
 
+class Beneficiary(BaseModel):
+    """The party being paid, and the bank that holds their account.
+
+    NOTE: ``bank_id`` is a normalized institution identifier (e.g. the 8-char
+    institution BIC ``HDFCINBB``). It is the discriminator that makes a
+    remembered ``wrong_bic`` correction beneficiary-specific instead of
+    corridor-wide. Left ``None`` when the anomaly's correction is genuinely
+    corridor-wide (e.g. a currency mismatch), so the memory key degrades to
+    ``corridor|anomaly_type``.
+    """
+
+    name: str
+    bank_id: str | None = None
+
+
 class CorridorPattern(BaseModel):
     """A known, reusable correction for a (corridor, anomaly_type) pair.
 
@@ -103,6 +119,7 @@ class CorridorPattern(BaseModel):
 
     corridor: str
     anomaly_type: AnomalyType
+    beneficiary_bank_id: str | None = None
     field_to_fix: str
     proposed_value: str
     confidence: float = Field(ge=0.0, le=1.0)

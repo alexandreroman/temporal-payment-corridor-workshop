@@ -68,6 +68,7 @@ with workflow.unsafe.imports_passed_through():
     from shared.encryption import EncryptionCodec, build_data_converter
     from shared.models import (
         AnomalyType,
+        Beneficiary,
         ComplianceVerdict,
         CorrectionOutcome,
         CorrectionProposal,
@@ -227,6 +228,9 @@ def test_instruction_agent_returns_llm_proposal_on_memory_miss():
                     amount=250.0,
                     currency="GBP",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Globex Trading Ltd", bank_id="BARCGB22"
+                    ),
                     details={"bic": "NOT-A-REAL-BIC"},
                 )
                 # Started by workflow type name (a plain string), since the
@@ -291,6 +295,9 @@ def test_coordinator_holds_when_compliance_fails():
                     amount=500.0,
                     currency="INR",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Acme Textiles Pvt Ltd", bank_id="HDFCINBB"
+                    ),
                     details={"bic": "WRONG"},
                 )
                 outcome: CorrectionOutcome = await client.execute_workflow(
@@ -345,6 +352,9 @@ def test_coordinator_applies_when_compliant_and_confident():
                     amount=500.0,
                     currency="INR",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Acme Textiles Pvt Ltd", bank_id="HDFCINBB"
+                    ),
                     details={"bic": "WRONG"},
                 )
                 outcome: CorrectionOutcome = await client.execute_workflow(
@@ -419,6 +429,9 @@ def test_payload_encryption_encrypts_history():
                     amount=750.0,
                     currency="INR",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Acme Textiles Pvt Ltd", bank_id="HDFCINBB"
+                    ),
                     details={"bic": "WRONG"},
                 )
                 workflow_id = "test-payload-encryption"
@@ -501,6 +514,9 @@ def test_coordinator_exposes_listing_query_surface():
                     amount=100.0,
                     currency="GBP",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Globex Trading Ltd", bank_id="BARCGB22"
+                    ),
                     details={"bic": "NOT-A-REAL-BIC"},
                 )
                 handle = await client.start_workflow(
