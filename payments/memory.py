@@ -39,7 +39,9 @@ _BASE_URL = f"http://{_connect_host}:{MEMORY_PORT}"
 
 @activity.defn
 async def read_corridor_memory(
-    corridor: str, anomaly_type: AnomalyType
+    corridor: str,
+    anomaly_type: AnomalyType,
+    beneficiary_bank_id: str | None = None,
 ) -> CorridorPattern | None:
     """Look up a known correction pattern for a corridor + anomaly type.
 
@@ -48,10 +50,17 @@ async def read_corridor_memory(
     service's storage backend is opaque to this consumer; we only rely on the
     ``/api/memory/v1/lookup`` contract.
     """
+    params = {"corridor": corridor, "anomaly_type": anomaly_type.value}
+    # NOTE: only send the discriminator when present, so a corridor-wide lookup
+    # (bank_id None) issues the exact same request it always has and keys the
+    # same way; a bank-specific lookup adds the param without disturbing it.
+    if beneficiary_bank_id:
+        params["beneficiary_bank_id"] = beneficiary_bank_id
+
     async with httpx.AsyncClient() as client:
         response = await client.get(
             f"{_BASE_URL}/api/memory/v1/lookup",
-            params={"corridor": corridor, "anomaly_type": anomaly_type.value},
+            params=params,
         )
         # Let a 5xx surface as an exception so Temporal retries the activity.
         response.raise_for_status()
