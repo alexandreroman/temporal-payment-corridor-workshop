@@ -1,26 +1,30 @@
 # 10 — Durable state as an Entity Workflow
 
+> [!NOTE]
 > **Goal of this step.** Swap the corridor memory's naive in-memory store
 > for a **durable Temporal workflow** — the *Entity Workflow* pattern —
 > served by a **query** for reads and an **update** for writes, and kept
 > bounded with **continue-as-new**.
 
+## At a glance
+
+- **Feature:** `memory-workflow`
+- **Files touched:** [`memory/app.py`](../memory/app.py) (activates
+  [`memory/workflow.py`](../memory/workflow.py))
+- **Temporal concepts:** Entity Workflow pattern, Query, Update (with
+  validator), `@workflow.init`, continue-as-new, embedded worker
+- **Docs:** [Message passing](https://docs.temporal.io/develop/python/message-passing)
+  · [Send an Update](https://docs.temporal.io/develop/python/message-passing#send-update-from-client)
+- **Builds on:** steps [00](00-application-overview.md) and
+  [02](02-durable-agents.md)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                       |                                                                                                                                                                                |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Feature**           | `memory-workflow`                                                                                                                                                              |
-| **Files touched**     | [`memory/app.py`](../memory/app.py) (activates [`memory/workflow.py`](../memory/workflow.py))                                                                                  |
-| **Temporal concepts** | Entity Workflow pattern, Query, Update (with validator), `@workflow.init`, continue-as-new, embedded worker                                                                    |
-| **Docs**              | [Message passing](https://docs.temporal.io/develop/python/message-passing) · [Send an Update](https://docs.temporal.io/develop/python/message-passing#send-update-from-client) |
-| **Builds on**         | steps [00](00-application-overview.md) and [02](02-durable-agents.md)                                                                                                          |
 
 ## Why this matters
 
@@ -84,6 +88,7 @@ pattern = await handle.query(
 await handle.execute_update(MemoryWorkflow.remember, pattern)
 ```
 
+> [!NOTE]
 > **Update, not Signal, for the write.** `execute_update` returns only
 > after the write is validated and durably accepted, so the HTTP `204` is a
 > genuine acknowledgement — the caller knows the pattern is recorded.

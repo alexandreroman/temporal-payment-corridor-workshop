@@ -1,26 +1,30 @@
 # 08 — Fleet-wide visibility with Search Attributes
 
+> [!NOTE]
 > **Goal of this step.** Make corrections filterable by business
 > dimension — corridor, anomaly type, lifecycle status — and, in doing so,
 > replace an N+1 listing pattern with a single server-side Visibility
 > query.
 
+## At a glance
+
+- **Feature:** `search-attributes`
+- **Files touched:** [`payments/workflows.py`](../payments/workflows.py),
+  [`payments/api.py`](../payments/api.py),
+  [`payments/test_workflows.py`](../payments/test_workflows.py)
+- **Temporal concepts:** Search Attributes, `upsert_search_attributes`, the
+  Visibility API, list queries
+- **Docs:** [Observability — Search Attributes](https://docs.temporal.io/develop/python/observability#search-attributes)
+- **Builds on:** steps [02](02-durable-agents.md) and
+  [03](03-human-approval-signal.md)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                       |                                                                                                                                                             |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feature**           | `search-attributes`                                                                                                                                         |
-| **Files touched**     | [`payments/workflows.py`](../payments/workflows.py), [`payments/api.py`](../payments/api.py), [`payments/test_workflows.py`](../payments/test_workflows.py) |
-| **Temporal concepts** | Search Attributes, `upsert_search_attributes`, the Visibility API, list queries                                                                             |
-| **Docs**              | [Observability — Search Attributes](https://docs.temporal.io/develop/python/observability#search-attributes)                                                |
-| **Builds on**         | steps [02](02-durable-agents.md) and [03](03-human-approval-signal.md)                                                                                      |
 
 ## Why this matters
 
@@ -45,12 +49,14 @@ make feature-diff NAME=search-attributes
 make feature-enable NAME=search-attributes
 ```
 
+> [!NOTE]
 > **No manual registration step.** The three custom attributes
 > (`corridor`, `anomalyType`, `status`) are pre-registered by the dev
 > server on startup (see the `temporal` service command in
 > [`compose.yaml`](../compose.yaml)), so you do *not* run
 > `temporal operator search-attribute create`.
 
+> [!IMPORTANT]
 > **Enable `human-approval-signal` too.** The `status` attribute reaches
 > `awaiting-approval` only through the human-in-the-loop wait from step
 > [03](03-human-approval-signal.md). With just `search-attributes` on, a
@@ -85,6 +91,7 @@ the `_set_status(...)` helper — which was a no-op in the baseline and now
 actually upserts. This is the second seam from step
 [03](03-human-approval-signal.md) coming to life.
 
+> [!NOTE]
 > The call is deterministic and workflow-safe, so it belongs in workflow
 > code. `anomaly.anomaly_type` is a `StrEnum`, converted with `str(...)`
 > because `value_set` expects a plain string for a keyword key.

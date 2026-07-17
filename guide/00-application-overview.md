@@ -1,5 +1,6 @@
 # 00 — Application overview
 
+> [!NOTE]
 > **Goal of this step.** Understand *what* the application does, *why* it
 > is shaped the way it is, and *how* a single payment flows through it —
 > before you run or change anything.
@@ -18,6 +19,7 @@ workflows** to orchestrate specialized **Pydantic AI agents**, with a
 passive **corridor memory** so it stops paying for an LLM call once it
 has learned a corridor's fix.
 
+> [!NOTE]
 > **Simplified domain — on purpose.** A real cross-border payment carries
 > far more than one field. Here, each anomaly targets *exactly one* field
 > (a wrong BIC, a missing intermediary bank, or a currency mismatch) so

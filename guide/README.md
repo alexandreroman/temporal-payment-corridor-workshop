@@ -77,6 +77,7 @@ do next:
    UI, and the metrics endpoint.
 5. **Revert** when you want a clean slate: `make feature-disable NAME=<feature>`.
 
+> [!TIP]
 > **Reading tip.** In VS Code (with the recommended
 > `zokugun.explicit-folding` extension) every dormant `# region
 > FEATURE-ON:` block is folded away, so you see the base application
