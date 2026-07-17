@@ -16,7 +16,7 @@ from __future__ import annotations
 
 # region FEATURE-ON: settlement-confirmation
 # import asyncio
-# import os
+# import os  # noqa: F811 — retry-alerting may already import os; both features share it
 # endregion FEATURE-ON: settlement-confirmation
 
 from temporalio import activity
