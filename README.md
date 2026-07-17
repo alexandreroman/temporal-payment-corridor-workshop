@@ -114,10 +114,12 @@ make simulator   # simulate an incoming payment anomaly
 
 By default the payment-corridor Web UI (the homepage) is at
 http://localhost:8080 — the gateway's root and the app's single published
-HTTP entry point. The Temporal Web UI is at http://localhost:8080/temporal,
-the payments HTTP API at http://localhost:8080/api/payments/v1, and the
-payments metrics at http://localhost:9464/metrics; `make dev` also prints
-these URLs in its banner. The homepage lists payment-anomaly corrections
+HTTP entry point. The Temporal Web UI is at http://localhost:8080/temporal
+and the payments HTTP API at http://localhost:8080/api/payments/v1, both
+through the same gateway; `make dev` prints the Web UI and Temporal Web UI
+URLs in its banner. In dev mode the payments metrics are scrapable at
+http://localhost:9464/metrics — never routed through the gateway, and not
+published in container mode. The homepage lists payment-anomaly corrections
 and auto-refreshes every few seconds; once `human-approval-signal` is
 enabled it also lets you approve or reject corrections held for human
 review. The default anomaly matches a pre-seeded corridor-memory pattern,

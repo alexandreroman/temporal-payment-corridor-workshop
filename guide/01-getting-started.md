@@ -45,14 +45,15 @@ plus the corridor memory service on the host, with hot reload:
 make dev
 ```
 
-`make dev` prints a banner with the reachable URLs. The defaults:
+`make dev` prints a banner with the two user-facing URLs (the Web UI and
+the Temporal Web UI). The full set of reachable endpoints (defaults):
 
 | URL                                     | What                                                   |
 | --------------------------------------- | ------------------------------------------------------ |
-| <http://localhost:8080>                 | Web UI (served **through the gateway**)                |
-| <http://localhost:8080/temporal>        | Temporal Web UI (through the gateway)                  |
+| <http://localhost:8080>                 | Web UI (served **through the gateway**, in the banner) |
+| <http://localhost:8080/temporal>        | Temporal Web UI (through the gateway, in the banner)   |
 | <http://localhost:8080/api/payments/v1> | Payments HTTP API (through the gateway)                |
-| <http://localhost:9464/metrics>         | Payments metrics (Prometheus/OpenMetrics)              |
+| <http://localhost:9464/metrics>         | Payments metrics (dev only; not published in a container) |
 
 > The gateway is the app's single published HTTP entry point. The
 > **Web UI** (static files, no process of its own), the **Temporal** Web
@@ -61,7 +62,7 @@ make dev
 > is reached only in-network, as `memory:8010`. See
 > [`gateway/`](../gateway/) and step [09](09-payload-encryption.md).
 
-![The `make dev` banner listing the reachable URLs](images/01-make-dev-banner.png)
+![The `make dev` banner listing the two user-facing URLs](images/01-make-dev-banner.png)
 
 Prefer a fully containerized run instead? `make app-up` brings the whole
 stack up in containers and `make app-down` tears it down. For the
