@@ -44,3 +44,4 @@
 - [Implementation status](references/project_implementation_status.md) — reusable scaffold tracking pending workshop feature-set work; currently nothing pending.
 - [Memory service publishes no host port](references/reference_memory_port_unpublished.md) — memory is `expose`d only (memory:8010 in-network); MEMORY_PORT for dev is derived from GATEWAY_PORT+4, not read from the override.
 - [All-features test suite is green except the intentional replay failure](references/project_all_features_test_contract.md) — with every feature on, only test_replay fails (by design, guide/12); all other tests hold in baseline, single-feature, and all-features states.
+- [Guide screenshots come from real runs, cropped or composed to the caption](references/feedback_guide_screenshots.md) — capture from the live stack, frame to the manifest subject, compose multi-view subjects with magick -append, leave no trace for feature-gated shots.
