@@ -18,6 +18,14 @@
 - **Python 3.13+** and [uv](https://docs.astral.sh/uv/).
 - **Docker** (or a compatible engine) with Compose — it runs the Temporal
   dev server container.
+- The **[Temporal CLI](https://docs.temporal.io/cli)** (`temporal`) — the
+  guide runs `temporal workflow …` commands from the host to query,
+  signal, filter, and decode workflows (from step
+  [03](03-human-approval-signal.md) on) and to capture a replay fixture
+  (step [12](12-testing.md)). The dev server runs in Docker, so the CLI is
+  a separate install.
+- **[jq](https://jqlang.github.io/jq/)** — the guide pipes `curl` output
+  through it, starting with this step's outcome fetch below.
 - *(Optional, for later steps)* an **LLM provider API key** matching
   `CORRIDOR_MODEL`, e.g. `ANTHROPIC_API_KEY`. You only need it once a
   scenario misses corridor memory and an agent actually calls a model.
