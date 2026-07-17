@@ -123,9 +123,20 @@
                   to
                   <span class="font-semibold text-white/80" x-text="a.beneficiary"></span>
                 </p>
-                <div class="mt-1 flex items-center gap-3 text-xs text-white/50">
+                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/50">
                   <span class="text-white/70" x-text="a.corridor.replace('->', ' → ')"></span>
                   <span class="font-mono" x-text="a.anomaly_type"></span>
+                  <!-- Received (anomalous) fields, so the reader sees why it was
+                       flagged; the beneficiary key is dropped (shown above). -->
+                  <template
+                    x-for="entry in Object.entries(a.details || {}).filter((e) => e[0] !== 'beneficiary')"
+                    :key="entry[0]"
+                  >
+                    <span>
+                      <span class="text-white/40" x-text="entry[0] + ':'"></span>
+                      <span class="font-mono text-white/70" x-text="entry[1]"></span>
+                    </span>
+                  </template>
                 </div>
                 <!-- Outcome summary on its own line: a held/rejected reason can run
                      long, so clamp to 2 lines with a Show more/less toggle that only

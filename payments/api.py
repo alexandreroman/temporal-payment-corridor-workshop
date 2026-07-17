@@ -132,6 +132,10 @@ class AnomalySummary(BaseModel):
     amount: float | None = None
     currency: str | None = None
     beneficiary: str | None = None
+    # The payment as received (free-form fields, e.g. the invalid bic value),
+    # so a row can explain WHY it is anomalous. Optional for the same reason as
+    # the other payment fields above.
+    details: dict[str, str] | None = None
 
 
 class AnomalyDetail(BaseModel):
@@ -315,6 +319,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                         amount=anomaly.amount,
                         currency=anomaly.currency,
                         beneficiary=anomaly.beneficiary.name,
+                        details=anomaly.details,
                         status="applied" if outcome.applied else "held",
                         workflow_id=wf.id,
                         start_time=wf.start_time,
@@ -336,6 +341,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                         amount=anomaly.amount,
                         currency=anomaly.currency,
                         beneficiary=anomaly.beneficiary.name,
+                        details=anomaly.details,
                         status=closed_status,
                         workflow_id=wf.id,
                         start_time=wf.start_time,
@@ -355,6 +361,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                         amount=anomaly.amount,
                         currency=anomaly.currency,
                         beneficiary=anomaly.beneficiary.name,
+                        details=anomaly.details,
                         status="awaiting-approval" if awaiting else "processing",
                         workflow_id=wf.id,
                         start_time=wf.start_time,

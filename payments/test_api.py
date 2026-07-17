@@ -287,6 +287,7 @@ def test_list_anomalies_reads_each_running_workflow_via_query():
             "amount": 500.0,
             "currency": "INR",
             "beneficiary": "Acme Textiles Pvt Ltd",
+            "details": {"bic": "WRONG"},
         },
         {
             "payment_id": "pay-1",
@@ -299,6 +300,7 @@ def test_list_anomalies_reads_each_running_workflow_via_query():
             "amount": 500.0,
             "currency": "INR",
             "beneficiary": "Acme Textiles Pvt Ltd",
+            "details": {"bic": "WRONG"},
         },
     ]
 
