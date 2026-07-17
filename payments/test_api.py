@@ -37,6 +37,7 @@ from payments import api
 from payments.workflows import TASK_QUEUE, PaymentCorrectionCoordinator
 from shared.models import (
     AnomalyType,
+    Beneficiary,
     CorrectionOutcome,
     CorrectionProposal,
     CorrectionSource,
@@ -70,6 +71,7 @@ def _anomaly(payment_id: str = "pay-1") -> PaymentAnomaly:
         amount=500.0,
         currency="INR",
         anomaly_type=AnomalyType.WRONG_BIC,
+        beneficiary=Beneficiary(name="Acme Textiles Pvt Ltd", bank_id="HDFCINBB"),
         details={"bic": "WRONG"},
     )
 

@@ -45,7 +45,9 @@ def test_default_scenario_is_memory_hit_and_matches_the_seeded_pattern():
     assert DEFAULT_SCENARIO == "memory-hit"
 
     default = SCENARIOS[DEFAULT_SCENARIO]
-    pattern = store.lookup(default.corridor, default.anomaly_type)
+    pattern = store.lookup(
+        default.corridor, default.anomaly_type, default.beneficiary_bank_id
+    )
     assert pattern is not None
     assert pattern.confidence >= CONFIDENCE_THRESHOLD
 

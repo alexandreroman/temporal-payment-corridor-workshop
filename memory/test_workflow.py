@@ -97,7 +97,8 @@ def test_query_returns_seeded_pattern_on_hit():
             async with _worker(client):
                 handle = await _start_seeded(client)
                 pattern = await handle.query(
-                    MemoryWorkflow.lookup, args=["US->IN", AnomalyType.WRONG_BIC]
+                    MemoryWorkflow.lookup,
+                    args=["US->IN", AnomalyType.WRONG_BIC, "HDFCINBB"],
                 )
 
         assert pattern is not None
@@ -213,11 +214,41 @@ def test_continue_as_new_preserves_accumulated_patterns():
                         assert stored == pattern
                     seeded = await handle.query(
                         MemoryWorkflow.lookup,
-                        args=["US->IN", AnomalyType.WRONG_BIC],
+                        args=["US->IN", AnomalyType.WRONG_BIC, "HDFCINBB"],
                     )
                     assert seeded is not None
         finally:
             MemoryWorkflow.MAX_UPDATES_BEFORE_CONTINUE = 100
+
+    asyncio.run(scenario())
+
+
+def test_query_with_bank_id_keys_a_distinct_pattern():
+    async def scenario() -> None:
+        async with await WorkflowEnvironment.start_local() as env:
+            client = await _client(env)
+            async with _worker(client):
+                handle = await _start_seeded(client)
+                specific = CorridorPattern(
+                    corridor="US->GB",
+                    anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary_bank_id="BARCGB22",
+                    field_to_fix="bic",
+                    proposed_value="BARCGB22XXX",
+                    confidence=0.9,
+                )
+                await handle.execute_update(MemoryWorkflow.remember, specific)
+
+                hit = await handle.query(
+                    MemoryWorkflow.lookup,
+                    args=["US->GB", AnomalyType.WRONG_BIC, "BARCGB22"],
+                )
+                miss = await handle.query(
+                    MemoryWorkflow.lookup, args=["US->GB", AnomalyType.WRONG_BIC]
+                )
+
+        assert hit == specific
+        assert miss is None
 
     asyncio.run(scenario())
 

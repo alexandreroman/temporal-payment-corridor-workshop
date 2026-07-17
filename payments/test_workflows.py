@@ -68,6 +68,7 @@ with workflow.unsafe.imports_passed_through():
     from shared.encryption import EncryptionCodec, build_data_converter
     from shared.models import (
         AnomalyType,
+        Beneficiary,
         ComplianceVerdict,
         CorrectionOutcome,
         CorrectionProposal,
@@ -112,9 +113,11 @@ TASK_QUEUE = "payment-corridor-test"
 
 @activity.defn(name="read_corridor_memory")
 async def read_corridor_memory(
-    corridor: str, anomaly_type: AnomalyType
+    corridor: str,
+    anomaly_type: AnomalyType,
+    beneficiary_bank_id: str | None = None,
 ) -> CorridorPattern | None:
-    return memory_store.lookup(corridor, anomaly_type)
+    return memory_store.lookup(corridor, anomaly_type, beneficiary_bank_id)
 
 
 @activity.defn(name="write_corridor_memory")
@@ -227,6 +230,9 @@ def test_instruction_agent_returns_llm_proposal_on_memory_miss():
                     amount=250.0,
                     currency="GBP",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Globex Trading Ltd", bank_id="BARCGB22"
+                    ),
                     details={"bic": "NOT-A-REAL-BIC"},
                 )
                 # Started by workflow type name (a plain string), since the
@@ -291,6 +297,9 @@ def test_coordinator_holds_when_compliance_fails():
                     amount=500.0,
                     currency="INR",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Acme Textiles Pvt Ltd", bank_id="HDFCINBB"
+                    ),
                     details={"bic": "WRONG"},
                 )
                 outcome: CorrectionOutcome = await client.execute_workflow(
@@ -345,6 +354,9 @@ def test_coordinator_applies_when_compliant_and_confident():
                     amount=500.0,
                     currency="INR",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Acme Textiles Pvt Ltd", bank_id="HDFCINBB"
+                    ),
                     details={"bic": "WRONG"},
                 )
                 outcome: CorrectionOutcome = await client.execute_workflow(
@@ -419,6 +431,9 @@ def test_payload_encryption_encrypts_history():
                     amount=750.0,
                     currency="INR",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Acme Textiles Pvt Ltd", bank_id="HDFCINBB"
+                    ),
                     details={"bic": "WRONG"},
                 )
                 workflow_id = "test-payload-encryption"
@@ -501,6 +516,9 @@ def test_coordinator_exposes_listing_query_surface():
                     amount=100.0,
                     currency="GBP",
                     anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Globex Trading Ltd", bank_id="BARCGB22"
+                    ),
                     details={"bic": "NOT-A-REAL-BIC"},
                 )
                 handle = await client.start_workflow(
@@ -567,3 +585,58 @@ def test_coordinator_exposes_listing_query_surface():
                 # endregion FEATURE-ON: human-approval-signal
 
     asyncio.run(scenario())
+
+
+def test_instruction_agent_is_beneficiary_specific_on_wrong_bic():
+    """Same corridor + anomaly, different beneficiary bank: only the seeded
+    bank short-circuits the model; an unknown bank falls through to the LLM."""
+
+    async def scenario() -> tuple[CorrectionSource, CorrectionSource]:
+        async with await WorkflowEnvironment.start_local() as env:
+            client = await _local_env_client(env)
+            async with Worker(
+                client,
+                task_queue=TASK_QUEUE,
+                workflows=[_FakeInstructionAgentWorkflow],
+                activities=[read_corridor_memory, write_corridor_memory],
+            ):
+                seeded = PaymentAnomaly(
+                    payment_id="pay-benef-seeded",
+                    corridor="US->IN",
+                    amount=500.0,
+                    currency="INR",
+                    anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary=Beneficiary(
+                        name="Acme Textiles Pvt Ltd", bank_id="HDFCINBB"
+                    ),
+                    details={"bic": "WRONG"},
+                )
+                unknown = seeded.model_copy(
+                    update={
+                        "payment_id": "pay-benef-unknown",
+                        "beneficiary": Beneficiary(
+                            name="Other Traders", bank_id="OTHRINBB"
+                        ),
+                    }
+                )
+                seeded_proposal: CorrectionProposal = await client.execute_workflow(
+                    "InstructionAgentWorkflow",
+                    seeded,
+                    id="test-benef-seeded",
+                    task_queue=TASK_QUEUE,
+                    result_type=CorrectionProposal,
+                    execution_timeout=timedelta(seconds=30),
+                )
+                unknown_proposal: CorrectionProposal = await client.execute_workflow(
+                    "InstructionAgentWorkflow",
+                    unknown,
+                    id="test-benef-unknown",
+                    task_queue=TASK_QUEUE,
+                    result_type=CorrectionProposal,
+                    execution_timeout=timedelta(seconds=30),
+                )
+        return seeded_proposal.source, unknown_proposal.source
+
+    seeded_source, unknown_source = asyncio.run(scenario())
+    assert seeded_source == CorrectionSource.MEMORY
+    assert unknown_source == CorrectionSource.LLM

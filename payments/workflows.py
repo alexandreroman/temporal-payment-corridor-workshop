@@ -145,6 +145,18 @@ def _gate(
     return GateDecision.APPLY, ""
 
 
+def _beneficiary_bank_id(anomaly: PaymentAnomaly) -> str | None:
+    """The memory-key discriminator for this anomaly.
+
+    NOTE: returns the beneficiary bank id verbatim. It is None for anomaly
+    types whose correction is corridor-wide (currency_mismatch,
+    missing_intermediary_bank carry no bank id), so their key degrades to
+    corridor|anomaly_type; a wrong_bic anomaly carries a bank id and keys a
+    beneficiary-specific pattern.
+    """
+    return anomaly.beneficiary.bank_id
+
+
 def _learned_pattern(
     anomaly: PaymentAnomaly, proposal: CorrectionProposal
 ) -> CorridorPattern | None:
@@ -162,6 +174,7 @@ def _learned_pattern(
     return CorridorPattern(
         corridor=anomaly.corridor,
         anomaly_type=anomaly.anomaly_type,
+        beneficiary_bank_id=_beneficiary_bank_id(anomaly),
         field_to_fix=proposal.field_to_fix,
         proposed_value=proposal.proposed_value,
         confidence=proposal.confidence,
@@ -200,7 +213,7 @@ async def _propose(
     """
     pattern = await workflow.execute_activity(
         read_corridor_memory,
-        args=[anomaly.corridor, anomaly.anomaly_type],
+        args=[anomaly.corridor, anomaly.anomaly_type, _beneficiary_bank_id(anomaly)],
         start_to_close_timeout=timedelta(seconds=10),
     )
     if pattern is not None and pattern.confidence >= CONFIDENCE_THRESHOLD:
@@ -232,10 +245,17 @@ async def _verify_compliance(agent, anomaly: PaymentAnomaly) -> ComplianceVerdic
     without a model call, mirroring _propose. This is what keeps the seeded
     happy path (US->IN / WRONG_BIC) fully offline: neither agent calls the
     model. On a miss, the durable compliance agent produces the verdict.
+
+    NOTE: Presuming a high-confidence stored pattern is compliant — now keyed on the
+    beneficiary bank — is a workshop simplification. A production system would separate
+    sanctions/AML screening (party-keyed) from corridor/currency policy, and would
+    expire and re-screen clearances on a TTL rather than trust a stored pattern
+    indefinitely. Keying compliance on the beneficiary bank here means an unknown bank
+    is re-checked by the model rather than waved through on a corridor-level hit.
     """
     pattern = await workflow.execute_activity(
         read_corridor_memory,
-        args=[anomaly.corridor, anomaly.anomaly_type],
+        args=[anomaly.corridor, anomaly.anomaly_type, _beneficiary_bank_id(anomaly)],
         start_to_close_timeout=timedelta(seconds=10),
     )
     if pattern is not None and pattern.confidence >= CONFIDENCE_THRESHOLD:
@@ -422,7 +442,8 @@ class PaymentCorrectionCoordinator:
 
         # Passive learning: once a correction the agents *reasoned out* -- not
         # one already recalled from memory -- is applied, remember it so the
-        # next matching anomaly on this corridor short-circuits the model.
+        # next matching anomaly for this beneficiary bank on this corridor
+        # short-circuits the model.
         # Best-effort by design: the correction is already applied, so a
         # memory-service hiccup must never fail the workflow.
         # Source: https://docs.temporal.io/develop/python/failure-detection

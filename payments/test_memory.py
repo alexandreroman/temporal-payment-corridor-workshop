@@ -35,7 +35,7 @@ class _StoreBackedHandle:
     """A workflow-handle stand-in that serves the in-memory store."""
 
     async def query(self, _query, args):
-        return store.lookup(args[0], args[1])
+        return store.lookup(*args)
 
     async def execute_update(self, _update, pattern):
         store.remember(pattern)
@@ -96,7 +96,9 @@ def route_httpx_to_app(monkeypatch):
 
 
 def test_read_corridor_memory_returns_seeded_pattern_on_hit():
-    pattern = _run_activity(read_corridor_memory, "US->IN", AnomalyType.WRONG_BIC)
+    pattern = _run_activity(
+        read_corridor_memory, "US->IN", AnomalyType.WRONG_BIC, "HDFCINBB"
+    )
 
     assert pattern is not None
     assert pattern.field_to_fix == "bic"
@@ -124,3 +126,23 @@ def test_write_then_read_round_trips_through_the_service():
     )
 
     assert stored == new
+
+
+def test_read_corridor_memory_passes_the_bank_id_discriminator():
+    specific = CorridorPattern(
+        corridor="US->GB",
+        anomaly_type=AnomalyType.WRONG_BIC,
+        beneficiary_bank_id="BARCGB22",
+        field_to_fix="bic",
+        proposed_value="BARCGB22XXX",
+        confidence=0.9,
+    )
+    _run_activity(write_corridor_memory, specific)
+
+    hit = _run_activity(
+        read_corridor_memory, "US->GB", AnomalyType.WRONG_BIC, "BARCGB22"
+    )
+    miss = _run_activity(read_corridor_memory, "US->GB", AnomalyType.WRONG_BIC)
+
+    assert hit == specific
+    assert miss is None

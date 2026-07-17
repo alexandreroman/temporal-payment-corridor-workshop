@@ -135,8 +135,13 @@ logfire.instrument_fastapi(app)
 
 
 @app.get("/api/memory/v1/lookup")
-async def lookup(corridor: str, anomaly_type: AnomalyType) -> CorridorPattern | None:
-    """Look up a known correction pattern for a corridor + anomaly type.
+async def lookup(
+    corridor: str,
+    anomaly_type: AnomalyType,
+    beneficiary_bank_id: str | None = None,
+) -> CorridorPattern | None:
+    """Look up a known correction pattern for a corridor + anomaly type,
+    optionally scoped to a beneficiary bank.
 
     A miss returns ``null`` with HTTP 200 (not 404): "no pattern known yet" is
     an expected, ordinary answer for a lookup, not a client error.
@@ -147,14 +152,16 @@ async def lookup(corridor: str, anomaly_type: AnomalyType) -> CorridorPattern | 
     unchanged.
     """
     # region FEATURE-OFF: memory-workflow
-    pattern = store.lookup(corridor, anomaly_type)
+    pattern = store.lookup(corridor, anomaly_type, beneficiary_bank_id)
     # endregion FEATURE-OFF: memory-workflow
     # region FEATURE-ON: memory-workflow
     # # NOTE: Serve the read from the durable workflow with a Temporal query —
     # # read-only and never recorded in history, so lookups add no audit events.
     # # Source: https://docs.temporal.io/develop/python/message-passing#send-query
     # handle = app.state.temporal_client.get_workflow_handle(MemoryWorkflow.WORKFLOW_ID)
-    # pattern = await handle.query(MemoryWorkflow.lookup, args=[corridor, anomaly_type])
+    # pattern = await handle.query(
+    #     MemoryWorkflow.lookup, args=[corridor, anomaly_type, beneficiary_bank_id]
+    # )
     # endregion FEATURE-ON: memory-workflow
     return pattern
 
