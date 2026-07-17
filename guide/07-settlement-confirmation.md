@@ -5,6 +5,13 @@
 > long-running work safe: **heartbeats**, **cancellation**, and — because
 > this changes the coordinator's shape — **replay & versioning**.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## At a glance
 
 |                       |                                                                                                                                                                                                                                                                     |

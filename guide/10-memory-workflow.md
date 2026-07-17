@@ -5,6 +5,13 @@
 > served by a **query** for reads and an **update** for writes, and kept
 > bounded with **continue-as-new**.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## At a glance
 
 |                       |                                                                                                                                                                                |
@@ -113,7 +120,7 @@ for the read.
 You can also drive it directly through the HTTP API:
 
 ```bash
-curl -s "http://localhost:8010/api/memory/v1/lookup?corridor=US-%3EIN&anomaly_type=wrong_bic" | jq
+curl -s "http://localhost:8010/api/memory/v1/lookup?corridor=US-%3EIN&anomaly_type=wrong_bic&beneficiary_bank_id=HDFCINBB" | jq
 ```
 
 ## Step 5 — Checkpoint

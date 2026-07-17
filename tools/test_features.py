@@ -193,6 +193,27 @@ def test_cli_enable_reports_changed_files(tmp_path, capsys, monkeypatch):
     assert "enabled 'multi'" in capsys.readouterr().out
 
 
+def test_cli_reset_disables_every_feature(tmp_path, capsys, monkeypatch):
+    _make_repo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("FEATURES_NO_FORMAT", "1")  # skip ruff in tests
+    set_feature(tmp_path, "multi", enable=True, dry_run=False, do_format=False)
+    assert feature_state([r for _, r in collect(tmp_path)["multi"]]) == "enabled"
+
+    assert main(["reset"]) == 0
+    assert feature_state([r for _, r in collect(tmp_path)["multi"]]) == "disabled"
+    assert "disabled 1 feature(s): multi" in capsys.readouterr().out
+
+
+def test_cli_reset_on_clean_tree_is_noop(tmp_path, capsys, monkeypatch):
+    _make_repo(tmp_path)  # features ship disabled
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("FEATURES_NO_FORMAT", "1")  # skip ruff in tests
+    assert main(["reset"]) == 0
+    assert (tmp_path / "payments" / "a.py").read_text() == CROSS_FILE_A  # untouched
+    assert "already disabled: multi" in capsys.readouterr().out
+
+
 # Regression guard against prose (or otherwise non-code) inside a FEATURE
 # block. Feature bodies ship commented out, so a body that is not valid Python
 # stays hidden until a learner enables the feature and it uncomments into a

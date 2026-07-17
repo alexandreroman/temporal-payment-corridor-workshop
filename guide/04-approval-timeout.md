@@ -4,6 +4,13 @@
 > approval wait a deadline with a **durable timer**, so an unanswered
 > correction auto-rejects instead of blocking indefinitely.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## At a glance
 
 |                       |                                                                          |
@@ -23,8 +30,10 @@ indefinitely. The fix is a **durable timer**. Unlike an in-process
 restarts, and it fires deterministically. Bounding the approval wait turns
 "wait forever" into "wait, then auto-reject."
 
-> Make sure `human-approval-signal` is enabled first. This feature only
-> changes the timeout constant that the approval wait already uses.
+> `approval-timeout` only changes the timeout constant that the approval
+> wait from `human-approval-signal` (step
+> [03](03-human-approval-signal.md)) already uses, so you need that feature
+> on as well. Starting from a clean baseline, Step 2 enables both.
 
 ## Step 1 — Preview the change
 
@@ -34,7 +43,12 @@ make feature-diff NAME=approval-timeout
 
 ## Step 2 — Enable it
 
+From a clean baseline (no features on), enable `human-approval-signal`
+first — it provides the approval wait — then `approval-timeout`, which
+bounds it:
+
 ```bash
+make feature-enable NAME=human-approval-signal
 make feature-enable NAME=approval-timeout
 ```
 
@@ -116,6 +130,7 @@ elapses — the timer is cancelled and the correction is applied.
 
 ```bash
 make feature-disable NAME=approval-timeout
+make feature-disable NAME=human-approval-signal
 ```
 
 ---

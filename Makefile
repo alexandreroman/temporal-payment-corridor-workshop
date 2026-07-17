@@ -215,6 +215,10 @@ feature-enable: ## Enable a feature everywhere (NAME=<name>, DRY_RUN=1 to previe
 feature-disable: ## Disable a feature everywhere (NAME=<name>, DRY_RUN=1 to preview)
 	uv run python -m tools.features disable $(NAME) $(if $(DRY_RUN),--dry-run,)
 
+.PHONY: feature-reset
+feature-reset: ## Disable every feature for a clean baseline (DRY_RUN=1 to preview)
+	uv run python -m tools.features reset $(if $(DRY_RUN),--dry-run,)
+
 ##@ Gateway & codec
 
 .PHONY: gateway

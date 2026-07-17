@@ -4,6 +4,13 @@
 > your first payment end-to-end — with no API key — so you have a live
 > system to explore in every step that follows.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## Prerequisites
 
 - **Python 3.13+** and [uv](https://docs.astral.sh/uv/).
@@ -96,9 +103,11 @@ Open the Temporal Web UI at <http://localhost:8080/temporal> and find the
 - two child workflows — `...-instruction` and `...-compliance`.
 
 Click into the coordinator and open its **Event History**. Notice there
-are *no model-call activities* on this run — only the memory-lookup
-activities and the `apply_correction` activity. That is the memory hit at
-work.
+are *no model-call activities* on this run — only the two agent
+child-workflow executions and the `apply_correction` activity. Open a
+child (`...-instruction` or `...-compliance`) and you will find its
+`read_corridor_memory` activity but no model call. That is the memory hit
+at work.
 
 ![The coordinator and its two agent child workflows in the Temporal Web UI](images/01-webui-workflow-tree.png)
 

@@ -4,6 +4,13 @@
 > *distinctive* about testing durable workflows: replay tests for
 > determinism, and mocking the model so agent tests never hit the network.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## At a glance
 
 |                       |                                                                                                                                                                                                                                            |

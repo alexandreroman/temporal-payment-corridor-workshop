@@ -4,6 +4,13 @@
 > correction fail *immediately and permanently* instead of burning the
 > retry budget on an error that can never self-heal.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## At a glance
 
 |                       |                                                                                           |

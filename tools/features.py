@@ -304,6 +304,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="list every feature and its state")
+    reset_p = sub.add_parser("reset", help="disable every feature (clean baseline)")
+    reset_p.add_argument("--dry-run", action="store_true")
     for cmd in ("status", "diff", "enable", "disable"):
         p = sub.add_parser(cmd)
         p.add_argument("name")
@@ -322,6 +324,22 @@ def main(argv: list[str] | None = None) -> int:
         for name in sorted(features):
             state = feature_state([r for _, r in features[name]])
             print(f"{state:<12} {name}")
+        return 0
+
+    if args.cmd == "reset":
+        do_format = os.environ.get("FEATURES_NO_FORMAT") != "1"
+        disabled: list[str] = []
+        already: list[str] = []
+        for name in sorted(features):
+            changed = set_feature(
+                root, name, enable=False, dry_run=args.dry_run, do_format=do_format
+            )
+            (disabled if changed else already).append(name)
+        if not args.dry_run:
+            if disabled:
+                print(f"disabled {len(disabled)} feature(s): {', '.join(disabled)}")
+            if already:
+                print(f"already disabled: {', '.join(already)}")
         return 0
 
     if args.name not in features:
