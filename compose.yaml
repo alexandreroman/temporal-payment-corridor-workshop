@@ -16,7 +16,7 @@ services:
       # gateway. This is the browser-facing gateway URL (not an internal
       # Compose address): the browser, not the server, calls it.
       - --ui-codec-endpoint
-      - http://localhost:8233/codec
+      - http://localhost:8080/codec
       # Serve the Web UI under /temporal instead of the root path, so the
       # gateway can route `/` to our payment-corridor Web UI instead (see
       # gateway/Caddyfile).
@@ -40,7 +40,7 @@ services:
     ports:
       - "7233:7233"  # gRPC endpoint for workers and clients
       # Web UI is not published directly: it is served through the gateway at
-      # http://localhost:8233/temporal.
+      # http://localhost:8080/temporal.
     healthcheck:
       test: ["CMD-SHELL", "temporal operator cluster health"]
       interval: 10s
@@ -68,8 +68,6 @@ services:
       # Reach the memory service over HTTP (its Compose service name + port).
       MEMORY_HOST: memory
       MEMORY_PORT: 8010
-    ports:
-      - "9464:9464" # Prometheus/OpenMetrics — http://localhost:9464/metrics
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:9464/metrics')\""]
       interval: 10s
@@ -107,36 +105,6 @@ services:
       - "8020"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8020/healthz')\""]
-      interval: 10s
-      timeout: 10s
-      retries: 3
-    depends_on:
-      temporal:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-    restart: on-failure
-
-  webui:
-    build:
-      context: .
-      dockerfile: Dockerfile.webui
-    # Optional so a fresh clone can `make dev` without first copying `.env`.
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      TEMPORAL_ADDRESS: temporal:7233
-      WEBUI_HOST: 0.0.0.0
-      WEBUI_PORT: 8000
-    # Reached only through the gateway (like payments-api) — it publishes no
-    # host port of its own.
-    expose:
-      - "8000"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')\""]
       interval: 10s
       timeout: 10s
       retries: 3
@@ -204,12 +172,13 @@ services:
           memory: 256M
     restart: unless-stopped
 
-  # The gateway is the sole published HTTP entry point (Temporal Web UI at
-  # /temporal, payment-corridor Web UI at /, codec at /codec, payments API at
-  # /api/payments/v1). It intentionally does NOT depend on the codec service
-  # or the webui service, so `/codec` and `/` only 502 during the brief window
-  # before each is up (or if one is manually stopped) — codec and webui
-  # themselves always start.
+  # The gateway is the sole published HTTP entry point, on 8080 (Temporal Web
+  # UI at /temporal, payment-corridor Web UI at /, codec at /codec, payments
+  # API at /api/payments/v1). The Web UI is fully static, so the gateway
+  # serves it directly from its mounted /srv volume rather than proxying to
+  # a process. It intentionally does NOT depend on the codec service, so
+  # `/codec` only 502s during the brief window before codec is up (or if it
+  # is manually stopped) — codec itself always starts.
   gateway:
     image: caddy:2
     # Optional so a fresh clone can start without first copying `.env`.
@@ -217,7 +186,7 @@ services:
       - path: .env
         required: false
     ports:
-      - "8233:8233" # http — single entry point: Web UI (/), Temporal Web UI (/temporal), payments API (/api/payments/v1), codec (/codec)
+      - "8080:8080" # http — single entry point: Web UI (/), Temporal Web UI (/temporal), payments API (/api/payments/v1), codec (/codec)
     # Lets the gateway reach a host-side payments API (used by the worktree
     # override's PAYMENTS_API_UPSTREAM); host.docker.internal resolves on Linux
     # via host-gateway and natively on macOS.
@@ -225,6 +194,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./webui:/srv:ro
     depends_on:
       temporal:
         condition: service_healthy
