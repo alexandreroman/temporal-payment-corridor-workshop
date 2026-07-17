@@ -1,0 +1,130 @@
+---
+name: capture-guide-screenshots
+description: Use when generating, regenerating, or updating a screenshot in guide/images/ for the learner guide — capturing the Temporal Web UI or app Web UI from a live stack with Casper, then cropping to the caption's subject. Covers finding the real (worktree-remapped) port, producing real workflow data, and the Casper capture loop that avoids blank SPA screenshots.
+---
+
+# Capture guide screenshots
+
+Produce the PNGs the learner guide references, **from real elements** on a
+live stack, cropped to the subject each caption promises.
+
+## The manifest is the spec
+
+`guide/images/README.md` lists every expected file: its **exact filename**
+(hard-coded in the guide), the step that references it, and a **"What to
+capture"** column that is the subject you must frame. Read that row first —
+it tells you the view and what the crop must focus on.
+
+`make check` (`tools/test_guide.py`) enforces the two-way link: every image
+referenced by a guide file must be listed in the manifest, and vice versa.
+Keep filenames byte-for-byte. Do **not** add a manifest row unless you are
+introducing a genuinely new screenshot.
+
+## Find the real ports (worktree remapping)
+
+In a Casper worktree, `make worktree-ports` writes `compose.override.yaml`
+remapping the gateway off the canonical `8080`. Do not assume `8080` — it is
+not mapped here. Use `$CASPER_PORT`:
+
+- App Web UI: `http://localhost:$CASPER_PORT`
+- Temporal Web UI: `http://localhost:$CASPER_PORT/temporal`
+- Temporal gRPC: `$CASPER_PORT + 1`
+
+Namespaces are `payments` (corrections + agents) and `memory`. Confirm the
+real mapping any time with `cat compose.override.yaml` / `docker ps`.
+
+## Procedure
+
+1. **Stack up.** The user usually already ran `make dev`. Verify with
+   `curl -sS -o /dev/null -w '%{http_code}' http://localhost:$CASPER_PORT/`.
+
+2. **Produce real data.** Screenshots need a real execution. For the
+   `memory-hit` path (no API key): `make simulator`. It prints the
+   `payment` and `workflow` IDs. Other scenarios need a provider key — see
+   step `01` of the guide. Wait for completion, e.g.
+   `curl -sS http://localhost:$CASPER_PORT/api/payments/v1/anomalies/<id> | jq`.
+
+3. **Locate the workflow / runId.** List with the CLI inside the Temporal
+   container, or grab the runId from the UI:
+   `docker exec <temporal-container> temporal workflow list --namespace payments --address localhost:7233`.
+   The coordinator is `PaymentCorrectionCoordinator` (`correction-<id>`);
+   its children are `InstructionAgentWorkflow` (`…-instruction`) and
+   `ComplianceAgentWorkflow` (`…-compliance`).
+
+4. **Navigate to the exact view the caption names.** Examples: the
+   **Relationships** tab of a coordinator renders the coordinator + two
+   child-workflow tree; **Event History** for event-level captures;
+   **Workflows** list filtered by a Search Attribute for filter captures.
+
+5. **Capture with Casper** (see loop below).
+
+6. **Crop to the subject** (see cropping below).
+
+7. **Verify.** Read the cropped PNG back and confirm it matches the
+   manifest's "What to capture". PNG, cropped, legible; redact any real key
+   or token before capturing.
+
+## Casper capture loop (the important gotcha)
+
+The Temporal Web UI is a client-rendered SPA. **`casper browser screenshot
+--url <url>` (offscreen) renders a fresh headless page and fires before the
+SPA hydrates → you get a blank image.** Do not use it for these pages.
+
+Instead, load into a real page, wait for content, then plain-screenshot:
+
+```bash
+URL="http://localhost:$CASPER_PORT/temporal/namespaces/payments/workflows/<wfid>/<runid>/relationships"
+casper browser open "$URL"          # renders in the VISIBLE panel — respects the user's window size
+casper browser wait "svg" --timeout 8000   # wait for the graph/content to render
+casper browser screenshot --out /tmp/shot.png   # plain screenshot captures the rendered page
+```
+
+- `open` uses the **visible panel**, so it honours the window size the user
+  set (they may enlarge it for a bigger capture — re-run `open` +
+  `screenshot` after they do).
+- `load` is a **background page** with its own viewport (useful for setup
+  without disturbing the user's view).
+- `casper browser eval "location.href"` / `eval "document.querySelectorAll('svg').length"`
+  confirm you are on the right view with content rendered.
+- To reach a tab without knowing the runId, `open` the workflow URL, then
+  `eval` a click on the tab link and read its `href`:
+  `casper browser eval "[...document.querySelectorAll('a')].find(e=>/Relationships/.test(e.textContent)).click()"`.
+
+## Crop to the caption's subject
+
+Read the full screenshot first to see the layout, then crop out the left
+nav sidebar and top browser chrome so only the subject remains:
+
+```bash
+magick /tmp/shot.png -crop <W>x<H>+<X>+<Y> +repage guide/images/<exact-name>.png
+```
+
+Get `WxH+X+Y` by eyeballing the full PNG (Read it — the tool reports the
+displayed→original scale factor), then **Read the crop and iterate** until
+it is tight on the subject. `sips -g pixelWidth -g pixelHeight <png>` prints
+dimensions. `magick`/`convert` and Python PIL are available.
+
+## Quick reference
+
+| Need | Do |
+| --- | --- |
+| Real port | `$CASPER_PORT` (gateway); Temporal UI at `/temporal`; gRPC `$CASPER_PORT+1` |
+| Which subject to frame | the "What to capture" cell in `guide/images/README.md` |
+| Memory-hit data, no key | `make simulator` |
+| List workflows | `docker exec <temporal> temporal workflow list --namespace payments --address localhost:7233` |
+| Coordinator tree view | workflow's **Relationships** tab |
+| Capture | `casper browser open` → `wait "svg"` → `screenshot --out` |
+| Crop | `magick in.png -crop WxH+X+Y +repage guide/images/<name>.png` |
+| Enforce filenames | `make check` (manifest two-way link) |
+
+## Common mistakes
+
+- **Using `8080`** — not mapped in a worktree; use `$CASPER_PORT`.
+- **Offscreen `screenshot --url` on the Temporal SPA** — blank; use
+  `open`/`load` + `wait` + plain `screenshot`.
+- **Renaming the file** — filenames are hard-coded in the guide and checked
+  against the manifest; keep them exact.
+- **Capturing before data exists** — run the scenario first; an empty
+  Workflows list has nothing to show.
+- **Leaving the nav sidebar / browser chrome in the crop** — frame only the
+  caption's subject.
