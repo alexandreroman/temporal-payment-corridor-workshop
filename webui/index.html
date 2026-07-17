@@ -117,7 +117,23 @@
                 <div class="mt-1 flex items-center gap-3 text-xs text-white/50">
                   <span class="text-white/70" x-text="a.corridor.replace('->', ' → ')"></span>
                   <span class="font-mono" x-text="a.anomaly_type"></span>
-                  <span class="ml-auto pl-3 text-right text-white/40" x-show="a.outcome_summary" x-text="a.outcome_summary"></span>
+                </div>
+                <!-- Outcome summary on its own line: a held/rejected reason can run
+                     long, so clamp to 2 lines with a Show more/less toggle that only
+                     appears when the text actually overflows the clamp. -->
+                <div x-show="a.outcome_summary" class="mt-1">
+                  <p
+                    class="text-xs leading-relaxed text-white/40"
+                    :class="!a.outcomeExpanded && 'line-clamp-2'"
+                    x-text="outcomeText(a)"
+                  ></p>
+                  <button
+                    type="button"
+                    x-show="a.outcomeExpanded || outcomeClamped($el)"
+                    @click="a.outcomeExpanded = !a.outcomeExpanded"
+                    class="mt-1 ml-auto block w-fit text-[11px] font-medium text-accent hover:text-accent/80"
+                    x-text="a.outcomeExpanded ? 'Show less' : 'Show more'"
+                  ></button>
                 </div>
               </div>
             </div>
@@ -286,6 +302,9 @@
         return {
           anomalies: [],
           error: false,
+          // Bumped on resize and after each poll paint so overflow-dependent UI
+          // (the outcome "Show more" toggle) re-evaluates against fresh layout.
+          measureTick: 0,
 
           async refresh() {
             try {
@@ -314,6 +333,7 @@
                 approvalError: "",
                 rationaleExpanded: false,
                 verdictExpanded: false,
+                outcomeExpanded: false,
               };
               Object.assign(a, row);
               return a;
@@ -373,6 +393,12 @@
 
           init() {
             this.poll();
+            // Outcome-toggle visibility depends on measured overflow, which is
+            // not reactive; bump measureTick on resize and once after the first
+            // paint so it re-checks against the real rendered layout.
+            const bump = () => this.measureTick++;
+            window.addEventListener("resize", bump);
+            requestAnimationFrame(bump);
           },
 
           // Drives the periodic refresh with a self-chaining setTimeout
@@ -381,6 +407,8 @@
           // so a slow cycle can never overlap with the next one.
           async poll() {
             await this.refresh();
+            // Re-measure after the freshly-polled rows have painted.
+            requestAnimationFrame(() => this.measureTick++);
             setTimeout(() => this.poll(), 3000);
           },
 
@@ -396,6 +424,24 @@
               failed: "bg-red-400/15 text-red-300 ring-red-400/30",
             };
             return palette[status] || "bg-white/10 text-white/70 ring-white/15";
+          },
+
+          // Drops a leading "<status> · " from the outcome summary when it just
+          // repeats the status badge (e.g. "held · <reason>" -> "<reason>").
+          outcomeText(a) {
+            const summary = a.outcome_summary || "";
+            const prefix = `${a.status} · `;
+            return summary.startsWith(prefix) ? summary.slice(prefix.length) : summary;
+          },
+
+          // True when the (clamped) outcome paragraph immediately before `btnEl`
+          // is taller than its clamp — i.e. the text is actually cut off, so a
+          // Show more/less toggle is warranted. Reads measureTick so Alpine
+          // re-evaluates it on resize and after each poll's paint.
+          outcomeClamped(btnEl) {
+            void this.measureTick;
+            const p = btnEl.previousElementSibling;
+            return !!p && p.scrollHeight > p.clientHeight + 1;
           },
 
           // Relative time since `start_time`, e.g. "8s ago" / "3m ago".
