@@ -1,24 +1,27 @@
 # 12 — Testing durable code
 
+> [!NOTE]
 > **Goal of this step.** Learn how the app is tested — and what is
 > *distinctive* about testing durable workflows: replay tests for
 > determinism, and mocking the model so agent tests never hit the network.
 
+## At a glance
+
+- **Feature:** none — the test suite is always present
+- **Key files:** [`payments/test_replay.py`](../payments/test_replay.py),
+  [`payments/test_workflows.py`](../payments/test_workflows.py),
+  [`payments/test_agents.py`](../payments/test_agents.py)
+- **Temporal concepts:** `Replayer`, captured history, `WorkflowEnvironment`,
+  mocking the model
+- **Docs:** [Testing suite](https://docs.temporal.io/develop/python/testing-suite)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                       |                                                                                                                                                                                                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Feature**           | none — the test suite is always present                                                                                                                                                                                                    |
-| **Key files**         | [`payments/test_replay.py`](../payments/test_replay.py), [`payments/test_workflows.py`](../payments/test_workflows.py), [`payments/test_agents.py`](../payments/test_agents.py)                                                            |
-| **Temporal concepts** | `Replayer`, captured history, `WorkflowEnvironment`, mocking the model                                                                                                                                                                     |
-| **Docs**              | [Testing suite](https://docs.temporal.io/develop/python/testing-suite)                                                                                                                                                                     |
 
 ## Running the suite
 
@@ -39,6 +42,7 @@ toggle tool itself. Browse them alongside the code:
 The standout is [`payments/test_replay.py`](../payments/test_replay.py).
 Read its docstring — it explains the whole idea:
 
+> [!NOTE]
 > Temporal recovers a running workflow by **replaying** its recorded event
 > history against the current code. If a change alters the sequence of
 > decisions a workflow makes (reordering awaited calls, adding one
@@ -92,6 +96,7 @@ Agent tests must never call a real model. See
 mocked so tests are fast, deterministic, and offline — matching the
 checklist item "the model/LLM is mocked in agent tests: no network calls."
 
+> [!NOTE]
 > **A gotcha worth knowing.** When testing `TemporalAgent`-based workflows
 > under a local test environment, `Agent.override(model=...)` does *not*
 > reach the model activity that Pydantic AI offloads to. Register a

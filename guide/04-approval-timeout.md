@@ -1,25 +1,27 @@
 # 04 — Bounded waiting with durable timers
 
+> [!NOTE]
 > **Goal of this step.** Stop waiting *forever* for a human. Give the
 > approval wait a deadline with a **durable timer**, so an unanswered
 > correction auto-rejects instead of blocking indefinitely.
 
+## At a glance
+
+- **Feature:** `approval-timeout`
+- **Files touched:** [`payments/workflows.py`](../payments/workflows.py)
+- **Temporal concepts:** Durable timers, `wait_condition(timeout=...)`,
+  `asyncio.TimeoutError`
+- **Docs:** [Timers](https://docs.temporal.io/develop/python/timers)
+- **Requires:** `human-approval-signal` (step [03](03-human-approval-signal.md))
+  enabled
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                       |                                                                          |
-| --------------------- | ------------------------------------------------------------------------ |
-| **Feature**           | `approval-timeout`                                                       |
-| **Files touched**     | [`payments/workflows.py`](../payments/workflows.py)                      |
-| **Temporal concepts** | Durable timers, `wait_condition(timeout=...)`, `asyncio.TimeoutError`    |
-| **Docs**              | [Timers](https://docs.temporal.io/develop/python/timers)                 |
-| **Requires**          | `human-approval-signal` (step [03](03-human-approval-signal.md)) enabled |
 
 ## Why this matters
 
@@ -30,6 +32,7 @@ indefinitely. The fix is a **durable timer**. Unlike an in-process
 restarts, and it fires deterministically. Bounding the approval wait turns
 "wait forever" into "wait, then auto-reject."
 
+> [!IMPORTANT]
 > `approval-timeout` only changes the timeout constant that the approval
 > wait from `human-approval-signal` (step
 > [03](03-human-approval-signal.md)) already uses, so you need that feature
@@ -81,6 +84,7 @@ except asyncio.TimeoutError:
         message="No decision within the approval window; auto-rejected.")
 ```
 
+> [!NOTE]
 > **The key idea.** `wait_condition(timeout=...)` arms a **durable timer**.
 > When the deadline elapses it raises `asyncio.TimeoutError`, which the
 > coordinator turns into an auto-reject outcome. The timer is workflow

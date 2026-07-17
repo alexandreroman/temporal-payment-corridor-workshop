@@ -1,26 +1,31 @@
 # 03 — Human-in-the-loop with Signals
 
+> [!NOTE]
 > **Goal of this step.** Turn a held, low-confidence correction into one
 > that *waits* — durably — for a human's approve/reject decision delivered
 > as a Temporal **Signal**, and expose that waiting state through
 > **Queries**.
 
+## At a glance
+
+- **Feature:** `human-approval-signal`
+- **Files touched:** [`shared/models.py`](../shared/models.py),
+  [`payments/workflows.py`](../payments/workflows.py),
+  [`payments/api.py`](../payments/api.py),
+  [`payments/test_workflows.py`](../payments/test_workflows.py),
+  [`payments/test_api.py`](../payments/test_api.py)
+- **Temporal concepts:** Signals, Queries, `wait_condition`, message passing
+- **Docs:** [Message passing](https://docs.temporal.io/develop/python/message-passing)
+  · [Send a Signal](https://docs.temporal.io/develop/python/message-passing#send-signal-from-client)
+- **Builds on:** step [02](02-durable-agents.md)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                       |                                                                                                                                                                                                                                                           |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feature**           | `human-approval-signal`                                                                                                                                                                                                                                   |
-| **Files touched**     | [`shared/models.py`](../shared/models.py), [`payments/workflows.py`](../payments/workflows.py), [`payments/api.py`](../payments/api.py), [`payments/test_workflows.py`](../payments/test_workflows.py), [`payments/test_api.py`](../payments/test_api.py) |
-| **Temporal concepts** | Signals, Queries, `wait_condition`, message passing                                                                                                                                                                                                       |
-| **Docs**              | [Message passing](https://docs.temporal.io/develop/python/message-passing) · [Send a Signal](https://docs.temporal.io/develop/python/message-passing#send-signal-from-client)                                                                             |
-| **Builds on**         | step [02](02-durable-agents.md)                                                                                                                                                                                                                           |
 
 ## Why this matters
 
@@ -146,6 +151,7 @@ and completes. Fetch the outcome:
 curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
 ```
 
+> [!NOTE]
 > **Who sends the approval?** Not the simulator — it only submits the
 > anomaly and returns. The decision arrives *out-of-band* from a separate
 > client (an ops process, or you via CLI). The teaching aside in

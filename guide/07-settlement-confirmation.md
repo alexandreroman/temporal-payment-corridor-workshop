@@ -1,26 +1,33 @@
 # 07 — Long-running activities & heartbeats
 
+> [!NOTE]
 > **Goal of this step.** Add a step that waits for the downstream rail to
 > actually *settle*. Along the way, meet the three ideas that make
 > long-running work safe: **heartbeats**, **cancellation**, and — because
 > this changes the coordinator's shape — **replay & versioning**.
 
+## At a glance
+
+- **Feature:** `settlement-confirmation`
+- **Files touched:** [`payments/workflows.py`](../payments/workflows.py),
+  [`payments/activities.py`](../payments/activities.py),
+  [`payments/worker.py`](../payments/worker.py),
+  [`shared/models.py`](../shared/models.py),
+  [`payments/test_workflows.py`](../payments/test_workflows.py)
+- **Temporal concepts:** Long-running activities, `activity.heartbeat`,
+  `heartbeat_timeout`, cancellation, replay & versioning
+- **Docs:** [Detecting activity failures](https://docs.temporal.io/encyclopedia/detecting-activity-failures#activity-heartbeat)
+  · [Cancellation](https://docs.temporal.io/develop/python/cancellation) ·
+  [Versioning](https://docs.temporal.io/develop/python/versioning)
+- **Builds on:** step [02](02-durable-agents.md)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                       |                                                                                                                                                                                                                                                                     |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feature**           | `settlement-confirmation`                                                                                                                                                                                                                                           |
-| **Files touched**     | [`payments/workflows.py`](../payments/workflows.py), [`payments/activities.py`](../payments/activities.py), [`payments/worker.py`](../payments/worker.py), [`shared/models.py`](../shared/models.py), [`payments/test_workflows.py`](../payments/test_workflows.py) |
-| **Temporal concepts** | Long-running activities, `activity.heartbeat`, `heartbeat_timeout`, cancellation, replay & versioning                                                                                                                                                               |
-| **Docs**              | [Detecting activity failures](https://docs.temporal.io/encyclopedia/detecting-activity-failures#activity-heartbeat) · [Cancellation](https://docs.temporal.io/develop/python/cancellation) · [Versioning](https://docs.temporal.io/develop/python/versioning)       |
-| **Builds on**         | step [02](02-durable-agents.md)                                                                                                                                                                                                                                     |
 
 ## Why this matters
 
@@ -62,12 +69,14 @@ while completed_cycles < _SETTLEMENT_POLL_CYCLES:
 
 Read its `NOTE:` blocks — three ideas are packed in here:
 
+> [!NOTE]
 > **Heartbeat = progress + resumption.** Each `activity.heartbeat(...)`
 > checkpoints progress. On a retry, `activity.info().heartbeat_details`
 > carries the payload from the previous attempt's last heartbeat, so a
 > retried execution *resumes* from the last reported cycle instead of
 > restarting from zero.
 
+> [!NOTE]
 > **Heartbeat = how cancellation is delivered.** Once the workflow is
 > cancelled, the `heartbeat(...)` call raises `asyncio.CancelledError`. The
 > activity catches it, logs, does any cleanup, and re-raises so Temporal
@@ -91,6 +100,7 @@ settlement = await workflow.execute_activity(
 )
 ```
 
+> [!NOTE]
 > **`heartbeat_timeout` is what makes a stalled poll detectable.** If no
 > heartbeat arrives within this window, the attempt fails and is retried
 > per the policy, resuming from the last reported cycle.
@@ -111,6 +121,7 @@ feature *disabled*. The new code path diverges from that recorded history,
 so replay diverges. Read the `NOTE:` at the settlement block in
 `workflows.py`:
 
+> [!NOTE]
 > In production, the safe way to add a step to *already-running* workflows
 > is **versioning/patching** (`workflow.patched(...)`), so old and new
 > executions each follow the code path their history expects. The workshop

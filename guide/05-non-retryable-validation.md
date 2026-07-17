@@ -1,25 +1,26 @@
 # 05 — Classifying failures: retryable vs non-retryable
 
+> [!NOTE]
 > **Goal of this step.** Learn when *not* to retry. Make a malformed
 > correction fail *immediately and permanently* instead of burning the
 > retry budget on an error that can never self-heal.
 
+## At a glance
+
+- **Feature:** `non-retryable-validation`
+- **Files touched:** [`payments/activities.py`](../payments/activities.py)
+- **Temporal concepts:** `ApplicationError(non_retryable=True)`, retry policies,
+  failure classification
+- **Docs:** [Non-retryable errors](https://docs.temporal.io/references/failures#non-retryable-errors)
+- **Builds on:** step [02](02-durable-agents.md)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                       |                                                                                           |
-| --------------------- | ----------------------------------------------------------------------------------------- |
-| **Feature**           | `non-retryable-validation`                                                                |
-| **Files touched**     | [`payments/activities.py`](../payments/activities.py)                                     |
-| **Temporal concepts** | `ApplicationError(non_retryable=True)`, retry policies, failure classification            |
-| **Docs**              | [Non-retryable errors](https://docs.temporal.io/references/failures#non-retryable-errors) |
-| **Builds on**         | step [02](02-durable-agents.md)                                                           |
 
 ## Why this matters
 
@@ -63,6 +64,7 @@ if _SIMULATE_INVALID_CORRECTION or not _is_valid_bic(proposal.proposed_value):
 
 Read the `NOTE:` blocks:
 
+> [!NOTE]
 > **The key idea.** `non_retryable=True` fails the activity immediately and
 > skips the remaining retry attempts. Use it for errors that can never
 > succeed on a retry (bad input, validation failures), as opposed to

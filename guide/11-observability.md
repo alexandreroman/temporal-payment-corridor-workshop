@@ -1,10 +1,22 @@
 # 11 — Observability
 
+> [!NOTE]
 > **Goal of this step.** Know where to *look*. This is a reference for the
 > three observability surfaces the app exposes: one metrics endpoint,
 > local tracing with Logfire, and the Temporal Web UI (including decoded
 > payloads).
 
+## At a glance
+
+- **Feature:** none — always on (payload decoding needs `payload-encryption`)
+- **Key files:** [`payments/main_worker.py`](../payments/main_worker.py),
+  [`payments/activities.py`](../payments/activities.py),
+  [`payments/memory.py`](../payments/memory.py)
+- **Temporal concepts:** SDK metrics, custom metrics, the Prometheus runtime,
+  the Web UI
+- **Docs:** [Observability](https://docs.temporal.io/develop/python/observability)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
@@ -12,21 +24,13 @@
 > make feature-reset
 > ```
 
-## At a glance
-
-|                       |                                                                                                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feature**           | none — always on (payload decoding needs `payload-encryption`)                                                                                                |
-| **Key files**         | [`payments/main_worker.py`](../payments/main_worker.py), [`payments/activities.py`](../payments/activities.py), [`payments/memory.py`](../payments/memory.py) |
-| **Temporal concepts** | SDK metrics, custom metrics, the Prometheus runtime, the Web UI                                                                                               |
-| **Docs**              | [Observability](https://docs.temporal.io/develop/python/observability)                                                                                        |
-
 ## One metrics endpoint, two families
 
 A single Prometheus/OpenMetrics endpoint serves *both* Temporal SDK
 metrics and the application's own metrics. The wiring is in
 [`payments/main_worker.py`](../payments/main_worker.py):
 
+> [!NOTE]
 > **Order matters.** The Temporal `Runtime` (with its Prometheus exporter)
 > is built *first*, before any client or worker, so the SDK metrics
 > registry is wired up before anything else runs. The same runtime backs
@@ -59,6 +63,7 @@ pipeline would be redundant.
 Every process configures Pydantic Logfire the same way:
 `logfire.configure(service_name="payment-corridor", send_to_logfire=False)`.
 
+> [!NOTE]
 > **Local-only, by design.** `send_to_logfire=False` means spans are
 > produced locally for instrumentation but *nothing is shipped* to any
 > backend — no token, no network. FastAPI apps call

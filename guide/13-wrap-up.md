@@ -1,5 +1,6 @@
 # 13 — Wrap-up
 
+> [!NOTE]
 > **Goal of this step.** Consolidate what you built, return the app to a
 > clean baseline, and measure the code against a production-ready
 > checklist.

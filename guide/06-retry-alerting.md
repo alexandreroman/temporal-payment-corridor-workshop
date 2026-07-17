@@ -1,26 +1,29 @@
 # 06 — Reacting to retries with metrics
 
+> [!NOTE]
 > **Goal of this step.** See the *other* side of failure handling: a
 > **transient** error that Temporal retries. Detect that retries are
 > piling up (via `activity.info().attempt`) and raise an operational alert
 > through a custom metric — while the correction still succeeds.
 
+## At a glance
+
+- **Feature:** `retry-alerting`
+- **Files touched:** [`payments/activities.py`](../payments/activities.py)
+- **Temporal concepts:** `activity.info().attempt`, retryable errors, custom
+  metrics
+- **Docs:** [Activity retries](https://docs.temporal.io/references/failures#activity-retries)
+  · [Observability](https://docs.temporal.io/develop/python/observability)
+- **Builds on:** steps [02](02-durable-agents.md) and
+  [05](05-non-retryable-validation.md)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                       |                                                                                                                                                            |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feature**           | `retry-alerting`                                                                                                                                           |
-| **Files touched**     | [`payments/activities.py`](../payments/activities.py)                                                                                                      |
-| **Temporal concepts** | `activity.info().attempt`, retryable errors, custom metrics                                                                                                |
-| **Docs**              | [Activity retries](https://docs.temporal.io/references/failures#activity-retries) · [Observability](https://docs.temporal.io/develop/python/observability) |
-| **Builds on**         | steps [02](02-durable-agents.md) and [05](05-non-retryable-validation.md)                                                                                  |
 
 ## Why this matters
 
@@ -70,6 +73,7 @@ if _SIMULATE_TRANSIENT_RAIL_OUTAGE and attempt < _RETRY_ALERT_THRESHOLD + 1:
 
 Read the `NOTE:` blocks:
 
+> [!NOTE]
 > **The key idea.** A *plain* exception is **retryable** by default (only
 > `ApplicationError(non_retryable=True)` or exhausting the `RetryPolicy`
 > stops the retries). So `RuntimeError` here is retried per the

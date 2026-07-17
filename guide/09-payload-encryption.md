@@ -1,26 +1,30 @@
 # 09 — Encrypting payloads (codec + gateway)
 
+> [!NOTE]
 > **Goal of this step.** Encrypt every payload that crosses the Temporal
 > boundary, so sensitive fields (bank identifiers, amounts) rest in Event
 > History as ciphertext — then use a **codec server** behind the gateway
 > to decrypt them on demand in the Web UI.
 
+## At a glance
+
+- **Feature:** `payload-encryption`
+- **Files touched:** [`payments/main_worker.py`](../payments/main_worker.py),
+  [`payments/api.py`](../payments/api.py) (uses
+  [`shared/encryption.py`](../shared/encryption.py), [`codec/`](../codec/),
+  [`gateway/`](../gateway/))
+- **Temporal concepts:** `PayloadCodec`, data converters, the codec server,
+  encryption at the boundary
+- **Docs:** [Data encryption](https://docs.temporal.io/production-deployment/data-encryption)
+- **Builds on:** step [02](02-durable-agents.md)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                       |                                                                                                                                                                                                             |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feature**           | `payload-encryption`                                                                                                                                                                                        |
-| **Files touched**     | [`payments/main_worker.py`](../payments/main_worker.py), [`payments/api.py`](../payments/api.py) (uses [`shared/encryption.py`](../shared/encryption.py), [`codec/`](../codec/), [`gateway/`](../gateway/)) |
-| **Temporal concepts** | `PayloadCodec`, data converters, the codec server, encryption at the boundary                                                                                                                               |
-| **Docs**              | [Data encryption](https://docs.temporal.io/production-deployment/data-encryption)                                                                                                                           |
-| **Builds on**         | step [02](02-durable-agents.md)                                                                                                                                                                             |
 
 ## Why this matters
 
@@ -44,6 +48,7 @@ make feature-diff NAME=payload-encryption
 make feature-enable NAME=payload-encryption
 ```
 
+> [!IMPORTANT]
 > **What you must configure.** Payload encryption needs a Fernet key in
 > `CODEC_ENCRYPTION_KEY`: the worker and the API **refuse to start**
 > without it rather than run unencrypted. You do not have to generate one
@@ -128,6 +133,7 @@ temporal workflow show \
   --codec-endpoint http://localhost:8080/codec
 ```
 
+> [!CAUTION]
 > **Run the `temporal` CLI from the host, never a container** —
 > `localhost:8080/codec` reaches the gateway only from the host.
 

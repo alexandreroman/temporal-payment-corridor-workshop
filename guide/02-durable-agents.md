@@ -1,26 +1,33 @@
 # 02 — Durable agents & orchestration
 
+> [!NOTE]
 > **Goal of this step.** Read the baseline application closely. No feature
 > to enable here — the point is to understand the coordinator, the two
 > agent child workflows, the memory-first flow, the compliance gate, and
 > the determinism rules that everything else builds on.
 
+## At a glance
+
+- **Feature:** none — this is the always-on baseline
+- **Key files:** [`payments/workflows.py`](../payments/workflows.py),
+  [`payments/agents.py`](../payments/agents.py),
+  [`payments/activities.py`](../payments/activities.py),
+  [`payments/memory.py`](../payments/memory.py),
+  [`shared/models.py`](../shared/models.py)
+- **Temporal concepts:** Workflows, child workflows, activities, determinism,
+  retry policies, fan-out
+- **Pydantic AI concepts:** `Agent`, `TemporalAgent`, durable execution on
+  Temporal
+- **Docs:** [Child workflows](https://docs.temporal.io/develop/python/child-workflows)
+  · [Pydantic AI + Temporal](https://ai.pydantic.dev/durable_execution/temporal/)
+
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
 > ```bash
 > make feature-reset
 > ```
-
-## At a glance
-
-|                          |                                                                                                                                                                                                                                                     |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feature**              | none — this is the always-on baseline                                                                                                                                                                                                               |
-| **Key files**            | [`payments/workflows.py`](../payments/workflows.py), [`payments/agents.py`](../payments/agents.py), [`payments/activities.py`](../payments/activities.py), [`payments/memory.py`](../payments/memory.py), [`shared/models.py`](../shared/models.py) |
-| **Temporal concepts**    | Workflows, child workflows, activities, determinism, retry policies, fan-out                                                                                                                                                                        |
-| **Pydantic AI concepts** | `Agent`, `TemporalAgent`, durable execution on Temporal                                                                                                                                                                                             |
-| **Docs**                 | [Child workflows](https://docs.temporal.io/develop/python/child-workflows) · [Pydantic AI + Temporal](https://ai.pydantic.dev/durable_execution/temporal/)                                                                                          |
 
 ## The contract: shared models
 
@@ -61,6 +68,7 @@ instruction_temporal_agent = TemporalAgent(
 )
 ```
 
+> [!NOTE]
 > **The key idea.** The `TemporalAgent` wrapper transparently offloads
 > every I/O-bound step (model requests, tool calls) to Temporal
 > *activities*. That is what lets an agent run *inside a deterministic
@@ -102,6 +110,7 @@ is presumed compliant *without a model call*, which is exactly what keeps
 the seeded `US->IN` / `wrong_bic` happy path fully offline — neither
 agent calls the model.
 
+> [!NOTE]
 > **Determinism, in practice.** Notice the HTTP call to memory does not
 > happen in workflow code — it happens in the `read_corridor_memory`
 > *activity* ([`payments/memory.py`](../payments/memory.py)). Workflow
@@ -177,6 +186,7 @@ endpoint — see step [11](11-observability.md)).
 
 Study `apply_correction` and its `NOTE:` on idempotency:
 
+> [!NOTE]
 > **Idempotency.** The applied-correction reference is derived from the
 > coordinator's (unique) workflow id, *not* from a hash. Activities can
 > run more than once (worker crash, transient failure, retry), so their

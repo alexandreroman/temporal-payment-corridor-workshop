@@ -1,9 +1,11 @@
 # 01 — Getting started
 
+> [!NOTE]
 > **Goal of this step.** Get the whole stack running locally and correct
 > your first payment end-to-end — with no API key — so you have a live
 > system to explore in every step that follows.
 
+> [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
 > enabled features in other steps, reset first so nothing carries over:
 >
@@ -84,6 +86,7 @@ workflow: correction-pmt-9f3c1a2b
 accepted: submitted to http://localhost:8080/api/payments/v1/anomalies
 ```
 
+> [!IMPORTANT]
 > **Always launch the simulator through `make`.** The target exports the
 > ports from the generated Compose override, so it keeps working even when
 > the host ports are remapped. See [`simulator/main.py`](../simulator/main.py).
@@ -151,6 +154,7 @@ To run one, set your provider key in `.env` (e.g.
 make simulator SCENARIO=memory-miss
 ```
 
+> [!NOTE]
 > **Both agents always run.** A scenario cannot select a single agent;
 > `PaymentCorrectionCoordinator` always fans out to both child workflows.
 > A scenario only steers which *domain* the anomaly falls in. See the
