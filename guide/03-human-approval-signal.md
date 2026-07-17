@@ -5,15 +5,22 @@
 > as a Temporal **Signal**, and expose that waiting state through
 > **Queries**.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## At a glance
 
-|                       |                                                                                                                                                                               |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Feature**           | `human-approval-signal`                                                                                                                                                       |
-| **Files touched**     | [`payments/workflows.py`](../payments/workflows.py), [`payments/api.py`](../payments/api.py), [`payments/test_workflows.py`](../payments/test_workflows.py)                   |
-| **Temporal concepts** | Signals, Queries, `wait_condition`, message passing                                                                                                                           |
-| **Docs**              | [Message passing](https://docs.temporal.io/develop/python/message-passing) · [Send a Signal](https://docs.temporal.io/develop/python/message-passing#send-signal-from-client) |
-| **Builds on**         | step [02](02-durable-agents.md)                                                                                                                                               |
+|                       |                                                                                                                                                                                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Feature**           | `human-approval-signal`                                                                                                                                                                                                                                   |
+| **Files touched**     | [`shared/models.py`](../shared/models.py), [`payments/workflows.py`](../payments/workflows.py), [`payments/api.py`](../payments/api.py), [`payments/test_workflows.py`](../payments/test_workflows.py), [`payments/test_api.py`](../payments/test_api.py) |
+| **Temporal concepts** | Signals, Queries, `wait_condition`, message passing                                                                                                                                                                                                       |
+| **Docs**              | [Message passing](https://docs.temporal.io/develop/python/message-passing) · [Send a Signal](https://docs.temporal.io/develop/python/message-passing#send-signal-from-client)                                                                             |
+| **Builds on**         | step [02](02-durable-agents.md)                                                                                                                                                                                                                           |
 
 ## Why this matters
 

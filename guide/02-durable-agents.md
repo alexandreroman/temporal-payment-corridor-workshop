@@ -5,6 +5,13 @@
 > agent child workflows, the memory-first flow, the compliance gate, and
 > the determinism rules that everything else builds on.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## At a glance
 
 |                          |                                                                                                                                                                                                                                                     |

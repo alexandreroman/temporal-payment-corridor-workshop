@@ -5,6 +5,13 @@
 > History as ciphertext — then use a **codec server** behind the gateway
 > to decrypt them on demand in the Web UI.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## At a glance
 
 |                       |                                                                                                                                                                                                             |
@@ -37,11 +44,16 @@ make feature-diff NAME=payload-encryption
 make feature-enable NAME=payload-encryption
 ```
 
-> **Nothing else to configure for the demo.** When `CODEC_ENCRYPTION_KEY`
-> and `CODEC_SERVER_AUTH_TOKEN` are unset, both the codec server and the
-> gateway fall back to matching public, **insecure** built-in defaults
-> (logging a warning), so decoding works out of the box. Set your own keys
-> in `.env` only when you want to actually secure the setup.
+> **What you must configure.** Payload encryption needs a Fernet key in
+> `CODEC_ENCRYPTION_KEY`: the worker and the API **refuse to start**
+> without it rather than run unencrypted. You do not have to generate one
+> for the workshop — [`.env.example`](../.env.example) ships a working
+> (public, **insecure**) dev default, so the `cp .env.example .env` from
+> step [01](01-getting-started.md) already covers it. On the *decode* side
+> the codec server and the gateway fall back to that same key (and to
+> `CODEC_SERVER_AUTH_TOKEN`'s default) when unset, logging a warning, so
+> the Web UI decodes out of the box. Set your own values in `.env` when you
+> want to actually secure the setup.
 
 ## Step 3 — Read the code
 

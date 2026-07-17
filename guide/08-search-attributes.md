@@ -5,6 +5,13 @@
 > replace an N+1 listing pattern with a single server-side Visibility
 > query.
 
+> **Start from a clean baseline.** Each page stands on its own. If you
+> enabled features in other steps, reset first so nothing carries over:
+>
+> ```bash
+> make feature-reset
+> ```
+
 ## At a glance
 
 |                       |                                                                                                                                                             |
@@ -43,6 +50,17 @@ make feature-enable NAME=search-attributes
 > server on startup (see the `temporal` service command in
 > [`compose.yaml`](../compose.yaml)), so you do *not* run
 > `temporal operator search-attribute create`.
+
+> **Enable `human-approval-signal` too.** The `status` attribute reaches
+> `awaiting-approval` only through the human-in-the-loop wait from step
+> [03](03-human-approval-signal.md). With just `search-attributes` on, a
+> correction never blocks and `status` stays `processing`, so the
+> `status = 'awaiting-approval'` and `awaiting_approval=true` filters below
+> would have nothing to match. Enable it as well:
+>
+> ```bash
+> make feature-enable NAME=human-approval-signal
+> ```
 
 ## Step 3 — Read the newly-live code
 
@@ -149,6 +167,7 @@ separate memory service). See step [12](12-testing.md).
 
 ```bash
 make feature-disable NAME=search-attributes
+make feature-disable NAME=human-approval-signal
 ```
 
 ---
