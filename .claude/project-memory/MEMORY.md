@@ -19,7 +19,8 @@
 - [Workshop content must be timeless](references/feedback_timeless_content.md) — no dates, times, headcounts, locations, or scheduling in any artifact; keep material reusable and undated.
 - [Code must be abundantly commented, with sources](references/feedback_code_comments.md) — thorough comments explaining important/production choices, each with a source link; the code is the teaching surface.
 - [NOTE: marker flags learner-attention comments](references/feedback_note_marker.md) — single literal `NOTE:` prefix marks the non-obvious comments a learner should study; baseline + FEATURE prose.
-- [Git commit messages: imperative verb-first](references/feedback_git_commit_style.md) — capitalized imperative verb, no conventional-commit type prefix; match repo history.
+- [search-attributes is tagging-only](references/project_search_attributes_scope.md) — SA only upserts attributes in the workflow; never rewires the API/Web UI listing, so the payment context always survives.
+- [Git commit messages: imperative verb-first](references/feedback_git_commit_style.md) — capitalized imperative verb ≤50 chars, no prefix at all (no conventional-commit types, no scope prefixes like `webui:`); why in body at 72 cols.
 - [Default to subagent-driven implementation](references/feedback_subagent_driven_default.md) — execute approved plans with subagent-driven development by default; source edits via skillbox:code-writer.
 - [Design specs are intentionally not version-controlled](references/reference_specs_local_only.md) — `docs/` is gitignored on purpose; specs stay local, their absence from git is normal.
 - [Workshop audience and scope](references/project_workshop_audience.md) — Python-strong audience who completed Temporal 101 and 102, in cross-border payments; format 3×2h hands-on; emphasis: durable agents, encryption, light metrics, search attributes, tests.

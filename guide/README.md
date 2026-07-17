@@ -50,7 +50,7 @@ the ones before it.
 
 | Step                           | Topic                       | Feature              | What you learn                                             |
 | ------------------------------ | --------------------------- | -------------------- | ---------------------------------------------------------- |
-| [08](08-search-attributes.md)  | Fleet-wide visibility       | `search-attributes`  | Search Attributes, the Visibility API, killing N+1         |
+| [08](08-search-attributes.md)  | Fleet-wide visibility       | `search-attributes`  | Search Attributes, the Visibility API, CLI filters         |
 | [09](09-payload-encryption.md) | Data at rest & in flight    | `payload-encryption` | Payload codecs, the codec server, the gateway              |
 | [10](10-memory-workflow.md)    | Durable state as a workflow | `memory-workflow`    | The Entity Workflow pattern, update/query, continue-as-new |
 

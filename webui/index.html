@@ -47,29 +47,31 @@
   <body class="min-h-full bg-ink bg-mesh font-sans text-white antialiased" x-data="corridor()">
     <div class="mx-auto max-w-4xl px-6 py-12">
       <!-- Header -->
-      <header class="flex items-center gap-4">
-        <!-- The app's border-crossing mark, shared from /static/logo.svg (same asset as the favicon). -->
-        <!-- Decorative only: the empty alt keeps it out of the accessibility tree (the h1 names the app). -->
-        <img src="/static/logo.svg" alt="" class="h-11 w-11" />
-        <div>
-          <div class="flex items-center gap-4">
+      <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <!-- Brand: the border-crossing mark, wordmark, and tagline as one group. -->
+        <div class="flex min-w-0 items-center gap-4">
+          <!-- The app's border-crossing mark, shared from /static/logo.svg (same asset as the favicon). -->
+          <!-- Decorative only: the empty alt keeps it out of the accessibility tree (the h1 names the app). -->
+          <img src="/static/logo.svg" alt="" class="h-11 w-11 shrink-0" />
+          <div class="min-w-0">
             <h1 class="text-2xl font-bold tracking-tight">Payment Corridor</h1>
-            <div class="flex items-center gap-2 text-xs text-white/40">
-              <span>powered by</span>
-              <img src="/static/temporal-logo.png" alt="Temporal" class="h-7 w-auto opacity-80" />
-            </div>
+            <p class="mt-0.5 truncate text-sm text-white/60">
+              Anomalous cross-border payments, repaired by durable AI agents.
+            </p>
           </div>
-          <p class="text-sm text-white/60">
-            Anomalous cross-border payments, repaired by durable AI agents.
-          </p>
+        </div>
+        <!-- Attribution, pushed to the trailing edge of the masthead. -->
+        <div class="hidden shrink-0 items-center gap-2 text-xs text-white/40 md:flex md:translate-y-1.5 md:self-end">
+          <span>powered by</span>
+          <img src="/static/temporal-logo.png" alt="Temporal" class="h-7 w-auto opacity-80" />
         </div>
       </header>
 
       <!-- List heading -->
       <div class="mb-4 mt-10 flex items-center justify-between">
         <h2 class="text-sm font-semibold uppercase tracking-wider text-white/50">
-          Payment anomalies
-          <span class="ml-1 text-white/30" x-text="`· ${anomalies.length}`"></span>
+          Payment anomalies:
+          <span class="text-white/30" x-text="anomalies.length"></span>
         </h2>
       </div>
 
@@ -95,9 +97,13 @@
           <li class="rounded-xl border border-white/10 bg-white/[0.03]">
             <div class="flex items-center gap-4 px-5 py-4">
               <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-3">
-                  <span class="font-mono text-sm text-white/90" x-text="a.payment_id"></span>
-                  <span class="rounded-md px-2 py-0.5 text-xs font-medium ring-1" :class="badge(a.status)">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span class="font-mono text-sm text-white/90" x-text="a.payment_id"></span>
+                    <span class="text-white/30">•</span>
+                    <span class="shrink-0 text-xs text-white/50" x-text="ago(a.start_time)"></span>
+                  </div>
+                  <span class="shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ring-1" :class="badge(a.status)">
                     <!-- Only the in-flight `processing` status pulses; every
                          other status (awaiting-approval, applied, held,
                          failed, ...) shows the plain status text. -->
@@ -108,12 +114,57 @@
                     <span x-text="a.status"></span>
                   </span>
                 </div>
-                <div class="mt-1 flex items-center gap-3 text-xs text-white/50">
+                <p x-show="a.amount != null" class="mt-1 truncate text-xs text-white/50">
+                  Payment:
+                  <span
+                    class="font-semibold text-white/80"
+                    x-text="a.amount != null ? `${a.amount.toLocaleString()} ${a.currency}` : ''"
+                  ></span>
+                  to
+                  <span class="font-semibold text-white/80" x-text="a.beneficiary"></span>
+                </p>
+                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/50">
                   <span class="text-white/70" x-text="a.corridor.replace('->', ' → ')"></span>
                   <span class="font-mono" x-text="a.anomaly_type"></span>
-                  <span>·</span>
-                  <span x-text="ago(a.start_time)"></span>
-                  <span x-show="a.outcome_summary" x-text="'· ' + a.outcome_summary"></span>
+                  <!-- Received (anomalous) fields, so the reader sees why it was
+                       flagged; the beneficiary key is dropped (shown above). -->
+                  <template
+                    x-for="entry in Object.entries(a.details || {}).filter((e) => e[0] !== 'beneficiary')"
+                    :key="entry[0]"
+                  >
+                    <span>
+                      <span class="text-white/40" x-text="entry[0] + ':'"></span>
+                      <span class="font-mono text-white/70" x-text="entry[1]"></span>
+                    </span>
+                  </template>
+                </div>
+                <!-- Outcome summary on its own line: a held/rejected reason can run
+                     long, so clamp to 2 lines with a Show more/less toggle that only
+                     appears when the text actually overflows the clamp. -->
+                <div x-show="a.outcome_summary" class="mt-1">
+                  <p
+                    class="text-xs leading-relaxed text-white/40"
+                    :class="!a.outcomeExpanded && 'line-clamp-2'"
+                    x-text="outcomeText(a)"
+                  ></p>
+                  <button
+                    type="button"
+                    x-show="a.outcomeExpanded || outcomeClamped($el)"
+                    @click="a.outcomeExpanded = !a.outcomeExpanded"
+                    class="mt-2 ml-auto block w-fit text-xs font-medium text-gray-400 hover:text-gray-300"
+                    x-text="a.outcomeExpanded ? 'Show less' : 'Show more'"
+                  ></button>
+                </div>
+                <!-- Correction source (memory/llm) as its own pill at the bottom
+                     of the row. Mirrors the approval-panel pill exactly. -->
+                <div
+                  x-show="a.source"
+                  class="mt-1.5 flex items-center text-xs"
+                >
+                  <span
+                    class="rounded bg-white/10 px-1.5 py-0.5 text-white/60"
+                    x-text="`source ${a.source}`"
+                  ></span>
                 </div>
               </div>
             </div>
@@ -128,50 +179,107 @@
               class="border-t border-white/10 bg-white/[0.02] px-5 py-4"
             >
               <template x-if="a.review">
-                <div class="grid gap-4 sm:grid-cols-2">
-                  <div class="rounded-lg border border-white/10 p-3">
+                <div class="grid items-stretch gap-4 sm:grid-cols-2">
+                  <!-- Proposed correction -->
+                  <div class="flex flex-col rounded-lg border border-white/10 p-3">
                     <p class="text-xs uppercase tracking-wide text-white/40">Proposed correction</p>
-                    <p class="mt-1 text-sm">
-                      <span class="text-white/50">field</span>
-                      <span class="font-mono" x-text="a.review.proposal.field_to_fix"></span>
-                    </p>
-                    <p class="text-sm">
-                      <span class="text-white/50">value</span>
-                      <span class="font-mono text-accent" x-text="a.review.proposal.proposed_value"></span>
-                    </p>
-                    <p class="mt-1 text-xs text-white/60" x-text="a.review.proposal.rationale"></p>
-                    <div class="mt-2 flex items-center gap-2 text-xs">
+                    <dl class="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm">
+                      <dt class="text-white/40">field</dt>
+                      <dd class="font-mono" x-text="a.review.proposal.field_to_fix"></dd>
+                      <dt class="text-white/40">value</dt>
+                      <dd class="font-mono">
+                        <template x-if="a.anomaly && a.anomaly.details[a.review.proposal.field_to_fix]">
+                          <span class="text-white/40" x-text="a.anomaly.details[a.review.proposal.field_to_fix] + ' → '"></span>
+                        </template>
+                        <span class="text-accent" x-text="a.review.proposal.proposed_value"></span>
+                      </dd>
+                    </dl>
+                    <!-- Rationale is unbounded LLM prose, so clamp it by default and
+                         let the reviewer expand on demand — keeps the card compact. -->
+                    <div class="mt-3">
+                      <p class="text-xs uppercase tracking-wide text-white/30">Rationale</p>
+                      <p
+                        class="mt-0.5 text-xs leading-relaxed text-white/60"
+                        :class="!a.rationaleExpanded && 'line-clamp-3'"
+                        x-text="a.review.proposal.rationale"
+                      ></p>
+                      <button
+                        type="button"
+                        x-show="(a.review.proposal.rationale || '').length > 160"
+                        @click="a.rationaleExpanded = !a.rationaleExpanded"
+                        class="mt-2 ml-auto block w-fit text-xs font-medium text-gray-400 hover:text-gray-300"
+                        x-text="a.rationaleExpanded ? 'Show less' : 'Show more'"
+                      ></button>
+                    </div>
+                    <div class="mt-auto flex items-center gap-2 pt-3 text-xs">
                       <span
-                        class="rounded bg-white/10 px-1.5 py-0.5"
-                        x-text="`source: ${a.review.proposal.source}`"
+                        class="rounded bg-white/10 px-1.5 py-0.5 text-white/60"
+                        x-text="`source ${a.review.proposal.source}`"
                       ></span>
                       <span
-                        class="rounded bg-white/10 px-1.5 py-0.5"
+                        class="rounded bg-white/10 px-1.5 py-0.5 text-white/60"
                         x-text="`confidence ${a.review.proposal.confidence}`"
                       ></span>
                     </div>
                   </div>
-                  <div class="rounded-lg border border-white/10 p-3">
+
+                  <!-- Compliance verdict -->
+                  <div class="flex flex-col rounded-lg border border-white/10 p-3">
                     <p class="text-xs uppercase tracking-wide text-white/40">Compliance verdict</p>
                     <template x-if="a.review.verdict">
-                      <div>
-                        <p
-                          class="mt-1 text-sm"
-                          :class="a.review.verdict.compliant ? 'text-emerald-300' : 'text-red-300'"
-                          x-text="
-                            a.review.verdict.compliant
-                              ? '✔ compliant — no violations'
-                              : `✕ ${a.review.verdict.violations.join(', ')}`
-                          "
-                        ></p>
-                        <p
-                          class="mt-1 text-xs text-white/50"
-                          x-text="`confidence ${a.review.verdict.confidence} · source ${a.review.verdict.source}`"
-                        ></p>
+                      <div class="flex flex-1 flex-col">
+                        <!-- Status shown as an icon chip + label, never a bare glyph
+                             inline with the reason text. -->
+                        <div class="mt-2 flex items-center gap-2">
+                          <span
+                            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                            :class="a.review.verdict.compliant ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300'"
+                          >
+                            <svg x-show="a.review.verdict.compliant" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.3 3.29 6.8-6.79a1 1 0 0 1 1.4 0Z" clip-rule="evenodd" /></svg>
+                            <svg x-show="!a.review.verdict.compliant" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.26 2.83a2 2 0 0 1 3.48 0l6.5 11.5A2 2 0 0 1 16.5 17.3h-13A2 2 0 0 1 1.76 14.33l6.5-11.5ZM10 7a1 1 0 0 0-1 1v3a1 1 0 1 0 2 0V8a1 1 0 0 0-1-1Zm0 7.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" /></svg>
+                          </span>
+                          <span
+                            class="text-sm font-medium"
+                            :class="a.review.verdict.compliant ? 'text-emerald-300' : 'text-red-300'"
+                            x-text="a.review.verdict.compliant ? 'Compliant — no violations' : 'Not compliant'"
+                          ></span>
+                        </div>
+                        <!-- Each violation on its own line instead of one comma-joined run-on. -->
+                        <ul
+                          x-show="!a.review.verdict.compliant"
+                          class="mt-2 space-y-1.5"
+                          :class="!a.verdictExpanded && 'max-h-16 overflow-hidden'"
+                        >
+                          <template x-for="(v, i) in a.review.verdict.violations" :key="i">
+                            <li class="flex gap-2 text-xs leading-relaxed text-red-200/80">
+                              <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-red-400/70"></span>
+                              <span x-text="v"></span>
+                            </li>
+                          </template>
+                        </ul>
+                        <!-- Compliance reasons can run long; clamp like the rationale
+                             and let the reviewer expand on demand. -->
+                        <button
+                          type="button"
+                          x-show="!a.review.verdict.compliant && a.review.verdict.violations.join(' ').length > 160"
+                          @click="a.verdictExpanded = !a.verdictExpanded"
+                          class="mt-2 ml-auto block w-fit text-xs font-medium text-gray-400 hover:text-gray-300"
+                          x-text="a.verdictExpanded ? 'Show less' : 'Show more'"
+                        ></button>
+                        <div class="mt-auto flex items-center gap-2 pt-3 text-xs">
+                          <span
+                            class="rounded bg-white/10 px-1.5 py-0.5 text-white/60"
+                            x-text="`source ${a.review.verdict.source}`"
+                          ></span>
+                          <span
+                            class="rounded bg-white/10 px-1.5 py-0.5 text-white/60"
+                            x-text="`confidence ${a.review.verdict.confidence}`"
+                          ></span>
+                        </div>
                       </div>
                     </template>
                     <template x-if="!a.review.verdict">
-                      <p class="mt-1 text-xs text-white/40">No compliance verdict yet.</p>
+                      <p class="mt-2 text-xs text-white/40">No compliance verdict yet.</p>
                     </template>
                   </div>
                 </div>
@@ -214,10 +322,6 @@
           </li>
         </template>
       </ul>
-
-      <p class="mt-8 text-center text-xs text-white/30">
-        Newest first · running corrections + recent history · list re-fetched every 3s from the payments API (same origin, via the gateway)
-      </p>
     </div>
 
     <script>
@@ -230,6 +334,10 @@
         return {
           anomalies: [],
           error: false,
+          // Reactive tick bumped on resize and after each poll paint. Both the
+          // overflow-dependent "Show more" toggle and the ago() relative
+          // timestamps read it so they re-evaluate on each poll (and on resize).
+          measureTick: 0,
 
           async refresh() {
             try {
@@ -255,7 +363,11 @@
                 approver: "operator",
                 comment: "",
                 review: null,
+                anomaly: null,
                 approvalError: "",
+                rationaleExpanded: false,
+                verdictExpanded: false,
+                outcomeExpanded: false,
               };
               Object.assign(a, row);
               return a;
@@ -278,7 +390,9 @@
             try {
               const response = await fetch(`/api/payments/v1/anomalies/${a.payment_id}`);
               if (!response.ok) throw new Error(response.status);
-              a.review = (await response.json()).review;
+              const detail = await response.json();
+              a.review = detail.review;
+              a.anomaly = detail.anomaly;
             } catch (e) {
               // Leave review unset; the next poll retries.
             }
@@ -315,6 +429,12 @@
 
           init() {
             this.poll();
+            // Outcome-toggle visibility depends on measured overflow, which is
+            // not reactive; bump measureTick on resize and once after the first
+            // paint so it re-checks against the real rendered layout.
+            const bump = () => this.measureTick++;
+            window.addEventListener("resize", bump);
+            requestAnimationFrame(bump);
           },
 
           // Drives the periodic refresh with a self-chaining setTimeout
@@ -323,6 +443,8 @@
           // so a slow cycle can never overlap with the next one.
           async poll() {
             await this.refresh();
+            // Re-measure after the freshly-polled rows have painted.
+            requestAnimationFrame(() => this.measureTick++);
             setTimeout(() => this.poll(), 3000);
           },
 
@@ -340,8 +462,27 @@
             return palette[status] || "bg-white/10 text-white/70 ring-white/15";
           },
 
+          // Drops a leading "<status> · " from the outcome summary when it just
+          // repeats the status badge (e.g. "held · <reason>" -> "<reason>").
+          outcomeText(a) {
+            const summary = a.outcome_summary || "";
+            const prefix = `${a.status} · `;
+            return summary.startsWith(prefix) ? summary.slice(prefix.length) : summary;
+          },
+
+          // True when the (clamped) outcome paragraph immediately before `btnEl`
+          // is taller than its clamp — i.e. the text is actually cut off, so a
+          // Show more/less toggle is warranted. Reads measureTick so Alpine
+          // re-evaluates it on resize and after each poll's paint.
+          outcomeClamped(btnEl) {
+            void this.measureTick;
+            const p = btnEl.previousElementSibling;
+            return !!p && p.scrollHeight > p.clientHeight + 1;
+          },
+
           // Relative time since `start_time`, e.g. "8s ago" / "3m ago".
           ago(iso) {
+            void this.measureTick; // re-evaluate on each poll tick (relative time)
             const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
             if (seconds < 60) return `${seconds}s ago`;
             const minutes = Math.floor(seconds / 60);

@@ -284,6 +284,11 @@ def test_list_anomalies_reads_each_running_workflow_via_query():
             "workflow_id": "correction-pay-2",
             "start_time": "2019-12-31T23:59:00Z",
             "outcome_summary": None,
+            "source": None,
+            "amount": 500.0,
+            "currency": "INR",
+            "beneficiary": "Acme Textiles Pvt Ltd",
+            "details": {"bic": "WRONG"},
         },
         {
             "payment_id": "pay-1",
@@ -293,6 +298,11 @@ def test_list_anomalies_reads_each_running_workflow_via_query():
             "workflow_id": "correction-pay-1",
             "start_time": "2019-12-31T23:50:00Z",
             "outcome_summary": None,
+            "source": None,
+            "amount": 500.0,
+            "currency": "INR",
+            "beneficiary": "Acme Textiles Pvt Ltd",
+            "details": {"bic": "WRONG"},
         },
     ]
 
@@ -404,9 +414,12 @@ def test_list_anomalies_includes_recent_completed_with_summary():
 
     rows = {r["payment_id"]: r for r in asyncio.run(scenario()).json()}
     assert rows["pay-done"]["status"] == "applied"
-    assert rows["pay-done"]["outcome_summary"]
+    # The source no longer trails the summary text; it is its own field now.
+    assert rows["pay-done"]["outcome_summary"] == "fixed bic → HDFCINBBXXX"
+    assert rows["pay-done"]["source"] == "memory"
     assert rows["pay-run"]["status"] == "processing"
     assert rows["pay-run"]["outcome_summary"] is None
+    assert rows["pay-run"]["source"] is None
 
 
 def test_list_anomalies_caps_at_20_newest_rows():
@@ -535,6 +548,7 @@ def test_get_anomaly_reports_running():
         "status": "running",
         "outcome": None,
         "review": None,
+        "anomaly": None,
     }
 
 
@@ -588,6 +602,7 @@ def test_get_anomaly_reports_a_closed_non_completed_state():
         "status": "failed",
         "outcome": None,
         "review": None,
+        "anomaly": None,
     }
     # result() raises on a closed non-completed run, so the route must skip it.
     assert handle.result_called is False
@@ -633,6 +648,7 @@ def test_get_anomaly_detail_has_null_review_in_baseline():
 #         "correction-pay-1",
 #         describe_status=WorkflowExecutionStatus.RUNNING,
 #         review=review,
+#         anomaly=_anomaly("pay-1"),
 #     )
 #     stub = _StubClient(handles={"correction-pay-1": handle})
 #     api.app.state.temporal_client = stub
@@ -646,6 +662,11 @@ def test_get_anomaly_detail_has_null_review_in_baseline():
 #     assert body["review"] is not None
 #     assert body["review"]["proposal"]["proposed_value"] == "HDFCINBBXXX"
 #     assert body["review"]["verdict"]["compliant"] is False
+#     # The detail route also surfaces the payment being corrected, so the panel
+#     # can show amount/beneficiary and the original field value.
+#     assert body["anomaly"]["amount"] == 500.0
+#     assert body["anomaly"]["beneficiary"]["name"] == "Acme Textiles Pvt Ltd"
+#     assert body["anomaly"]["details"]["bic"] == "WRONG"
 #
 #
 # endregion FEATURE-ON: human-approval-signal

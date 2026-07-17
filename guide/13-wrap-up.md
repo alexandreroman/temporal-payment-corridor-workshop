@@ -18,7 +18,7 @@ execution concept at a time:
 | `non-retryable-validation` | Failure classification; when *not* to retry                                                |
 | `retry-alerting`           | Reacting to retries; custom metrics                                                        |
 | `settlement-confirmation`  | Long-running activities; heartbeats, cancellation, replay & versioning                     |
-| `search-attributes`        | Fleet-wide visibility; killing N+1 with the Visibility API                                 |
+| `search-attributes`        | Fleet-wide visibility; filter the fleet via Visibility API                                 |
 | `payload-encryption`       | Payload codecs; the codec server behind a gateway                                          |
 | `memory-workflow`          | The Entity Workflow pattern; update/query, continue-as-new                                 |
 
