@@ -245,6 +245,13 @@ async def _verify_compliance(agent, anomaly: PaymentAnomaly) -> ComplianceVerdic
     without a model call, mirroring _propose. This is what keeps the seeded
     happy path (US->IN / WRONG_BIC) fully offline: neither agent calls the
     model. On a miss, the durable compliance agent produces the verdict.
+
+    NOTE: Presuming a high-confidence stored pattern is compliant — now keyed on the
+    beneficiary bank — is a workshop simplification. A production system would separate
+    sanctions/AML screening (party-keyed) from corridor/currency policy, and would
+    expire and re-screen clearances on a TTL rather than trust a stored pattern
+    indefinitely. Keying compliance on the beneficiary bank here means an unknown bank
+    is re-checked by the model rather than waved through on a corridor-level hit.
     """
     pattern = await workflow.execute_activity(
         read_corridor_memory,

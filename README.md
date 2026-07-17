@@ -33,7 +33,11 @@ end-to-end on a local dev server.
   the confidence is high enough; otherwise it holds for human review.
 - **Passive corridor memory** — agents check a memory of known
   corridor-specific patterns before spending a model call; the seeded
-  happy path never touches an LLM.
+  happy path never touches an LLM. Memory is keyed on the beneficiary bank for
+  `wrong_bic`, so a stored fix applies to that payee's bank, not the whole
+  corridor. Treating a stored pattern as compliance-cleared is a workshop
+  simplification — a real system separates sanctions screening from corridor
+  policy and re-screens on a TTL.
 - **Human-in-the-loop** — low-confidence corrections wait for a human
   decision via Signal, demonstrated as progressive steps.
 - **One metrics endpoint** — a single Prometheus/OpenMetrics endpoint
