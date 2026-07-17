@@ -114,11 +114,15 @@
                     <span x-text="a.status"></span>
                   </span>
                 </div>
-                <p
-                  x-show="a.amount != null"
-                  class="mt-1 truncate text-xs text-white/50"
-                  x-text="a.amount != null ? `Payment: ${a.amount.toLocaleString()} ${a.currency} to ${a.beneficiary}` : ''"
-                ></p>
+                <p x-show="a.amount != null" class="mt-1 truncate text-xs text-white/50">
+                  Payment:
+                  <span
+                    class="font-semibold text-white/80"
+                    x-text="a.amount != null ? `${a.amount.toLocaleString()} ${a.currency}` : ''"
+                  ></span>
+                  to
+                  <span class="font-semibold text-white/80" x-text="a.beneficiary"></span>
+                </p>
                 <div class="mt-1 flex items-center gap-3 text-xs text-white/50">
                   <span class="text-white/70" x-text="a.corridor.replace('->', ' → ')"></span>
                   <span class="font-mono" x-text="a.anomaly_type"></span>
