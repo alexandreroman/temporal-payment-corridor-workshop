@@ -323,8 +323,9 @@
         return {
           anomalies: [],
           error: false,
-          // Bumped on resize and after each poll paint so overflow-dependent UI
-          // (the outcome "Show more" toggle) re-evaluates against fresh layout.
+          // Reactive tick bumped on resize and after each poll paint. Both the
+          // overflow-dependent "Show more" toggle and the ago() relative
+          // timestamps read it so they re-evaluate on each poll (and on resize).
           measureTick: 0,
 
           async refresh() {
@@ -470,6 +471,7 @@
 
           // Relative time since `start_time`, e.g. "8s ago" / "3m ago".
           ago(iso) {
+            void this.measureTick; // re-evaluate on each poll tick (relative time)
             const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
             if (seconds < 60) return `${seconds}s ago`;
             const minutes = Math.floor(seconds / 60);
