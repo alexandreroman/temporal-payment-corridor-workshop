@@ -1,15 +1,15 @@
 # Dev-mode compose overlay — applied ONLY by `make dev` / `make infra-up`.
 #
 # In dev mode Temporal, the codec and the gateway run in containers, but the
-# payments API runs on the HOST (via `uv run payments-api`) so it gets hot
-# reload for the fast inner loop. The gateway is still containerised, so it
-# cannot reach the host-side API through the compose-internal name
-# `payments-api:8020` — that name only resolves to the in-network container
-# (which is not running in dev mode). Instead it must dial back out to the
-# host on the published API port, via the special DNS name
-# host.docker.internal (resolved on Linux through the base compose.yaml
-# gateway's `extra_hosts: host.docker.internal:host-gateway`, and natively on
-# macOS/Windows Docker Desktop).
+# payments API and the Web UI run on the HOST (via `uv run payments-api` /
+# `uv run webui`) so they get hot reload for the fast inner loop. The gateway
+# is still containerised, so it cannot reach either host-side service through
+# its compose-internal name — `payments-api:8020` and `webui:8000` only
+# resolve to the in-network containers, which are not running in dev mode.
+# Instead it must dial back out to the host on each service's published port,
+# via the special DNS name host.docker.internal (resolved on Linux through the
+# base compose.yaml gateway's `extra_hosts: host.docker.internal:host-gateway`,
+# and natively on macOS/Windows Docker Desktop).
 # Source: https://docs.docker.com/desktop/features/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host
 #
 # NOTE: this file is deliberately NOT named `compose.override.yaml`. Compose
@@ -17,8 +17,9 @@
 # plain `docker compose ...` invocation and must be passed explicitly with
 # `-f` (see the Makefile's COMPOSE_DEV_FILES). That is exactly what keeps it
 # off the container path: `make app-up` runs the whole stack — payments API
-# included — in containers, where the gateway should keep the Caddyfile
-# default `payments-api:8020`. Only `make dev` opts into the host route below.
+# and Web UI included — in containers, where the gateway should keep the
+# Caddyfile defaults `payments-api:8020` and `webui:8000`. Only `make dev`
+# opts into the host routes below.
 # Source: https://docs.docker.com/compose/how-tos/multiple-compose-files/
 services:
   gateway:
@@ -26,3 +27,7 @@ services:
       # PAYMENTS_API_PORT is the host port the API is published on; it defaults
       # to 8020 but is remapped off CASPER_PORT in worktrees (see the Makefile).
       PAYMENTS_API_UPSTREAM: "host.docker.internal:${PAYMENTS_API_PORT:-8020}"
+      # WEBUI_PORT is the host port the Web UI's hot-reload process binds to;
+      # it defaults to 8000 but is remapped off CASPER_PORT in worktrees (see
+      # the Makefile).
+      WEBUI_UPSTREAM: "host.docker.internal:${WEBUI_PORT:-8000}"

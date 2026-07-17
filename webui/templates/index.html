@@ -25,39 +25,334 @@
           extend: {
             fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
             colors: { ink: '#141414', accent: '#7C5CFC' },
+            // Subtle indigo -> violet mesh, layered over the near-black base.
+            // Moved from a <style> block into Tailwind config so the page stays
+            // strictly utility classes: `bg-ink bg-mesh` below.
+            backgroundImage: {
+              mesh:
+                'radial-gradient(60rem 60rem at 15% 12%, rgba(124, 92, 252, 0.22), transparent 60%),' +
+                'radial-gradient(50rem 50rem at 85% 20%, rgba(99, 102, 241, 0.18), transparent 55%),' +
+                'radial-gradient(55rem 55rem at 50% 100%, rgba(139, 92, 246, 0.16), transparent 60%)',
+            },
           },
         },
       };
     </script>
 
-    <style>
-      /* Subtle indigo -> violet mesh, layered over the near-black base. */
-      .mesh {
-        background-color: #141414;
-        background-image:
-          radial-gradient(60rem 60rem at 15% 12%, rgba(124, 92, 252, 0.22), transparent 60%),
-          radial-gradient(50rem 50rem at 85% 20%, rgba(99, 102, 241, 0.18), transparent 55%),
-          radial-gradient(55rem 55rem at 50% 100%, rgba(139, 92, 246, 0.16), transparent 60%);
-      }
-    </style>
+    <!-- Alpine.js via CDN (no build step); `defer` runs it after DOM parsing,
+         and Alpine auto-calls a data object's `init()` once attached below. -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   </head>
 
-  <body class="mesh h-full font-sans text-white antialiased">
-    <main class="flex min-h-full items-center justify-center px-6 py-20">
-      <section class="flex max-w-2xl flex-col items-center text-center">
-        <!-- Border-crossing mark (shared from /static/logo.svg): two faint bars crossed by an arrow. -->
-        <!-- Decorative only, so the empty alt keeps it out of the accessibility tree. -->
-        <img src="/static/logo.svg" alt="" class="mb-6 h-16 w-16" />
+  <body class="min-h-full bg-ink bg-mesh font-sans text-white antialiased" x-data="corridor()">
+    <div class="mx-auto max-w-4xl px-6 py-12">
+      <!-- Header -->
+      <header class="flex items-center gap-4">
+        <!-- The app's border-crossing mark, shared from /static/logo.svg (same asset as the favicon). -->
+        <!-- Decorative only: the empty alt keeps it out of the accessibility tree (the h1 names the app). -->
+        <img src="/static/logo.svg" alt="" class="h-11 w-11" />
+        <div>
+          <div class="flex items-center gap-4">
+            <h1 class="text-2xl font-bold tracking-tight">Payment Corridor</h1>
+            <div class="flex items-center gap-2 text-xs text-white/40">
+              <span>powered by</span>
+              <img src="/static/temporal-logo.png" alt="Temporal" class="h-7 w-auto opacity-80" />
+            </div>
+          </div>
+          <p class="text-sm text-white/60">
+            Anomalous cross-border payments, repaired by durable AI agents.
+          </p>
+        </div>
+      </header>
 
-        <h1 class="text-5xl font-bold tracking-tight sm:text-6xl">Payment Corridor</h1>
+      <!-- List heading -->
+      <div class="mb-4 mt-10 flex items-center justify-between">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-white/50">
+          Payment anomalies
+          <span class="ml-1 text-white/30" x-text="`· ${anomalies.length}`"></span>
+        </h2>
+      </div>
 
-        <!-- Accent rule under the title. -->
-        <span class="mt-6 h-px w-16 bg-accent"></span>
+      <!-- Inline error state: the payments API is unreachable. refresh() keeps
+           retrying every 3s, so this clears itself as soon as it responds. -->
+      <p
+        x-show="error"
+        class="rounded-xl border border-red-400/30 bg-red-400/10 px-5 py-4 text-sm text-red-300"
+      >
+        Corrections unavailable — retrying every 3s.
+      </p>
 
-        <p class="mt-6 max-w-lg text-lg leading-relaxed text-white/70">
-          Repairing anomalous cross-border payments with durable Temporal workflows and AI agents.
-        </p>
-      </section>
-    </main>
+      <!-- Empty state -->
+      <p
+        x-show="!error && anomalies.length === 0"
+        class="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm text-white/50"
+      >
+        No payment anomalies yet.
+      </p>
+
+      <ul class="space-y-3" x-show="!error && anomalies.length > 0">
+        <template x-for="a in anomalies" :key="a.payment_id">
+          <li class="rounded-xl border border-white/10 bg-white/[0.03]">
+            <div class="flex items-center gap-4 px-5 py-4">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-3">
+                  <span class="font-mono text-sm text-white/90" x-text="a.payment_id"></span>
+                  <span class="rounded-md px-2 py-0.5 text-xs font-medium ring-1" :class="badge(a.status)">
+                    <!-- Only the in-flight `processing` status pulses; every
+                         other status (awaiting-approval, applied, held,
+                         failed, ...) shows the plain status text. -->
+                    <span
+                      x-show="a.status === 'processing'"
+                      class="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-accent animate-pulse"
+                    ></span>
+                    <span x-text="a.status"></span>
+                  </span>
+                </div>
+                <div class="mt-1 flex items-center gap-3 text-xs text-white/50">
+                  <span class="text-white/70" x-text="a.corridor.replace('->', ' → ')"></span>
+                  <span class="font-mono" x-text="a.anomaly_type"></span>
+                  <span>·</span>
+                  <span x-text="ago(a.start_time)"></span>
+                  <span x-show="a.outcome_summary" x-text="'· ' + a.outcome_summary"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- The human-approval intervention panel. It only ever renders
+                 for a row whose status is "awaiting-approval", and that
+                 status only exists once the human-approval-signal FEATURE is
+                 enabled (payments/workflows.py) — so this whole block stays
+                 dormant while the workshop feature is off. -->
+            <div
+              x-show="a.status === 'awaiting-approval'"
+              class="border-t border-white/10 bg-white/[0.02] px-5 py-4"
+            >
+              <template x-if="a.review">
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div class="rounded-lg border border-white/10 p-3">
+                    <p class="text-xs uppercase tracking-wide text-white/40">Proposed correction</p>
+                    <p class="mt-1 text-sm">
+                      <span class="text-white/50">field</span>
+                      <span class="font-mono" x-text="a.review.proposal.field_to_fix"></span>
+                    </p>
+                    <p class="text-sm">
+                      <span class="text-white/50">value</span>
+                      <span class="font-mono text-accent" x-text="a.review.proposal.proposed_value"></span>
+                    </p>
+                    <p class="mt-1 text-xs text-white/60" x-text="a.review.proposal.rationale"></p>
+                    <div class="mt-2 flex items-center gap-2 text-xs">
+                      <span
+                        class="rounded bg-white/10 px-1.5 py-0.5"
+                        x-text="`source: ${a.review.proposal.source}`"
+                      ></span>
+                      <span
+                        class="rounded bg-white/10 px-1.5 py-0.5"
+                        x-text="`confidence ${a.review.proposal.confidence}`"
+                      ></span>
+                    </div>
+                  </div>
+                  <div class="rounded-lg border border-white/10 p-3">
+                    <p class="text-xs uppercase tracking-wide text-white/40">Compliance verdict</p>
+                    <template x-if="a.review.verdict">
+                      <div>
+                        <p
+                          class="mt-1 text-sm"
+                          :class="a.review.verdict.compliant ? 'text-emerald-300' : 'text-red-300'"
+                          x-text="
+                            a.review.verdict.compliant
+                              ? '✔ compliant — no violations'
+                              : `✕ ${a.review.verdict.violations.join(', ')}`
+                          "
+                        ></p>
+                        <p
+                          class="mt-1 text-xs text-white/50"
+                          x-text="`confidence ${a.review.verdict.confidence} · source ${a.review.verdict.source}`"
+                        ></p>
+                      </div>
+                    </template>
+                    <template x-if="!a.review.verdict">
+                      <p class="mt-1 text-xs text-white/40">No compliance verdict yet.</p>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <div class="mt-4 flex flex-wrap items-end gap-3">
+                <label class="text-xs text-white/50">
+                  Approver
+                  <input
+                    x-model="a.approver"
+                    class="mt-1 block h-9 w-40 rounded-md border border-white/15 bg-white/5 px-2 text-sm text-white"
+                  />
+                </label>
+                <label class="flex-1 text-xs text-white/50">
+                  Comment (optional)
+                  <input
+                    x-model="a.comment"
+                    placeholder="Looks right, approving."
+                    class="mt-1 block h-9 w-full rounded-md border border-white/15 bg-white/5 px-2 text-sm text-white placeholder-white/25"
+                  />
+                </label>
+                <div class="flex gap-2">
+                  <button
+                    @click="decide(a, true)"
+                    class="inline-flex h-9 items-center rounded-md bg-emerald-500/90 px-4 text-sm font-semibold text-white hover:bg-emerald-500"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    @click="decide(a, false)"
+                    class="inline-flex h-9 items-center rounded-md border border-red-400/40 px-4 text-sm font-semibold text-red-300 hover:bg-red-500/10"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+
+              <p x-show="a.approvalError" class="mt-2 text-xs text-red-300" x-text="a.approvalError"></p>
+            </div>
+          </li>
+        </template>
+      </ul>
+
+      <p class="mt-8 text-center text-xs text-white/30">
+        Newest first · running corrections + recent history · list re-fetched every 3s from the payments API (same origin, via the gateway)
+      </p>
+    </div>
+
+    <script>
+      // Alpine component for the homepage root (`x-data="corridor()"` above).
+      // NOTE: The browser calls the payments API same-origin, through the
+      // gateway that fronts both webui and the API on one port — webui itself
+      // never proxies this request, so no httpx/PAYMENTS_API_* config lives
+      // server-side.
+      function corridor() {
+        return {
+          anomalies: [],
+          error: false,
+
+          async refresh() {
+            try {
+              const response = await fetch("/api/payments/v1/anomalies");
+              if (!response.ok) throw new Error(response.status);
+              this.mergeAnomalies(await response.json());
+              this.error = false;
+              await this.loadPendingReviews();
+            } catch (e) {
+              this.error = true;
+            }
+          },
+
+          // Reconciles the freshly-polled summaries onto the existing rows
+          // in place, rather than replacing `anomalies` wholesale — a
+          // wholesale replace would wipe the approval panel's client-only
+          // state (the typed approver/comment, the already-fetched review,
+          // any approval error) on every 3s poll.
+          mergeAnomalies(rows) {
+            const existing = new Map(this.anomalies.map((a) => [a.payment_id, a]));
+            this.anomalies = rows.map((row) => {
+              const a = existing.get(row.payment_id) || {
+                approver: "operator",
+                comment: "",
+                review: null,
+                approvalError: "",
+              };
+              Object.assign(a, row);
+              return a;
+            });
+          },
+
+          // Fetches the pending review (proposal + verdict) for every row
+          // still awaiting approval that hasn't loaded one yet. Runs after
+          // each refresh() so a row that just turned awaiting-approval picks
+          // up its review on the next poll.
+          async loadPendingReviews() {
+            for (const a of this.anomalies) {
+              if (a.status === "awaiting-approval" && !a.review) {
+                await this.loadReview(a);
+              }
+            }
+          },
+
+          async loadReview(a) {
+            try {
+              const response = await fetch(`/api/payments/v1/anomalies/${a.payment_id}`);
+              if (!response.ok) throw new Error(response.status);
+              a.review = (await response.json()).review;
+            } catch (e) {
+              // Leave review unset; the next poll retries.
+            }
+          },
+
+          // Relays a human decision to the coordinator. NOTE: the approval
+          // route only exists once the human-approval-signal FEATURE is
+          // enabled (payments/api.py) — a non-2xx response (e.g. 404 while
+          // the feature is off) is surfaced inline on the row instead of
+          // thrown; the next poll reconciles the row's true state either
+          // way.
+          async decide(a, approved) {
+            try {
+              const response = await fetch(
+                `/api/payments/v1/anomalies/${a.payment_id}/approval`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    approved,
+                    approver: a.approver || "operator",
+                    comment: a.comment || "",
+                  }),
+                },
+              );
+              a.approvalError = response.ok
+                ? ""
+                : `Could not record the decision (HTTP ${response.status}).`;
+            } catch (e) {
+              a.approvalError = "Could not record the decision — check your connection.";
+            }
+            await this.refresh();
+          },
+
+          init() {
+            this.poll();
+          },
+
+          // Drives the periodic refresh with a self-chaining setTimeout
+          // instead of setInterval: the next poll is scheduled only once the
+          // current refresh() (fetch + merge + pending reviews) has settled,
+          // so a slow cycle can never overlap with the next one.
+          async poll() {
+            await this.refresh();
+            setTimeout(() => this.poll(), 3000);
+          },
+
+          // Maps a row's status to the Tailwind classes for its badge pill.
+          // Unrecognized statuses (e.g. canceled, terminated, timed-out) fall
+          // back to the same neutral treatment as "held".
+          badge(status) {
+            const palette = {
+              "awaiting-approval": "bg-amber-400/15 text-amber-300 ring-amber-400/30",
+              processing: "bg-accent/15 text-accent ring-accent/30",
+              applied: "bg-emerald-400/15 text-emerald-300 ring-emerald-400/30",
+              held: "bg-white/10 text-white/70 ring-white/15",
+              failed: "bg-red-400/15 text-red-300 ring-red-400/30",
+            };
+            return palette[status] || "bg-white/10 text-white/70 ring-white/15";
+          },
+
+          // Relative time since `start_time`, e.g. "8s ago" / "3m ago".
+          ago(iso) {
+            const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+            if (seconds < 60) return `${seconds}s ago`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
+          },
+        };
+      }
+    </script>
   </body>
 </html>

@@ -100,12 +100,16 @@ Then, in another terminal, fire a payment anomaly:
 make simulator   # simulate an incoming payment anomaly
 ```
 
-By default the Temporal Web UI is at http://localhost:8233 — served through
-the gateway, the app's single published HTTP entry point — the payments HTTP
-API at http://localhost:8233/api/payments/v1, and the payments metrics at
-http://localhost:9464/metrics; `make dev` also prints these URLs in its
-banner. The default anomaly matches a pre-seeded corridor-memory pattern, so
-it is corrected end-to-end with no API key. Run `make help` to list all
+By default the payment-corridor Web UI (the homepage) is at
+http://localhost:8233 — the gateway's root and the app's single published
+HTTP entry point. The Temporal Web UI is at http://localhost:8233/temporal,
+the payments HTTP API at http://localhost:8233/api/payments/v1, and the
+payments metrics at http://localhost:9464/metrics; `make dev` also prints
+these URLs in its banner. The homepage lists payment-anomaly corrections
+and auto-refreshes every few seconds; once `human-approval-signal` is
+enabled it also lets you approve or reject corrections held for human
+review. The default anomaly matches a pre-seeded corridor-memory pattern,
+so it is corrected end-to-end with no API key. Run `make help` to list all
 targets.
 
 ## Workshop features
@@ -132,28 +136,31 @@ the dormant `# region FEATURE-ON:` regions while the base implementation
 (the `# region FEATURE-OFF:` / live code) stays visible. Expand a folded
 `FEATURE-ON` region to study it.
 
-### Decrypting payloads in the Web UI (codec server)
+### Decrypting payloads in the Temporal Web UI (codec server)
 
 Once `payload-encryption` is enabled (`make feature-enable
 NAME=payload-encryption`) payments encrypts every payload on the wire, so
 the Temporal Web UI shows raw ciphertext in Event History. A codec server
 decrypts payloads on demand — a small HTTP service that reuses the same
-encryption key — and the Web UI calls it to display cleartext.
+encryption key — and the Temporal Web UI calls it to display cleartext.
 
 Both the codec server and the gateway are Compose services that come up with
 the stack (`make dev` / `make app-up`). The gateway is the app's single
-published HTTP entry point (`http://localhost:8233`): it serves the Temporal
-Web UI at `/` and the codec server at `/codec`, so calls from the UI to
-`/codec` are same-origin and need no CORS configuration.
+published HTTP entry point (`http://localhost:8233`): it serves the
+payment-corridor Web UI at `/`, the Temporal Web UI at `/temporal`, the
+payments API at `/api/payments/v1`, and the codec server at `/codec`, so
+calls from the UI to `/codec` are same-origin and need no CORS
+configuration.
 
-You don't have to configure anything for the demo. When `CODEC_ENCRYPTION_KEY`
-and `CODEC_SERVER_AUTH_TOKEN` are unset, both the codec and the gateway fall
-back to matching public, insecure built-in defaults (logging a warning) — so
-decoding works out of the box, even before you create a `.env`. The dev server
-is already pointed at `/codec` via its `--ui-codec-endpoint
-http://localhost:8233/codec` flag, and the gateway injects the bearer token, so
-decrypted payloads appear in the Web UI with no manual configuration. Set your
-own `CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` in `.env` only when you
+You don't have to configure anything for the demo. When
+`CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` are unset, both the
+codec and the gateway fall back to matching public, insecure built-in
+defaults (logging a warning) — so decoding works out of the box, even
+before you create a `.env`. The dev server is already pointed at `/codec`
+via its `--ui-codec-endpoint http://localhost:8233/codec` flag, and the
+gateway injects the bearer token, so decrypted payloads appear in the
+Temporal Web UI with no manual configuration. Set your own
+`CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` in `.env` only when you
 want to actually secure the setup.
 
 The same goes for the CLI: with the feature active, point `temporal` at the
@@ -174,8 +181,9 @@ NAME=search-attributes`) the coordinator tags each workflow execution with a
 carrying the correction lifecycle (`processing` → `awaiting-approval`) so the
 payments API can filter in-flight corrections server-side. All three custom
 attributes are pre-registered by the dev server on startup (`make dev` /
-`make app-up`), so there is no manual registration step — filter executions in
-the Web UI or with `temporal workflow list --query "corridor = '...'"`.
+`make app-up`), so there is no manual registration step — filter executions
+in the Temporal Web UI or with
+`temporal workflow list --query "corridor = '...'"`.
 
 Enabling a feature that changes workflow code — as `search-attributes` does
 by adding a Search Attribute upsert inside the coordinator — intentionally
@@ -201,8 +209,9 @@ workflow: correction-pmt-9f3c1a2b
 accepted: submitted to http://localhost:8233/api/payments/v1/anomalies
 ```
 
-Follow the correction in the Temporal Web UI, or fetch its outcome from
-`GET /api/payments/v1/anomalies/<payment_id>` once it completes.
+Follow the correction on the homepage (http://localhost:8233), or in the
+Temporal Web UI at http://localhost:8233/temporal, or fetch its outcome
+from `GET /api/payments/v1/anomalies/<payment_id>` once it completes.
 
 By default this sends the offline `memory-hit` scenario. Pick another named
 scenario with `SCENARIO=<name>`:
