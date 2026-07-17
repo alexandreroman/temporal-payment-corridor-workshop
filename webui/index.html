@@ -131,7 +131,7 @@
                     type="button"
                     x-show="a.outcomeExpanded || outcomeClamped($el)"
                     @click="a.outcomeExpanded = !a.outcomeExpanded"
-                    class="mt-1 ml-auto block w-fit text-[11px] font-medium text-accent hover:text-accent/80"
+                    class="mt-1 ml-auto block w-fit text-xs font-medium text-gray-400 hover:text-gray-300"
                     x-text="a.outcomeExpanded ? 'Show less' : 'Show more'"
                   ></button>
                 </div>
@@ -161,7 +161,7 @@
                     <!-- Rationale is unbounded LLM prose, so clamp it by default and
                          let the reviewer expand on demand — keeps the card compact. -->
                     <div class="mt-3">
-                      <p class="text-[11px] uppercase tracking-wide text-white/30">Rationale</p>
+                      <p class="text-xs uppercase tracking-wide text-white/30">Rationale</p>
                       <p
                         class="mt-0.5 text-xs leading-relaxed text-white/60"
                         :class="!a.rationaleExpanded && 'line-clamp-3'"
@@ -171,7 +171,7 @@
                         type="button"
                         x-show="(a.review.proposal.rationale || '').length > 160"
                         @click="a.rationaleExpanded = !a.rationaleExpanded"
-                        class="mt-1 ml-auto block w-fit text-[11px] font-medium text-accent hover:text-accent/80"
+                        class="mt-1 ml-auto block w-fit text-xs font-medium text-gray-400 hover:text-gray-300"
                         x-text="a.rationaleExpanded ? 'Show less' : 'Show more'"
                       ></button>
                     </div>
@@ -216,7 +216,7 @@
                         >
                           <template x-for="(v, i) in a.review.verdict.violations" :key="i">
                             <li class="flex gap-2 text-xs leading-relaxed text-red-200/80">
-                              <span class="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-red-400/70"></span>
+                              <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-red-400/70"></span>
                               <span x-text="v"></span>
                             </li>
                           </template>
@@ -227,7 +227,7 @@
                           type="button"
                           x-show="!a.review.verdict.compliant && a.review.verdict.violations.join(' ').length > 160"
                           @click="a.verdictExpanded = !a.verdictExpanded"
-                          class="mt-1 ml-auto block w-fit text-[11px] font-medium text-accent hover:text-accent/80"
+                          class="mt-1 ml-auto block w-fit text-xs font-medium text-gray-400 hover:text-gray-300"
                           x-text="a.verdictExpanded ? 'Show less' : 'Show more'"
                         ></button>
                         <div class="mt-auto flex items-center gap-2 pt-3 text-xs">
