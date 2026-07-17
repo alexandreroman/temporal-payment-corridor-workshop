@@ -53,6 +53,12 @@ end-to-end on a local dev server.
   dev server container
 - **LLM provider API key** — only needed once an anomaly misses corridor
   memory and an agent actually calls a model (e.g. `ANTHROPIC_API_KEY`)
+- **[Temporal CLI](https://docs.temporal.io/cli)** (`temporal`) — only
+  needed for the optional replay-fixture capture (`make capture-history`),
+  not for the core `make dev` flow
+- **[jq](https://jqlang.github.io/jq/)** — only needed for the optional
+  replay-fixture capture, where `make capture-history` uses it to shape the
+  captured history JSON
 
 No Kubernetes or cloud account is required.
 
