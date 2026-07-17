@@ -8,8 +8,9 @@ type: project
 
 In a Casper worktree `CASPER_PORT` is set, and the Casper `setup` hook
 (`make worktree-ports`) remaps only two published ports into
-`compose.override.yaml`: the `gateway` (`CASPER_PORT`, offset +0, i.e.
-host `8080`) and Temporal gRPC (`CASPER_PORT+1`). The Makefile derives
+`compose.override.yaml`: the `gateway` (host port = `CASPER_PORT`, offset
++0; the container-side port stays `8080`) and Temporal gRPC
+(`CASPER_PORT+1`). The Makefile derives
 the remaining host-dev ports from `GATEWAY_PORT` with shell arithmetic —
 payments metrics at +2, memory at +4, payments API at +5 (+3 is unused)
 — and exports the full set (`TEMPORAL_ADDRESS`, `PAYMENTS_METRICS_HOST`,
