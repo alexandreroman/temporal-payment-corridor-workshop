@@ -85,7 +85,11 @@ def test_lookup_returns_seeded_pattern_on_hit():
         async with _client() as client:
             response = await client.get(
                 "/api/memory/v1/lookup",
-                params={"corridor": "US->IN", "anomaly_type": "wrong_bic"},
+                params={
+                    "corridor": "US->IN",
+                    "anomaly_type": "wrong_bic",
+                    "beneficiary_bank_id": "HDFCINBB",
+                },
             )
         assert response.status_code == 200
         body = response.json()

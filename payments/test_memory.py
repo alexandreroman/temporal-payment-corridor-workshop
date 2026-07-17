@@ -96,7 +96,9 @@ def route_httpx_to_app(monkeypatch):
 
 
 def test_read_corridor_memory_returns_seeded_pattern_on_hit():
-    pattern = _run_activity(read_corridor_memory, "US->IN", AnomalyType.WRONG_BIC)
+    pattern = _run_activity(
+        read_corridor_memory, "US->IN", AnomalyType.WRONG_BIC, "HDFCINBB"
+    )
 
     assert pattern is not None
     assert pattern.field_to_fix == "bic"

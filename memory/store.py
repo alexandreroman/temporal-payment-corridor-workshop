@@ -53,9 +53,10 @@ def seed() -> dict[str, CorridorPattern]:
     memory alone, without ever calling an LLM.
     """
     return {
-        _key("US->IN", AnomalyType.WRONG_BIC): CorridorPattern(
+        _key("US->IN", AnomalyType.WRONG_BIC, "HDFCINBB"): CorridorPattern(
             corridor="US->IN",
             anomaly_type=AnomalyType.WRONG_BIC,
+            beneficiary_bank_id="HDFCINBB",
             field_to_fix="bic",
             proposed_value="HDFCINBBXXX",
             confidence=0.95,

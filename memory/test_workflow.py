@@ -97,7 +97,8 @@ def test_query_returns_seeded_pattern_on_hit():
             async with _worker(client):
                 handle = await _start_seeded(client)
                 pattern = await handle.query(
-                    MemoryWorkflow.lookup, args=["US->IN", AnomalyType.WRONG_BIC]
+                    MemoryWorkflow.lookup,
+                    args=["US->IN", AnomalyType.WRONG_BIC, "HDFCINBB"],
                 )
 
         assert pattern is not None
@@ -213,7 +214,7 @@ def test_continue_as_new_preserves_accumulated_patterns():
                         assert stored == pattern
                     seeded = await handle.query(
                         MemoryWorkflow.lookup,
-                        args=["US->IN", AnomalyType.WRONG_BIC],
+                        args=["US->IN", AnomalyType.WRONG_BIC, "HDFCINBB"],
                     )
                     assert seeded is not None
         finally:

@@ -101,6 +101,7 @@ def test_learned_pattern_captures_an_llm_reasoned_fix():
     assert pattern is not None
     assert pattern.corridor == "US->GB"
     assert pattern.anomaly_type is AnomalyType.WRONG_BIC
+    assert pattern.beneficiary_bank_id == "BARCGB22"
     assert pattern.field_to_fix == "bic"
     assert pattern.proposed_value == "HDFCINBBXXX"
     assert pattern.confidence == 0.9
