@@ -41,22 +41,15 @@ uv sync                 # install dependencies
 cp .env.example .env    # optional: every value has a working dev default
 ```
 
-Enable the local pre-commit hook once, so any code change you make is
-formatted and linted before it is committed:
-
-```bash
-make setup
-```
-
 Everything is configured through environment variables loaded from `.env`
 (see [`.env.example`](../.env.example)). The file works as-is; the only
 value you must set to exercise the *full* agent flow is a provider key.
 
 ## Run the stack
 
-For development, one command brings up the Temporal dev server and the
-gateway in containers, then runs the payments worker and its HTTP API
-plus the corridor memory service on the host, with hot reload:
+For development, one command brings up the whole stack — the Temporal dev
+server, the payments worker and its HTTP API, and the corridor memory
+service — with hot reload:
 
 ```bash
 make dev
@@ -95,9 +88,8 @@ accepted: submitted to http://localhost:8080/api/payments/v1/anomalies
 ```
 
 > [!IMPORTANT]
-> **Always launch the simulator through `make`.** The target exports the
-> ports from the generated Compose override, so it keeps working even when
-> the host ports are remapped. See [`simulator/main.py`](../simulator/main.py).
+> **Always launch the simulator through `make`** so it targets the right
+> ports. See [`simulator/main.py`](../simulator/main.py).
 
 The `memory-hit` scenario is `US->IN` with a malformed BIC (`HDFC`). It
 matches the pre-seeded corridor pattern in
@@ -133,9 +125,8 @@ curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
 
 A completed correction returns `applied: true`, the proposal (with
 `source: "memory"`), the compliance verdict, and a human-readable
-message. The API routes are documented in
-[`payments/api.py`](../payments/api.py) and the
-[README](../README.md#payments-http-api).
+message. The API routes are defined in
+[`payments/api.py`](../payments/api.py).
 
 ## Try a scenario that reaches the agents
 

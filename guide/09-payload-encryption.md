@@ -94,14 +94,10 @@ Read the `NOTE:` — the `PydanticAIPlugin` stays alongside the explicit
 when you do not pass one, and dropping it breaks `TemporalAgent` sandbox
 validation at worker start-up.
 
-**The codec server and the gateway** — the codec server
-([`codec/`](../codec/)) is a small HTTP service that reuses the same key to
-decrypt payloads on demand; the gateway ([`gateway/`](../gateway/)) routes
-`/codec` to it. Both come up with the stack. The gateway is the single
-published entry point (`http://localhost:8080`): it serves the Web UI at
-`/` and the codec at `/codec`, so the UI's calls to `/codec` are
-**same-origin** — no CORS — and the gateway **injects the bearer token**
-so you never configure `--codec-auth`.
+**The codec server** — [`codec/`](../codec/) is a small HTTP service that
+reuses the same key to decrypt payloads on demand; the Web UI and the CLI
+call it to display cleartext. It comes up with the stack and needs no extra
+configuration.
 
 ## Step 4 — Run and observe
 
@@ -116,15 +112,13 @@ and inspect Event History — payloads now show as raw ciphertext.
 
 ![Encrypted (ciphertext) payloads in Event History before decoding](images/09-ciphertext.png)
 
-**Decoded:** the dev server is already pointed at the codec through the
-gateway (via its `--ui-codec-endpoint http://localhost:8080/codec` flag),
-so the Web UI decrypts payloads for display automatically — the same
-Event History now shows cleartext.
+**Decoded:** the dev server is already pointed at the codec server, so the
+Web UI decrypts payloads for display automatically — the same Event History
+now shows cleartext.
 
 ![The same payloads shown as cleartext after the codec decodes them](images/09-decoded.png)
 
-**From the CLI**, point `temporal` at the codec through the gateway (no
-`--codec-auth` needed — the gateway injects the token):
+**From the CLI**, point `temporal` at the codec to read decrypted payloads:
 
 ```bash
 temporal workflow show \

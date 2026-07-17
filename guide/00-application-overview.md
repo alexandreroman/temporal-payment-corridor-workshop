@@ -96,13 +96,8 @@ the guide:
    namespace. Payments never calls memory over Temporal — it calls the
    memory HTTP API. Two bounded contexts, cleanly separated.
 2. **One entry point.** External callers (including the simulator) only
-   ever speak HTTP to the gateway. They never open a Temporal client of
-   their own. The gateway routes `/` to our payment-corridor **Web UI**
-   (the app front door), `/temporal` to the **Temporal Web UI**,
-   `/api/payments/v1` to the payments API, and `/codec` to the codec
-   server (see [`gateway/Caddyfile`](../gateway/Caddyfile)). The static
-   `webui` homepage is served directly by the gateway at `/`,
-   same-origin with the payments API it polls.
+   ever speak HTTP to the gateway; they never open a Temporal client of
+   their own.
 
 ![The application's component topology and the gateway as the single entry point](images/00-architecture.png)
 

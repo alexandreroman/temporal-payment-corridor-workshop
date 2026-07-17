@@ -82,10 +82,6 @@ Read the `NOTE:` blocks:
 > succeed within three attempts — *after* the alert has fired.
 > Docs: [Retryable vs non-retryable](https://docs.temporal.io/references/failures#retryable-vs-non-retryable).
 
-Note the metric is tagged `field` + `source`, matching the sibling
-`corridor_*` counters, because corridor/anomaly-type are not carried on
-`CorrectionProposal`.
-
 ## Step 4 — Run and observe
 
 Flip the fault switch: set `_SIMULATE_TRANSIENT_RAIL_OUTAGE = True` in

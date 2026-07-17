@@ -93,18 +93,4 @@ idempotency key, a fail-closed gate, a heartbeat timeout. When a step
 tells you to "read the code," the `NOTE:` comments are where the lesson
 lives.
 
-## Conventions in this guide
-
-- **Source links** point into the repository, e.g.
-  [`payments/workflows.py`](../payments/workflows.py). On GitHub you can
-  append a line range (`#L290-L338`) to jump straight to a block.
-- **Docs links** point at the official
-  [Temporal](https://docs.temporal.io) and
-  [Pydantic AI](https://ai.pydantic.dev) documentation. The same links
-  appear inline in the code as `Source:` comments.
-- **Screenshots** are referenced as
-  `![caption](images/<name>.png)`. They are added to the
-  [`images/`](images/) folder separately; until then you will see the
-  caption and can reproduce the view yourself by following the steps.
-
 Ready? Start with the [application overview](00-application-overview.md).

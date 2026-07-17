@@ -27,12 +27,8 @@ from shared.models import AnomalyType, CorridorPattern
 MEMORY_HOST = os.getenv("MEMORY_HOST", "0.0.0.0")
 MEMORY_PORT = int(os.getenv("MEMORY_PORT", "8010"))
 
-# NOTE: bind-vs-connect. The service *binds* to MEMORY_HOST, which is often
-# 0.0.0.0 ("listen on every interface"). A client cannot *connect* to 0.0.0.0
-# on macOS, so we normalize the connect target back to loopback. In containers
-# this env var carries a routable address instead — each service gets its own
-# MEMORY_HOST (e.g. the Compose service name of the memory container), so
-# payments connects to that host rather than to loopback.
+# The service binds to MEMORY_HOST, often 0.0.0.0; a client cannot connect to
+# 0.0.0.0 on macOS, so normalize the connect target back to loopback.
 _connect_host = "127.0.0.1" if MEMORY_HOST in ("0.0.0.0", "") else MEMORY_HOST
 _BASE_URL = f"http://{_connect_host}:{MEMORY_PORT}"
 
@@ -52,9 +48,7 @@ async def read_corridor_memory(
     ``/api/memory/v1/lookup`` contract.
     """
     params = {"corridor": corridor, "anomaly_type": anomaly_type.value}
-    # NOTE: only send the discriminator when present, so a corridor-wide lookup
-    # (bank_id None) issues the exact same request it always has and keys the
-    # same way; a bank-specific lookup adds the param without disturbing it.
+    # Only send the beneficiary-bank param when the anomaly carries one.
     if beneficiary_bank_id:
         params["beneficiary_bank_id"] = beneficiary_bank_id
 

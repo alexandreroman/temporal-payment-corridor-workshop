@@ -29,12 +29,8 @@ def _key(
 
     A single flat string key (``"US->IN|wrong_bic"``) mirrors the key form
     the future durable memory workflow uses, so the two backing stores stay
-    interchangeable behind the same lookup/remember contract.
-
-    NOTE: append the beneficiary-bank discriminator only when present, so a
-    wrong_bic pattern is beneficiary-specific while corridor-wide anomaly
-    types (bank_id None) keep the original corridor|anomaly_type key. Both
-    backends must build the key identically to stay interchangeable.
+    interchangeable behind the same lookup/remember contract. The
+    beneficiary-bank discriminator is appended only when present.
     """
     base = f"{corridor}|{anomaly_type}"
     return f"{base}|{beneficiary_bank_id}" if beneficiary_bank_id else base
