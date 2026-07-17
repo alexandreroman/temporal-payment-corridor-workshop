@@ -5,9 +5,7 @@ Temporal worker (payments/main_worker.py) and this HTTP API. The API holds no
 Worker — it is a Temporal *client* that starts corrections, lists in-flight
 ones over the Visibility API, and relays human approvals.
 
-Server startup lives in payments/main_api.py; this module defines ``app``,
-imported as ``payments.api:app`` by uvicorn. Logfire is configured here (not in
-main_api.py) because uvicorn's reload imports this module in a subprocess.
+Server startup lives in payments/main_api.py; this module defines ``app``.
 """
 
 from __future__ import annotations
@@ -72,9 +70,7 @@ def setup_logfire() -> logfire.Logfire:
     return logfire.configure(service_name="payment-corridor", send_to_logfire=False)
 
 
-# NOTE: Configure Logfire before instrumenting the app, in the process that
-# serves requests (the uvicorn reload subprocess imports this module, not
-# main_api.py).
+# Configure Logfire before instrumenting the app.
 setup_logfire()
 
 
@@ -259,10 +255,6 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
 
     Passing ``awaiting_approval`` narrows the result to running corrections
     blocked on a human decision (closed rows never qualify).
-
-    A *running* row reads its summary via a per-workflow ``describe_anomaly``
-    query; a *closed* row costs ``describe()``/``result()`` round-trips to
-    recover its final status and outcome.
     """
     client: Client = app.state.temporal_client
     summaries: list[AnomalySummary] = []

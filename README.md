@@ -195,9 +195,8 @@ workflow: correction-pmt-9f3c1a2b
 accepted: submitted to http://localhost:8080/api/payments/v1/anomalies
 ```
 
-Follow the correction on the homepage (http://localhost:8080), or in the
-Temporal Web UI at http://localhost:8080/temporal, or fetch its outcome
-from `GET /api/payments/v1/anomalies/<payment_id>` once it completes.
+Follow the correction on the homepage (http://localhost:8080) or in the
+Temporal Web UI at http://localhost:8080/temporal.
 
 By default this sends the offline `memory-hit` scenario. Pick another named
 scenario with `SCENARIO=<name>`:
@@ -305,7 +304,7 @@ sequenceDiagram
 | `memory/`     | Corridor-memory service (namespace `memory`): serves `/api/memory/v1` over an in-memory store or `MemoryWorkflow`        |
 | `webui/`      | Static Web UI (temporal.io-styled landing page), served by the gateway                                                   |
 | `codec/`      | Codec server that decrypts payloads for the Temporal Web UI (with `payload-encryption`)                                  |
-| `gateway/`    | API gateway — the single published HTTP entry point; injects the codec bearer token                                      |
+| `gateway/`    | API gateway — the single published HTTP entry point                                                                      |
 | `simulator/`  | Client that simulates an incoming payment anomaly                                                                        |
 
 ## License

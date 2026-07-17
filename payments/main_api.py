@@ -2,8 +2,7 @@
 
 Runtime bootstrap for the FastAPI payments API: load configuration and start
 uvicorn. The application is defined in payments/api.py and referenced as an
-import string so hot reload can run it in a fresh subprocess. Logfire is
-configured in payments/api.py (not here) for the same reason.
+import string so hot reload can run it in a fresh subprocess.
 
 Run with:
   * uv run payments-api         — dev server with hot reload.
@@ -43,8 +42,7 @@ def run() -> None:
     """Container entry point (`python -m payments.main_api`): no reload.
 
     The app object is imported and passed directly since there is no reload
-    subprocess to spawn; importing payments.api also configures Logfire
-    in-process, which is correct in production where there is no subprocess.
+    subprocess to spawn.
     """
     from payments.api import app
 

@@ -89,9 +89,8 @@ it to:
 
 **Decoding encrypted payloads.** With `payload-encryption` on (step
 [09](09-payload-encryption.md)), Event History shows ciphertext until the
-UI calls the codec server. The dev server is already pointed at
-`/codec` through the gateway, which injects the bearer token — so decoded
-payloads appear with no manual configuration.
+UI calls the codec server — already wired up in dev, so decoded payloads
+appear with no manual configuration.
 
 ## Logging discipline
 
