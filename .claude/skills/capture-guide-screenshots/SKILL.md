@@ -1,6 +1,6 @@
 ---
 name: capture-guide-screenshots
-description: Use when generating, regenerating, or updating a screenshot in guide/images/ for the learner guide — capturing the Temporal Web UI or app Web UI from a live stack with Casper, then cropping to the caption's subject. Covers finding the real (worktree-remapped) port, producing real workflow data, and the Casper capture loop that avoids blank SPA screenshots.
+description: Use when generating, regenerating, or updating a screenshot in guide/images/ for the learner guide — capturing the Temporal Web UI or app Web UI from a live stack with Casper, then cropping to the caption's subject. Covers finding the real (worktree-remapped) port, producing real workflow data, and the Casper capture loop (wait for the SPA to render, then screenshot).
 ---
 
 # Capture guide screenshots
@@ -64,13 +64,11 @@ real mapping any time with `cat compose.override.yaml` / `docker ps`.
    manifest's "What to capture". PNG, cropped, legible; redact any real key
    or token before capturing.
 
-## Casper capture loop (the important gotcha)
+## Casper capture loop
 
-The Temporal Web UI is a client-rendered SPA. **`casper browser screenshot
---url <url>` (offscreen) renders a fresh headless page and fires before the
-SPA hydrates → you get a blank image.** Do not use it for these pages.
-
-Instead, load into a real page, wait for content, then plain-screenshot:
+The Temporal Web UI is a client-rendered SPA, so **wait for content to
+render before you screenshot** — capture the page into a real browser, wait
+on a selector that only exists once the view is drawn, then screenshot:
 
 ```bash
 URL="http://localhost:$CASPER_PORT/temporal/namespaces/payments/workflows/<wfid>/<runid>/relationships"
@@ -104,6 +102,33 @@ displayed→original scale factor), then **Read the crop and iterate** until
 it is tight on the subject. `sips -g pixelWidth -g pixelHeight <png>` prints
 dimensions. `magick`/`convert` and Python PIL are available.
 
+## Compose when the subject spans more than one view
+
+Sometimes the caption's subject is two regions of the same page separated by
+content you don't want — e.g. "a paused coordinator **and** its timeline",
+where the **Running** header and the **Timeline** are pushed apart by the
+tall Input/Result JSON and never fit one viewport together. Stitch the two
+real regions into one image instead of settling for either alone:
+
+1. Screenshot the page with the first region visible; scroll (see the scroll
+   trick below) so the second region is fully visible and screenshot again.
+   Both come from the **same run/page** — this is cropping, not fabrication;
+   you're only omitting the stuff in between.
+2. Crop each region to the **same width** (same `X` and `W`) so they align.
+3. Stack them: `magick top.png bottom.png -append out.png` (vertical) or
+   `+append` (horizontal). On the dark UI the seam is invisible.
+
+```bash
+magick full.png    -crop 2400x288+115+237  +repage /tmp/head.png   # Running header
+magick scrolled.png -crop 2400x454+115+1024 +repage /tmp/tl.png     # Timeline
+magick /tmp/head.png /tmp/tl.png -append guide/images/<name>.png
+```
+
+**Scroll trick:** the Temporal page scrolls inside nested containers, not
+`window`. To reveal a below-the-fold region, scroll every scrollable node:
+`casper browser eval "document.querySelectorAll('*').forEach(n=>{if(n.scrollHeight>n.clientHeight+80 && /auto|scroll/.test(getComputedStyle(n).overflowY)) n.scrollTop=n.scrollHeight})"`,
+then Read the screenshot to confirm the region is in frame.
+
 ## Quick reference
 
 | Need | Do |
@@ -115,13 +140,14 @@ dimensions. `magick`/`convert` and Python PIL are available.
 | Coordinator tree view | workflow's **Relationships** tab |
 | Capture | `casper browser open` → `wait "svg"` → `screenshot --out` |
 | Crop | `magick in.png -crop WxH+X+Y +repage guide/images/<name>.png` |
+| Subject spans two views | crop each region to the same width, `magick a.png b.png -append out.png` |
 | Enforce filenames | `make check` (manifest two-way link) |
 
 ## Common mistakes
 
 - **Using `8080`** — not mapped in a worktree; use `$CASPER_PORT`.
-- **Offscreen `screenshot --url` on the Temporal SPA** — blank; use
-  `open`/`load` + `wait` + plain `screenshot`.
+- **Screenshotting before the SPA renders** — `wait` on a view-specific
+  selector first, or you capture an empty page.
 - **Renaming the file** — filenames are hard-coded in the guide and checked
   against the manifest; keep them exact.
 - **Capturing before data exists** — run the scenario first; an empty
