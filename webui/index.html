@@ -153,7 +153,7 @@
                         type="button"
                         x-show="(a.review.proposal.rationale || '').length > 160"
                         @click="a.rationaleExpanded = !a.rationaleExpanded"
-                        class="mt-1 text-[11px] font-medium text-accent hover:text-accent/80"
+                        class="mt-1 ml-auto block w-fit text-[11px] font-medium text-accent hover:text-accent/80"
                         x-text="a.rationaleExpanded ? 'Show less' : 'Show more'"
                       ></button>
                     </div>
@@ -191,7 +191,11 @@
                           ></span>
                         </div>
                         <!-- Each violation on its own line instead of one comma-joined run-on. -->
-                        <ul x-show="!a.review.verdict.compliant" class="mt-2 space-y-1.5">
+                        <ul
+                          x-show="!a.review.verdict.compliant"
+                          class="mt-2 space-y-1.5"
+                          :class="!a.verdictExpanded && 'max-h-16 overflow-hidden'"
+                        >
                           <template x-for="(v, i) in a.review.verdict.violations" :key="i">
                             <li class="flex gap-2 text-xs leading-relaxed text-red-200/80">
                               <span class="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-red-400/70"></span>
@@ -199,6 +203,15 @@
                             </li>
                           </template>
                         </ul>
+                        <!-- Compliance reasons can run long; clamp like the rationale
+                             and let the reviewer expand on demand. -->
+                        <button
+                          type="button"
+                          x-show="!a.review.verdict.compliant && a.review.verdict.violations.join(' ').length > 160"
+                          @click="a.verdictExpanded = !a.verdictExpanded"
+                          class="mt-1 ml-auto block w-fit text-[11px] font-medium text-accent hover:text-accent/80"
+                          x-text="a.verdictExpanded ? 'Show less' : 'Show more'"
+                        ></button>
                         <div class="mt-auto flex items-center gap-2 pt-3 text-xs">
                           <span
                             class="rounded bg-white/10 px-1.5 py-0.5 text-white/60"
@@ -298,6 +311,7 @@
                 review: null,
                 approvalError: "",
                 rationaleExpanded: false,
+                verdictExpanded: false,
               };
               Object.assign(a, row);
               return a;
