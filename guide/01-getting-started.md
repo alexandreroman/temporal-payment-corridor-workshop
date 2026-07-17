@@ -62,8 +62,6 @@ make dev
 | <http://localhost:8080>          | Web UI          |
 | <http://localhost:8080/temporal> | Temporal Web UI |
 
-![The `make dev` banner listing the two user-facing URLs](images/01-make-dev-banner.png)
-
 Prefer a fully containerized run instead? `make app-up` brings the whole
 stack up in containers and `make app-down` tears it down. For the
 workshop, `make dev` is recommended because hot reload picks up the code
