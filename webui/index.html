@@ -155,6 +155,17 @@
                     x-text="a.outcomeExpanded ? 'Show less' : 'Show more'"
                   ></button>
                 </div>
+                <!-- Correction source (memory/llm) as its own pill at the bottom
+                     of the row. Mirrors the approval-panel pill exactly. -->
+                <div
+                  x-show="a.source"
+                  class="mt-1.5 flex items-center text-xs"
+                >
+                  <span
+                    class="rounded bg-white/10 px-1.5 py-0.5 text-white/60"
+                    x-text="`source ${a.source}`"
+                  ></span>
+                </div>
               </div>
             </div>
 

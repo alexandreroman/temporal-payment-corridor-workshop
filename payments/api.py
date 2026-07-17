@@ -103,10 +103,15 @@ def _summarize_outcome(outcome: CorrectionOutcome) -> str:
     """One human line describing how a correction ended."""
     if outcome.applied and outcome.proposal is not None:
         p = outcome.proposal
-        return f"fixed {p.field_to_fix} → {p.proposed_value} · {p.source.value}"
+        return f"fixed {p.field_to_fix} → {p.proposed_value}"
     if outcome.verdict is not None and outcome.verdict.violations:
         return f"held · {outcome.verdict.violations[0]}"
     return outcome.message or "held"
+
+
+def _outcome_source(outcome: CorrectionOutcome) -> str | None:
+    """The correction's source (`memory`/`llm`), when a proposal exists."""
+    return outcome.proposal.source.value if outcome.proposal is not None else None
 
 
 class AnomalyAcceptance(BaseModel):
@@ -126,6 +131,10 @@ class AnomalySummary(BaseModel):
     workflow_id: str
     start_time: datetime
     outcome_summary: str | None = None
+    # The correction source (`memory` or `llm`) that used to be appended to
+    # outcome_summary, now surfaced separately so the Web UI can render it as its
+    # own pill. Optional because closed/awaiting rows have no proposal.
+    source: str | None = None
     # Payment context shown on every row (amount, currency, beneficiary name),
     # read from the anomaly during listing. Optional so the search-attributes
     # listing path -- which does not carry the full payment -- still validates.
@@ -320,6 +329,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                         workflow_id=wf.id,
                         start_time=wf.start_time,
                         outcome_summary=_summarize_outcome(outcome),
+                        source=_outcome_source(outcome),
                     )
                 )
             elif desc.status in _CLOSED_NON_COMPLETED:
