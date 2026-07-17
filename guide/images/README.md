@@ -10,7 +10,6 @@ resolve. Expected files, by step:
 | File                              | Step                                    | What to capture                                                     |
 | --------------------------------- | --------------------------------------- | ------------------------------------------------------------------- |
 | `00-architecture.png`             | [00](../00-application-overview.md)     | Component topology with the gateway as the single entry point       |
-| `01-make-dev-banner.png`          | [01](../01-getting-started.md)          | The `make dev` banner listing reachable URLs                        |
 | `01-webui-workflow-tree.png`      | [01](../01-getting-started.md)          | Coordinator + two agent child workflows in the Web UI               |
 | `02-event-history-memory-hit.png` | [02](../02-durable-agents.md)           | A memory-hit coordinator's Event History                            |
 | `03-awaiting-approval.png`        | [03](../03-human-approval-signal.md)    | A coordinator paused, awaiting a human decision                     |
