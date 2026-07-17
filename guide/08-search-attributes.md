@@ -120,7 +120,7 @@ temporal workflow list --namespace payments \
 **Through the API** — the awaiting filter is now server-side:
 
 ```bash
-curl -s "http://localhost:8233/api/payments/v1/anomalies?awaiting_approval=true" | jq
+curl -s "http://localhost:8080/api/payments/v1/anomalies?awaiting_approval=true" | jq
 ```
 
 Compare the Event History / logs between the two implementations: with the

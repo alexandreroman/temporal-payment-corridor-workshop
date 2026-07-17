@@ -99,7 +99,7 @@ timer, catches `asyncio.TimeoutError`, and completes with the auto-reject
 message. Confirm the outcome:
 
 ```bash
-curl -s http://localhost:8233/api/payments/v1/anomalies/<payment_id> | jq .outcome.message
+curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq .outcome.message
 ```
 
 To see the *other* branch, run another `low-confidence` correction and

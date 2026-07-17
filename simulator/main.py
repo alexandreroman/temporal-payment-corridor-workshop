@@ -25,7 +25,7 @@ from simulator.scenarios import DEFAULT_SCENARIO, SCENARIOS, Scenario, build_ano
 load_dotenv()
 
 GATEWAY_HOST = os.getenv("GATEWAY_HOST", "localhost")
-GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", "8233"))
+GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", "8080"))
 # Base URL of the payments API, reached through the gateway (see .env.example).
 _API_BASE = f"http://{GATEWAY_HOST}:{GATEWAY_PORT}/api/payments/v1"
 

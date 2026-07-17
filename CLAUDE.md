@@ -40,12 +40,13 @@ component definition isolated in its own file.
   durable logic. The payments HTTP API: `main_api.py` bootstraps uvicorn
   and `api.py` defines the `/api/payments/v1` routes as a Temporal client
   (no `Worker`) that starts, lists, and relays approvals for corrections
-- `webui/` — FastAPI web UI. `main.py` bootstraps infra + uvicorn;
-  `app.py` defines the app and routes; `templates/` and `static/` hold
-  the HTML/CSS
+- `webui/` — static Web UI (`index.html` + `static/`), no process of its
+  own; served directly by the gateway (Caddy `file_server`). Dynamic
+  behaviour is client-side, via `fetch()` against `/api/payments/v1`
 - `memory/` — FastAPI corridor-memory service (its own process and
-  Temporal namespace, reached only over HTTP). `main.py` bootstraps
-  uvicorn; `app.py` defines the `/api/memory/v1` routes; `store.py` is the
+  Temporal namespace), reached only over HTTP and only in-network
+  (`memory:8010`; a host process in dev). `main.py` bootstraps uvicorn;
+  `app.py` defines the `/api/memory/v1` routes; `store.py` is the
   in-memory baseline backend; `workflow.py` holds `MemoryWorkflow`, the
   durable backend enabled by the `memory-workflow` FEATURE
 - `simulator/main.py` — client that simulates an incoming payment anomaly

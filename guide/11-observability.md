@@ -59,14 +59,17 @@ Every process configures Pydantic Logfire the same way:
 > `instance.instrument_pydantic_ai()` so agent runs are traced too.
 
 Note *where* Logfire is configured: in the modules that actually serve
-requests (`payments/api.py`, `memory/app.py`, `webui/app.py`), not in the
-thin `main.py` bootstraps — because uvicorn's reload imports the app module
-in a subprocess that never runs `main.py`.
+requests (`payments/api.py`, `memory/app.py`), not in the thin `main.py`
+bootstraps — because uvicorn's reload imports the app module in a
+subprocess that never runs `main.py`. The Web UI has no such module: it
+is static files served directly by the gateway, with no Python process
+of its own.
 
 ## The Temporal Web UI
 
-Reached through the gateway at <http://localhost:8233>. This is your
-primary window into durable execution. Throughout the guide you use it to:
+Reached through the gateway at <http://localhost:8080/temporal>. This is
+your primary window into durable execution. Throughout the guide you use
+it to:
 
 - see the coordinator and its **child workflows** (step
   [01](01-getting-started.md), [02](02-durable-agents.md)),

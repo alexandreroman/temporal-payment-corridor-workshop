@@ -37,9 +37,9 @@ value you must set to exercise the *full* agent flow is a provider key.
 
 ## Run the stack
 
-For development, one command brings up the Temporal dev server plus the
-payments worker and its HTTP API, the web UI, and the corridor memory
-service — all on the host, with hot reload:
+For development, one command brings up the Temporal dev server and the
+gateway in containers, then runs the payments worker and its HTTP API
+plus the corridor memory service on the host, with hot reload:
 
 ```bash
 make dev
@@ -49,18 +49,17 @@ make dev
 
 | URL                                     | What                                                   |
 | --------------------------------------- | ------------------------------------------------------ |
-| <http://localhost:8000>                 | Web UI landing page (FastAPI `webui`, its own service) |
-| <http://localhost:8010>                 | Corridor memory service (`/api/memory/v1`)             |
-| <http://localhost:8233>                 | Temporal Web UI (served **through the gateway**)       |
-| <http://localhost:8233/api/payments/v1> | Payments HTTP API (through the gateway)                |
+| <http://localhost:8080>                 | Web UI (served **through the gateway**)                |
+| <http://localhost:8080/temporal>        | Temporal Web UI (through the gateway)                  |
+| <http://localhost:8080/api/payments/v1> | Payments HTTP API (through the gateway)                |
 | <http://localhost:9464/metrics>         | Payments metrics (Prometheus/OpenMetrics)              |
 
 > The gateway is the app's single published HTTP entry point. The
-> **Temporal** Web UI, the payments API, and (later) the codec server are
-> all reached through it. The FastAPI `webui` landing page (`:8000`) and
-> the corridor memory service (`:8010`) are separate services, not behind
-> the gateway. See [`gateway/`](../gateway/) and step
-> [09](09-payload-encryption.md).
+> **Web UI** (static files, no process of its own), the **Temporal** Web
+> UI, the payments API, and (later) the codec server are all reached
+> through it. The corridor memory service has no host port at all — it
+> is reached only in-network, as `memory:8010`. See
+> [`gateway/`](../gateway/) and step [09](09-payload-encryption.md).
 
 ![The `make dev` banner listing the reachable URLs](images/01-make-dev-banner.png)
 
@@ -84,7 +83,7 @@ simulator prints the accepted identifiers:
 scenario: memory-hit
 payment : pmt-9f3c1a2b
 workflow: correction-pmt-9f3c1a2b
-accepted: submitted to http://localhost:8233/api/payments/v1/anomalies
+accepted: submitted to http://localhost:8080/api/payments/v1/anomalies
 ```
 
 > **Always launch the simulator through `make`.** The target exports the
@@ -99,7 +98,7 @@ is needed for this path.
 
 ## Observe the correction in the Web UI
 
-Open the Temporal Web UI at <http://localhost:8233> and find the
+Open the Temporal Web UI at <http://localhost:8080/temporal> and find the
 `correction-<payment_id>` workflow. You will see:
 
 - the `PaymentCorrectionCoordinator` execution, and
@@ -118,7 +117,7 @@ The simulator only *submits* the anomaly. To read the final outcome, ask
 the payments API (through the gateway):
 
 ```bash
-curl -s http://localhost:8233/api/payments/v1/anomalies/<payment_id> | jq
+curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
 ```
 
 A completed correction returns `applied: true`, the proposal (with

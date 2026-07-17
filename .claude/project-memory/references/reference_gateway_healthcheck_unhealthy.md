@@ -13,10 +13,11 @@ The `gateway` service (Caddy) routinely shows `unhealthy` in
 environment, so the probe fails (`wget: can't connect`). This is
 expected — not a regression and not a bug to fix.
 
-Caddy itself serves traffic normally: it routes `/` to the Web UI and
-`/codec` to the codec service on port `8233` (remapped to a host port by
-`compose.override.yaml` in Casper worktrees). The other services
-(`temporal`, `payments`, `webui`, `memory`) report `healthy`.
+Caddy itself serves traffic normally: it routes `/` to the static Web
+UI and `/codec` to the codec service, both reachable on the gateway's
+port `8080` (remapped to a host port by `compose.override.yaml` in
+Casper worktrees). The other services (`temporal`, `payments`,
+`payments-api`, `memory`, `codec`) report `healthy`.
 
 **Why:** the admin endpoint quirk makes `gateway` look broken during any
 launch verification; treat the gateway's own HTTP responses (Web UI +
