@@ -9,7 +9,6 @@ dependencies = [
     "cryptography>=49",
     "fastapi>=0.139.2",
     "httpx>=0.28.1",
-    "jinja2>=3.1.6",
     "logfire[fastapi]>=4.37.0",
     "pydantic-ai[temporal]>=2.11.0",
     "python-dotenv>=1.2.2",
@@ -21,7 +20,6 @@ dependencies = [
 payments = "payments.main_worker:dev"
 payments-api = "payments.main_api:dev"
 simulator = "simulator.main:cli"
-webui = "webui.main:dev"
 memory = "memory.main:dev"
 
 [dependency-groups]
@@ -35,7 +33,5 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# Package layout: ship each functional module as a package. Package data
-# (webui templates/static) is picked up because it lives inside the webui
-# package directory.
-packages = ["shared", "payments", "webui", "simulator", "memory"]
+# Package layout: ship each functional module as a package.
+packages = ["shared", "payments", "simulator", "memory"]

@@ -17,7 +17,7 @@ request — ships as plain, always-on default code with **no**
 falls back to an insecure built-in demo default (token `changeme`)
 rather than failing fast, so it always starts.
 Toggleable FEATURE blocks live only in the app components
-(`payments/`, `simulator/`, `webui/`, `shared/`, `memory/`),
+(`payments/`, `simulator/`, `shared/`, `memory/`),
 which is why `tools/features.py` `ROOTS` deliberately excludes
 `codec`.
 

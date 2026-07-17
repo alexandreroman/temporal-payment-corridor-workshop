@@ -81,7 +81,7 @@ validation at worker start-up.
 ([`codec/`](../codec/)) is a small HTTP service that reuses the same key to
 decrypt payloads on demand; the gateway ([`gateway/`](../gateway/)) routes
 `/codec` to it. Both come up with the stack. The gateway is the single
-published entry point (`http://localhost:8233`): it serves the Web UI at
+published entry point (`http://localhost:8080`): it serves the Web UI at
 `/` and the codec at `/codec`, so the UI's calls to `/codec` are
 **same-origin** — no CORS — and the gateway **injects the bearer token**
 so you never configure `--codec-auth`.
@@ -100,7 +100,7 @@ and inspect Event History — payloads now show as raw ciphertext.
 ![Encrypted (ciphertext) payloads in Event History before decoding](images/09-ciphertext.png)
 
 **Decoded:** the dev server is already pointed at the codec through the
-gateway (via its `--ui-codec-endpoint http://localhost:8233/codec` flag),
+gateway (via its `--ui-codec-endpoint http://localhost:8080/codec` flag),
 so the Web UI decrypts payloads for display automatically — the same
 Event History now shows cleartext.
 
@@ -113,11 +113,11 @@ Event History now shows cleartext.
 temporal workflow show \
   --workflow-id correction-<payment_id> \
   --namespace payments \
-  --codec-endpoint http://localhost:8233/codec
+  --codec-endpoint http://localhost:8080/codec
 ```
 
 > **Run the `temporal` CLI from the host, never a container** —
-> `localhost:8233/codec` reaches the gateway only from the host.
+> `localhost:8080/codec` reaches the gateway only from the host.
 
 ## Step 5 — The production caveat
 

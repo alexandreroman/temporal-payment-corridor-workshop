@@ -114,7 +114,7 @@ Now approve it — either through the gateway API:
 
 ```bash
 curl -X POST \
-  http://localhost:8233/api/payments/v1/anomalies/<payment_id>/approval \
+  http://localhost:8080/api/payments/v1/anomalies/<payment_id>/approval \
   -H 'content-type: application/json' \
   -d '{"approved": true, "approver": "ops@bank.example"}'
 ```
@@ -133,7 +133,7 @@ The coordinator wakes, applies the correction (or records the rejection),
 and completes. Fetch the outcome:
 
 ```bash
-curl -s http://localhost:8233/api/payments/v1/anomalies/<payment_id> | jq
+curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
 ```
 
 > **Who sends the approval?** Not the simulator — it only submits the

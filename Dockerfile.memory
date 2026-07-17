@@ -9,8 +9,7 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,id=uv-cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 # The memory service imports shared.models across the process boundary, so both
-# shared/ and memory/ must ship in the image (unlike webui/, which is self-
-# contained).
+# shared/ and memory/ must ship in the image.
 COPY shared/ shared/
 COPY memory/ memory/
 

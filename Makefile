@@ -1,9 +1,11 @@
 # Developer task runner. Run `make` (or `make help`) to list the targets.
 #
 # Two ways to run the stack:
-#   * `make dev`    — Temporal in a container; payments worker + API,
-#                     web UI + memory service on the host with hot reload
-#                     (fast inner loop).
+#   * `make dev`    — Temporal in a container; payments worker + API and
+#                     memory service on the host with hot reload (fast inner
+#                     loop). The web UI is served by the gateway from a
+#                     volume mount, so editing its files needs only a
+#                     browser refresh, no restart.
 #   * `make app-up` — the full stack (Temporal + payments + web UI) in
 #                     containers.
 #
@@ -26,54 +28,49 @@ endif
 # and the host-side `make dev` flow can never diverge from what docker binds.
 # Otherwise fall back to the conventional defaults.
 ifneq (,$(wildcard compose.override.yaml))
-TEMPORAL_UI_PORT      := $(shell sed -nE 's/.*"([0-9]+):8233".*/\1/p' compose.override.yaml | head -n1)
+GATEWAY_PORT          := $(shell sed -nE 's/.*"([0-9]+):8080".*/\1/p' compose.override.yaml | head -n1)
 TEMPORAL_GRPC_PORT    := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.override.yaml | head -n1)
-PAYMENTS_METRICS_PORT := $(shell sed -nE 's/.*"([0-9]+):9464".*/\1/p' compose.override.yaml | head -n1)
-MEMORY_PORT           := $(shell sed -nE 's/.*"([0-9]+):8010".*/\1/p' compose.override.yaml | head -n1)
-PAYMENTS_API_PORT     := $(shell sed -nE 's/.*"([0-9]+):8020".*/\1/p' compose.override.yaml | head -n1)
-# WEBUI_PORT can't be read back from compose.override.yaml like the ports
-# above: webui is reached only through the gateway (see gateway/Caddyfile), so
-# it no longer publishes a container port for `worktree-ports` to remap.
-# Derive it straight from CASPER_PORT instead, with the same +3 offset
-# `worktree-ports` uses for every other remapped port, so the host-side
-# `uv run webui` process and the gateway's WEBUI_UPSTREAM (compose.dev.yaml)
-# still land on the same worktree-unique port.
-WEBUI_PORT            := $(if $(CASPER_PORT),$(shell echo $$(($(CASPER_PORT) + 3))),8000)
-# Point the host-side dev flow (uv run payments/webui) at the remapped ports.
-# Assign unconditionally (:=, not ?=): the override file is the source of truth
-# for published ports, so these must beat the .env baseline already exported
+# Metrics, the payments API, and memory are no longer published container
+# ports (see compose.yaml / worktree-ports), so there is nothing to read back
+# for them. In dev they run as HOST processes; derive their ports from the
+# gateway's (already worktree-unique) host port with the same offsets
+# worktree-ports uses for the published services, so parallel worktrees
+# never collide.
+PAYMENTS_METRICS_PORT := $(shell echo $$(($(GATEWAY_PORT) + 2)))
+MEMORY_PORT           := $(shell echo $$(($(GATEWAY_PORT) + 4)))
+PAYMENTS_API_PORT     := $(shell echo $$(($(GATEWAY_PORT) + 5)))
+# Point the host-side dev flow (uv run payments/payments-api) at the remapped
+# ports. Assign unconditionally (:=, not ?=): the override file is the source
+# of truth for published ports, so these must beat the .env baseline exported
 # above. Plain := (not `override`) still lets an explicit `make VAR=...` win.
 TEMPORAL_ADDRESS      := localhost:$(TEMPORAL_GRPC_PORT)
 PAYMENTS_METRICS_HOST := 0.0.0.0
-# The simulator reaches the payments API through the gateway (remapped UI port).
+# The simulator reaches the payments API through the gateway.
 GATEWAY_HOST          := localhost
-GATEWAY_PORT          := $(TEMPORAL_UI_PORT)
-export TEMPORAL_ADDRESS WEBUI_PORT PAYMENTS_METRICS_HOST PAYMENTS_METRICS_PORT MEMORY_PORT PAYMENTS_API_PORT GATEWAY_HOST GATEWAY_PORT
+export TEMPORAL_ADDRESS PAYMENTS_METRICS_HOST PAYMENTS_METRICS_PORT MEMORY_PORT PAYMENTS_API_PORT GATEWAY_HOST GATEWAY_PORT
 else
 # Without an override the published ports equal the conventional defaults.
 # Use ?= for ports that have a matching app env var so a value set in .env
-# still wins over the hard-coded default (TEMPORAL_UI_PORT has no app var).
-WEBUI_PORT            ?= 8000
-TEMPORAL_UI_PORT      := 8233
+# still wins over the hard-coded default (GATEWAY_PORT has no app-side default
+# other than this; the gateway container always listens on 8080 internally).
+GATEWAY_PORT          := 8080
 PAYMENTS_METRICS_PORT ?= 9464
 MEMORY_PORT           ?= 8010
 PAYMENTS_API_PORT     ?= 8020
 GATEWAY_HOST          := localhost
-GATEWAY_PORT          := $(TEMPORAL_UI_PORT)
 export PAYMENTS_API_PORT GATEWAY_HOST GATEWAY_PORT
 endif
 
-# Banner listing where to reach the running components. The Web UI and the
-# Temporal Web UI are both reached through the gateway now (respectively `/`
-# and `/temporal`), not their own ports directly — see gateway/Caddyfile.
+# Banner listing where to reach the running components. Only the two
+# user-facing surfaces are shown: the Web UI and the Temporal Web UI, both
+# reached through the gateway (respectively `/` and `/temporal`). The memory
+# service, payments API, and metrics endpoints are intentionally not
+# advertised — the gateway is the single entry point (see gateway/Caddyfile).
 define show_urls
 	@echo ""
 	@echo "The stack is up. Open:"
-	@echo "  Web UI              http://localhost:$(GATEWAY_PORT)"
-	@echo "  Corridor memory     http://localhost:$(MEMORY_PORT)"
-	@echo "  Temporal Web UI     http://localhost:$(GATEWAY_PORT)/temporal"
-	@echo "  Payments API        http://localhost:$(GATEWAY_PORT)/api/payments/v1"
-	@echo "  Payments metrics    http://localhost:$(PAYMENTS_METRICS_PORT)/metrics"
+	@echo "  Web UI            http://localhost:$(GATEWAY_PORT)"
+	@echo "  Temporal Web UI   http://localhost:$(GATEWAY_PORT)/temporal"
 endef
 
 ##@ Setup
@@ -122,18 +119,14 @@ simulator: ## Simulate a payment anomaly (SCENARIO=<name>; see `make simulator-l
 simulator-list: ## List the available payment-anomaly scenarios
 	uv run simulator --list-scenarios
 
-.PHONY: webui
-webui: ## Run the web UI on the host with hot reload
-	uv run webui
-
 .PHONY: memory
 memory: ## Run the corridor memory service on the host with hot reload
 	uv run memory
 
 .PHONY: dev
-dev: .venv infra-up ## Start Temporal, then run payments worker + API, web UI, memory on the host (hot reload)
+dev: .venv infra-up ## Start Temporal, then run payments worker + API and memory on the host (hot reload)
 	$(show_urls)
-	@$(MAKE) -j payments payments-api webui memory
+	@$(MAKE) -j payments payments-api memory
 
 .venv: pyproject.toml uv.lock
 	uv sync
@@ -162,21 +155,24 @@ worktree-init: ## Initialise a worktree: install deps and remap host ports off C
 	@$(MAKE) worktree-ports
 
 # NOTE: the override also replaces temporal's `command` so --ui-codec-endpoint
-# points at the gateway's REMAPPED host port (CASPER_PORT), not the hard-coded
-# 8233 in compose.yaml — otherwise the Web UI, served from CASPER_PORT, would
-# look for the codec on 8233 and decoding would break in a worktree. This
-# mirrors compose.yaml's temporal command, so keep the two in sync (including
-# --ui-public-path, which must stay /temporal here too).
+# points at the gateway's REMAPPED host port (CASPER_PORT), not the
+# hard-coded 8080 in compose.yaml — otherwise the Web UI, served from
+# CASPER_PORT, would look for the codec on 8080 and decoding would break in
+# a worktree. This mirrors compose.yaml's temporal command, so keep the two
+# in sync (including --ui-public-path, which must stay /temporal here too).
 #
-# webui has no ports entry to remap: it is reached only through the gateway
-# (see gateway/Caddyfile), never published directly. Its per-worktree port
-# (CASPER_PORT+3, unused by any other service below) is derived straight from
-# CASPER_PORT in the Makefile's WEBUI_PORT instead — see the ifneq block above.
+# Only the genuinely published services are remapped below: gateway
+# (CASPER_PORT itself) and temporal gRPC (+1). The Web UI is static and has
+# no port to remap — it's served by the gateway from a volume mount.
+# Metrics, the payments API, and memory are no longer published container
+# ports; their host-side dev-process ports are instead derived
+# arithmetically from GATEWAY_PORT (offsets +2/+4/+5, see the ifneq block
+# above). Offset +3 is unused.
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
-		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --ui-public-path\n      - /temporal\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n  gateway:\n    ports: !override\n      - "%s:8233"\n  payments:\n    ports: !override\n      - "%s:9464"\n  payments-api:\n    ports: !override\n      - "%s:8020"\n  memory:\n    ports: !override\n      - "%s:8010"\n' \
-			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 2)) $$((CASPER_PORT + 5)) $$((CASPER_PORT + 4)) > compose.override.yaml; \
+		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --ui-public-path\n      - /temporal\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n  gateway:\n    ports: !override\n      - "%s:8080"\n' \
+			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" > compose.override.yaml; \
 		echo "Wrote compose.override.yaml (CASPER_PORT=$$CASPER_PORT)"; \
 	fi
 
@@ -222,7 +218,7 @@ feature-disable: ## Disable a feature everywhere (NAME=<name>, DRY_RUN=1 to prev
 ##@ Gateway & codec
 
 .PHONY: gateway
-gateway: ## (Re)start the API gateway — single entry point (Web UI + /codec) at http://localhost:8233
+gateway: ## (Re)start the API gateway — single entry point (Web UI + /codec) at http://localhost:8080
 	docker compose up -d gateway
 
 .PHONY: capture-history

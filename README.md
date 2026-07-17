@@ -84,12 +84,14 @@ make setup       # enable the local ruff pre-commit hook
 ```
 
 There are two ways to run the app. For development, `make dev` starts the
-Temporal dev server plus the payments worker and its HTTP API, the web UI,
-and the corridor memory service (all on the host with hot reload) and prints
-the reachable URLs in a banner:
+Temporal dev server and the gateway in containers, runs the payments worker
+and its HTTP API plus the corridor memory service on the host with hot
+reload, and prints the reachable URLs in a banner. The Web UI itself is
+static files served by the gateway from a mounted volume, so there is no
+web UI process to run in either mode:
 
 ```bash
-make dev       # Temporal dev server + payments worker & API, web UI & memory (hot reload)
+make dev       # Temporal dev server + gateway + payments worker & API & memory
 ```
 
 For a fully containerized run, `make app-up` brings the whole stack up in
@@ -111,11 +113,13 @@ make simulator   # simulate an incoming payment anomaly
 ```
 
 By default the payment-corridor Web UI (the homepage) is at
-http://localhost:8233 — the gateway's root and the app's single published
-HTTP entry point. The Temporal Web UI is at http://localhost:8233/temporal,
-the payments HTTP API at http://localhost:8233/api/payments/v1, and the
-payments metrics at http://localhost:9464/metrics; `make dev` also prints
-these URLs in its banner. The homepage lists payment-anomaly corrections
+http://localhost:8080 — the gateway's root and the app's single published
+HTTP entry point. The Temporal Web UI is at http://localhost:8080/temporal
+and the payments HTTP API at http://localhost:8080/api/payments/v1, both
+through the same gateway; `make dev` prints the Web UI and Temporal Web UI
+URLs in its banner. In dev mode the payments metrics are scrapable at
+http://localhost:9464/metrics — never routed through the gateway, and not
+published in container mode. The homepage lists payment-anomaly corrections
 and auto-refreshes every few seconds; once `human-approval-signal` is
 enabled it also lets you approve or reject corrections held for human
 review. The default anomaly matches a pre-seeded corridor-memory pattern,
@@ -156,7 +160,7 @@ encryption key — and the Temporal Web UI calls it to display cleartext.
 
 Both the codec server and the gateway are Compose services that come up with
 the stack (`make dev` / `make app-up`). The gateway is the app's single
-published HTTP entry point (`http://localhost:8233`): it serves the
+published HTTP entry point (`http://localhost:8080`): it serves the
 payment-corridor Web UI at `/`, the Temporal Web UI at `/temporal`, the
 payments API at `/api/payments/v1`, and the codec server at `/codec`, so
 calls from the UI to `/codec` are same-origin and need no CORS
@@ -167,7 +171,7 @@ You don't have to configure anything for the demo. When
 codec and the gateway fall back to matching public, insecure built-in
 defaults (logging a warning) — so decoding works out of the box, even
 before you create a `.env`. The dev server is already pointed at `/codec`
-via its `--ui-codec-endpoint http://localhost:8233/codec` flag, and the
+via its `--ui-codec-endpoint http://localhost:8080/codec` flag, and the
 gateway injects the bearer token, so decrypted payloads appear in the
 Temporal Web UI with no manual configuration. Set your own
 `CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` in `.env` only when you
@@ -180,7 +184,7 @@ needed — the gateway injects the token:
 ```bash
 temporal workflow show \
   --workflow-id <workflow-id> \
-  --codec-endpoint http://localhost:8233/codec
+  --codec-endpoint http://localhost:8080/codec
 ```
 
 ### Registering Search Attributes (search-attributes)
@@ -217,11 +221,11 @@ accepted identifiers:
 scenario: memory-hit
 payment : pmt-9f3c1a2b
 workflow: correction-pmt-9f3c1a2b
-accepted: submitted to http://localhost:8233/api/payments/v1/anomalies
+accepted: submitted to http://localhost:8080/api/payments/v1/anomalies
 ```
 
-Follow the correction on the homepage (http://localhost:8233), or in the
-Temporal Web UI at http://localhost:8233/temporal, or fetch its outcome
+Follow the correction on the homepage (http://localhost:8080), or in the
+Temporal Web UI at http://localhost:8080/temporal, or fetch its outcome
 from `GET /api/payments/v1/anomalies/<payment_id>` once it completes.
 
 By default this sends the offline `memory-hit` scenario. Pick another named
@@ -275,7 +279,7 @@ exist to remove.
 
 Because these routes are served through the gateway, the simulator reaches
 them at `http://<GATEWAY_HOST>:<GATEWAY_PORT>/api/payments/v1` (default
-`localhost:8233`). Container mode routes `/api/payments/v1/*` to the
+`localhost:8080`). Container mode routes `/api/payments/v1/*` to the
 `payments-api` Compose service; dev mode routes it to the host-run API via
 `host.docker.internal`, wired automatically by the generated Compose override.
 
@@ -365,7 +369,7 @@ sequenceDiagram
 | `shared/`     | Pydantic models exchanged across the Temporal boundary                                                                   |
 | `payments/`   | Payment-correction component (namespace `payments`): a Temporal worker plus the `/api/payments/v1` HTTP API              |
 | `memory/`     | Corridor-memory service (namespace `memory`): serves `/api/memory/v1` over an in-memory store or `MemoryWorkflow`        |
-| `webui/`      | FastAPI web UI — the temporal.io-styled landing page                                                                     |
+| `webui/`      | Static Web UI (temporal.io-styled landing page), served by the gateway                                                   |
 | `codec/`      | Codec server that decrypts payloads for the Temporal Web UI (with `payload-encryption`)                                  |
 | `gateway/`    | API gateway — the single published HTTP entry point; injects the codec bearer token                                      |
 | `simulator/`  | Client that simulates an incoming payment anomaly                                                                        |
