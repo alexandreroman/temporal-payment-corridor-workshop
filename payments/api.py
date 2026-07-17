@@ -251,17 +251,13 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
     Passing ``awaiting_approval`` narrows the result to running corrections
     blocked on a human decision (closed rows never qualify).
 
-    Two implementations, toggled by the ``search-attributes`` feature (REPLACE).
-    For a *running* row the baseline reads its summary via a per-workflow query
-    (the N+1 pattern), while search-attributes removes that query by reading the
-    summary from the execution's search attributes. A *closed* row costs the
-    same ``describe()``/``result()`` round-trips in both variants: search
-    attributes carry no outcome, so the feature does not remove that cost.
+    A *running* row reads its summary via a per-workflow ``describe_anomaly``
+    query; a *closed* row costs ``describe()``/``result()`` round-trips to
+    recover its final status and outcome.
     """
     client: Client = app.state.temporal_client
     summaries: list[AnomalySummary] = []
 
-    # region FEATURE-OFF: search-attributes
     # NOTE: Client-side listing. Running executions carry only built-in
     # attributes, so corridor/anomaly-type/awaiting state come from one query per
     # workflow (N+1), and the awaiting filter runs here in Python. This is
@@ -375,119 +371,6 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                 _exc_info=exc,
             )
             continue
-    # endregion FEATURE-OFF: search-attributes
-
-    # region FEATURE-ON: search-attributes
-    # # NOTE: Server-side listing. The corridor/anomalyType/status search
-    # # attributes are already on each execution, and the awaiting filter is
-    # # pushed into the Visibility query — no per-workflow describe_anomaly query
-    # # for the running rows.
-    # query = f"WorkflowType = '{_WORKFLOW_TYPE}'"
-    # if awaiting_approval:
-    #     query += " AND status = 'awaiting-approval'"
-    # seen = 0
-    # async for wf in client.list_workflows(query=query):
-    #     # NOTE: The dev server's standard Visibility store rejects "ORDER BY"
-    #     # (RPCError: "operation is not supported: 'ORDER BY' clause"), so this
-    #     # query cannot ask Visibility for newest-first order; list_workflows
-    #     # returns executions in the store's default order instead. `seen`
-    #     # counts only rows this loop actually emits -- incremented right
-    #     # before each summaries.append below, never here -- so a row skipped
-    #     # by an awaiting-approval continue-guard never spends a cap slot that
-    #     # a later, genuinely-matching row needed. The summaries.sort() at the
-    #     # tail of this function re-establishes newest-first order for
-    #     # display; it does not change which 20 executions got selected.
-    #     # Source: https://docs.temporal.io/visibility
-    #     if seen >= 20:
-    #         break
-    #     sa = wf.typed_search_attributes
-    #     corridor = sa.get(SearchAttributeKey.for_keyword("corridor")) or ""
-    #     anomaly_type = sa.get(SearchAttributeKey.for_keyword("anomalyType")) or ""
-    #     if not anomaly_type:
-    #         # NOTE: Skip a half-tagged execution rather than letting
-    #         # AnomalyType("") raise; without the anomalyType SA it is not
-    #         # listable here.
-    #         continue
-    #     handle = client.get_workflow_handle(wf.id)
-    #     # NOTE: A closed row still needs describe() to learn its status and,
-    #     # when completed, result() to recover its outcome -- extra round-trips
-    #     # per closed row. Search attributes remove the running-row
-    #     # describe_anomaly query, not this closed-row describe()/result() cost.
-    #     # NOTE: One unlistable historical execution (e.g. TERMINATED, or a run
-    #     # whose history is no longer available) must not take down the whole
-    #     # listing -- skip just that row rather than letting the exception
-    #     # propagate out of the loop and 500 the endpoint.
-    #     try:
-    #         desc = await handle.describe()
-    #         if desc.status == WorkflowExecutionStatus.COMPLETED:
-    #             # A closed correction is never blocked on a human decision, so
-    #             # the awaiting-approval filter excludes it (README: "keeps only
-    #             # those blocked on a human decision"). The Visibility query
-    #             # already narrows to running rows server-side; this mirrors the
-    #             # baseline's per-row skip for readability.
-    #             if awaiting_approval:
-    #                 continue
-    #             # NOTE: The Pydantic data converter needs an explicit target
-    #             # type to rebuild a CorrectionOutcome; without one, result()
-    #             # returns a plain dict at runtime (unlike the _StubHandle used
-    #             # in tests, which returns a real CorrectionOutcome).
-    #             # model_validate() normalizes either shape into a
-    #             # CorrectionOutcome, so this line works against both the live
-    #             # server and the tests.
-    #             outcome = CorrectionOutcome.model_validate(await handle.result())
-    #             seen += 1
-    #             summaries.append(
-    #                 AnomalySummary(
-    #                     payment_id=wf.id.removeprefix("correction-"),
-    #                     corridor=corridor,
-    #                     anomaly_type=AnomalyType(anomaly_type),
-    #                     status="applied" if outcome.applied else "held",
-    #                     workflow_id=wf.id,
-    #                     start_time=wf.start_time,
-    #                     outcome_summary=_summarize_outcome(outcome),
-    #                 )
-    #             )
-    #         elif desc.status in _CLOSED_NON_COMPLETED:
-    #             # Closed rows are never awaiting a human either; same filter as
-    #             # above.
-    #             if awaiting_approval:
-    #                 continue
-    #             closed_status = desc.status.name.lower().replace("_", "-")
-    #             seen += 1
-    #             summaries.append(
-    #                 AnomalySummary(
-    #                     payment_id=wf.id.removeprefix("correction-"),
-    #                     corridor=corridor,
-    #                     anomaly_type=AnomalyType(anomaly_type),
-    #                     status=closed_status,
-    #                     workflow_id=wf.id,
-    #                     start_time=wf.start_time,
-    #                     outcome_summary=f"execution {closed_status}",
-    #                 )
-    #             )
-    #         else:
-    #             status_sa = sa.get(SearchAttributeKey.for_keyword("status"))
-    #             wf_status = status_sa or "processing"
-    #             seen += 1
-    #             summaries.append(
-    #                 AnomalySummary(
-    #                     payment_id=wf.id.removeprefix("correction-"),
-    #                     corridor=corridor,
-    #                     anomaly_type=AnomalyType(anomaly_type),
-    #                     status=wf_status,
-    #                     workflow_id=wf.id,
-    #                     start_time=wf.start_time,
-    #                 )
-    #             )
-    #     except Exception as exc:
-    #         logfire.warning(
-    #             "Skipping unlistable execution {workflow_id}: {error}",
-    #             workflow_id=wf.id,
-    #             error=str(exc),
-    #             _exc_info=exc,
-    #         )
-    #         continue
-    # endregion FEATURE-ON: search-attributes
 
     # NOTE: Newest-first ordering so the web UI's homepage shows the most
     # recent anomalies at the top without any client-side sorting.
@@ -546,16 +429,10 @@ async def get_anomaly(payment_id: str) -> AnomalyDetail:
     # # _query_awaiting round trip needed here.
     # review = await handle.query(PaymentCorrectionCoordinator.pending_review)
     # endregion FEATURE-ON: human-approval-signal
-    anomaly = None
-    # region FEATURE-OFF: search-attributes
     # NOTE: The approval panel shows the payment being corrected (amount,
-    # beneficiary, original field value); with search-attributes off it is read
-    # back through the describe_anomaly query. When that feature is enabled this
-    # block is removed and the payment context is simply omitted (anomaly stays
-    # None) -- the corridor/type/status search attributes do not carry the full
-    # payment.
+    # beneficiary, original field value), read back through the
+    # describe_anomaly query.
     anomaly = await handle.query(PaymentCorrectionCoordinator.describe_anomaly)
-    # endregion FEATURE-OFF: search-attributes
     return AnomalyDetail(
         payment_id=payment_id,
         workflow_id=workflow_id,

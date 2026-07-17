@@ -304,8 +304,8 @@ class PaymentCorrectionCoordinator:
 
     def __init__(self) -> None:
         self._decision: ApprovalDecision | None = None
-        # Stored so the search-attributes OFF listing can read it back via the
-        # describe_anomaly() query; harmless when unused.
+        # Stored so the listing and detail paths can read it back via the
+        # describe_anomaly() query.
         self._anomaly: PaymentAnomaly | None = None
         # True only while the coordinator is blocked on a human decision; read by
         # the awaiting_approval() query on the client-side listing path.
@@ -510,19 +510,16 @@ class PaymentCorrectionCoordinator:
         )
         # endregion FEATURE-OFF: settlement-confirmation
 
-    # region FEATURE-OFF: search-attributes
     @workflow.query
     def describe_anomaly(self) -> PaymentAnomaly:
         """Return the anomaly under correction.
 
-        NOTE: The client-side listing path (search-attributes disabled) reads
-        corridor/anomaly-type per running workflow through this query — one query
-        per execution, the N+1 cost that search attributes exist to remove.
+        NOTE: The listing path reads corridor/anomaly-type per running
+        workflow through this query, and the detail path reads the full
+        payment back for the approval panel.
         """
         assert self._anomaly is not None
         return self._anomaly
-
-    # endregion FEATURE-OFF: search-attributes
 
     # region FEATURE-ON: human-approval-signal
     # @workflow.signal

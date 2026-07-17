@@ -192,8 +192,9 @@ temporal workflow show \
 Once `search-attributes` is enabled (`make feature-enable
 NAME=search-attributes`) the coordinator tags each workflow execution with a
 `corridor`, an `anomalyType`, and a `status` Search Attribute — the last
-carrying the correction lifecycle (`processing` → `awaiting-approval`) so the
-payments API can filter in-flight corrections server-side. All three custom
+carrying the correction lifecycle (`processing` → `awaiting-approval`) so
+operators can filter corrections fleet-wide from the CLI and the Temporal
+Web UI. All three custom
 attributes are pre-registered by the dev server on startup (`make dev` /
 `make app-up`), so there is no manual registration step — filter executions
 in the Temporal Web UI or with
@@ -270,12 +271,11 @@ request goes through the gateway; the API's own bind address
 | `GET /api/payments/v1/anomalies/{payment_id}`           | One correction's state — running, or completed with its outcome; an unknown payment returns `404`.                                 |
 | `POST /api/payments/v1/anomalies/{payment_id}/approval` | Relay an `ApprovalDecision` to a waiting correction. Present only when the `human-approval-signal` feature is enabled.             |
 
-The listing endpoint has two implementations toggled by the
-`search-attributes` feature: enabled, it filters running executions
-server-side in a single Visibility query on the `status` Search Attribute;
-disabled (the baseline), it lists running executions and reads each one's
-summary with a per-workflow query — the N+1 pattern that search attributes
-exist to remove.
+The listing endpoint reads each correction directly — a per-workflow query
+for running rows, `describe()`/`result()` for closed ones — and does not
+depend on the `search-attributes` feature. Filtering the fleet by corridor,
+anomaly type, or status is an operator concern, handled through the Temporal
+CLI and Web UI (see the guide's step 08), not this endpoint.
 
 Because these routes are served through the gateway, the simulator reaches
 them at `http://<GATEWAY_HOST>:<GATEWAY_PORT>/api/payments/v1` (default
