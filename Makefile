@@ -226,8 +226,13 @@ gateway: ## (Re)start the API gateway — single entry point (Web UI + /codec) a
 	docker compose up -d gateway
 
 .PHONY: capture-history
-capture-history: ## Regenerate payments/testdata/coordinator-history.json for the replay test (needs `make memory` running)
-	uv run python -m tools.capture_history
+capture-history: ## Capture coordinator-history.json from a completed memory-hit run (WORKFLOW_ID=correction-pmt-XXXX)
+	@test -n "$(WORKFLOW_ID)" || { echo "Usage: make capture-history WORKFLOW_ID=correction-pmt-XXXX"; exit 2; }
+	temporal workflow show \
+		--address $(TEMPORAL_ADDRESS) --namespace payments \
+		--workflow-id $(WORKFLOW_ID) -o json \
+	| jq --arg wf "$(WORKFLOW_ID)" '{workflow_id: $$wf, history: .}' \
+	> payments/testdata/coordinator-history.json
 
 ##@ Helpers
 

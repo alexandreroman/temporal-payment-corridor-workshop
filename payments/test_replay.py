@@ -11,8 +11,9 @@ in a running deployment.
 
 This test does not run the workflow — it feeds a PREVIOUSLY CAPTURED
 history (``payments/testdata/coordinator-history.json``, produced by
-``tools/capture_history.py``; see that module's docstring for the
-regeneration procedure) to :class:`temporalio.worker.Replayer`, which
+``make capture-history``; see ``guide/12-testing.md`` under "Regenerating
+the fixture" for the regeneration procedure) to
+:class:`temporalio.worker.Replayer`, which
 re-executes it against whatever ``PaymentCorrectionCoordinator`` and its
 child workflows look like right now. As long as nobody has made a
 determinism-breaking change since the fixture was captured, replay
@@ -45,7 +46,7 @@ FIXTURE_PATH = Path(__file__).parent / "testdata" / "coordinator-history.json"
 
 
 def _load_fixture_history() -> WorkflowHistory:
-    """Read the captured history fixture written by tools/capture_history.py."""
+    """Read the captured history fixture written by `make capture-history`."""
     fixture = json.loads(FIXTURE_PATH.read_text())
     return WorkflowHistory.from_json(fixture["workflow_id"], fixture["history"])
 

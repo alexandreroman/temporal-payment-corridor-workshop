@@ -132,9 +132,11 @@ list call. That is the N+1 removed.
 Like step [07](07-settlement-confirmation.md), adding the
 `upsert_search_attributes` call changes the coordinator's Event History, so
 it **invalidates the committed replay fixture** — `make test`'s replay
-test failing after you enable this is expected, not a regression.
-Regenerate with `make capture-history` (memory service running) if you want
-it green while the feature stays on. See step [12](12-testing.md).
+test failing after you enable this is expected, not a regression. To get it
+green while the feature stays on, regenerate from a real run: `make
+simulator`, grab the printed workflow id, then `make capture-history
+WORKFLOW_ID=correction-pmt-XXXX` (the dev stack is already running, so no
+separate memory service). See step [12](12-testing.md).
 
 ## Step 6 — Checkpoint
 
