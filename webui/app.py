@@ -1,9 +1,9 @@
 """Web UI application definition.
 
-A small FastAPI application that serves the payment-corridor landing page.
-This is the foundation only: a static, temporal.io-styled page plus a health
-check. Interactive, Temporal-facing actions are added later as progressive
-`# region FEATURE-ON: <name>` blocks.
+A small FastAPI application that serves the payment-corridor homepage: a
+live listing of payment corrections plus a human-approval intervention
+panel. The page polls the payments API same-origin through the gateway,
+refreshing running corrections and relaying operator approvals.
 
 The server startup lives in ``webui/main.py``; this module defines the
 ``app`` object, imported as ``webui.app:app`` by uvicorn. Logfire is

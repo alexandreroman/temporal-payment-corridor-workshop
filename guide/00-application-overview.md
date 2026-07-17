@@ -81,7 +81,7 @@ gateway.
 | Payments worker | [`payments/`](../payments/main_worker.py) | Temporal worker: coordinator, agent child workflows, activities                              |
 | Payments API    | [`payments/`](../payments/api.py)         | Temporal *client* (no worker): `/api/payments/v1` — start, list, approve                     |
 | Corridor memory | [`memory/`](../memory/app.py)             | Separate service & namespace: `/api/memory/v1` over an in-memory store or a durable workflow |
-| Web UI          | [`webui/`](../webui/app.py)               | FastAPI landing page — its own service on port `8000`, not behind the gateway                |
+| Web UI          | [`webui/`](../webui/app.py)               | FastAPI homepage — fronted by the gateway at `/`                                             |
 | Codec server    | [`codec/`](../codec/)                     | Decrypts payloads for the Web UI (once encryption is on)                                     |
 | Gateway         | [`gateway/`](../gateway/)                 | The single published HTTP entry point                                                        |
 | Simulator       | [`simulator/`](../simulator/main.py)      | Client that submits an anomaly                                                               |
@@ -95,11 +95,12 @@ the guide:
    memory HTTP API. Two bounded contexts, cleanly separated.
 2. **One entry point.** External callers (including the simulator) only
    ever speak HTTP to the gateway. They never open a Temporal client of
-   their own. The gateway routes `/` to the **Temporal Web UI**,
+   their own. The gateway routes `/` to our payment-corridor **Web UI**
+   (the app front door), `/temporal` to the **Temporal Web UI**,
    `/api/payments/v1` to the payments API, and `/codec` to the codec
    server (see [`gateway/Caddyfile`](../gateway/Caddyfile)). The FastAPI
-   `webui` landing page is a *separate* service on its own port (`8000`)
-   and is **not** fronted by the gateway.
+   `webui` homepage is served through the gateway at `/`, same-origin
+   with the payments API it polls.
 
 ![The application's component topology and the gateway as the single entry point](images/00-architecture.png)
 
