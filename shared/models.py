@@ -28,6 +28,21 @@ class CorrectionSource(StrEnum):
     LLM = "llm"  # produced by an agent calling a model
 
 
+class Beneficiary(BaseModel):
+    """The party being paid, and the bank that holds their account.
+
+    NOTE: ``bank_id`` is a normalized institution identifier (e.g. the 8-char
+    institution BIC ``HDFCINBB``). It is the discriminator that makes a
+    remembered ``wrong_bic`` correction beneficiary-specific instead of
+    corridor-wide. Left ``None`` when the anomaly's correction is genuinely
+    corridor-wide (e.g. a currency mismatch), so the memory key degrades to
+    ``corridor|anomaly_type``.
+    """
+
+    name: str
+    bank_id: str | None = None
+
+
 class PaymentAnomaly(BaseModel):
     """An incoming payment flagged with a single anomaly on a corridor.
 
@@ -93,21 +108,6 @@ class ApprovalDecision(BaseModel):
 #
 #
 # endregion FEATURE-ON: human-approval-signal
-
-
-class Beneficiary(BaseModel):
-    """The party being paid, and the bank that holds their account.
-
-    NOTE: ``bank_id`` is a normalized institution identifier (e.g. the 8-char
-    institution BIC ``HDFCINBB``). It is the discriminator that makes a
-    remembered ``wrong_bic`` correction beneficiary-specific instead of
-    corridor-wide. Left ``None`` when the anomaly's correction is genuinely
-    corridor-wide (e.g. a currency mismatch), so the memory key degrades to
-    ``corridor|anomaly_type``.
-    """
-
-    name: str
-    bank_id: str | None = None
 
 
 class CorridorPattern(BaseModel):
