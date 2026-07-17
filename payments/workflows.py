@@ -67,7 +67,7 @@ _APPROVAL_TIMEOUT: timedelta | None = None
 # # workflow.wait_condition(timeout=...) raises asyncio.TimeoutError when the
 # # deadline elapses, and the timer survives worker restarts like any other
 # # workflow state. Source: https://docs.temporal.io/develop/python/timers
-# _APPROVAL_TIMEOUT: timedelta | None = timedelta(minutes=5)
+# _APPROVAL_TIMEOUT: timedelta | None = timedelta(minutes=1)
 # endregion FEATURE-ON: approval-timeout
 
 

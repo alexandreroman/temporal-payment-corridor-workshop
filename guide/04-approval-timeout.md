@@ -68,7 +68,7 @@ _APPROVAL_TIMEOUT: timedelta | None = None   # wait forever
 Enabling swaps in the `FEATURE-ON` block:
 
 ```python
-_APPROVAL_TIMEOUT: timedelta | None = timedelta(minutes=5)
+_APPROVAL_TIMEOUT: timedelta | None = timedelta(minutes=1)
 ```
 
 Read its `NOTE:` and trace how it is used back in the `REVIEW` branch of
