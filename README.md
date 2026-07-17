@@ -190,11 +190,12 @@ by adding a Search Attribute upsert inside the coordinator — intentionally
 invalidates the committed replay fixture
 (`payments/testdata/coordinator-history.json`). The captured history no longer
 matches the new code path, so `payments/test_replay.py` failing after you
-enable such a feature is expected, not a regression. Regenerate the fixture
-for the new state with `make capture-history` if you want a passing replay
-test while the feature stays enabled. That capture drives the coordinator,
-which now reads corridor memory over HTTP, so the memory service must be
-running first (e.g. via `make dev`).
+enable such a feature is expected, not a regression. To get a passing
+replay test while the feature stays enabled, regenerate the fixture from a
+completed run. `make capture-history` is no longer self-contained: it
+captures an existing execution, so it assumes `make dev` is up and a `make
+simulator` run has happened — pass that run's workflow id, e.g. `make
+capture-history WORKFLOW_ID=correction-pmt-XXXX`.
 
 ## Usage
 

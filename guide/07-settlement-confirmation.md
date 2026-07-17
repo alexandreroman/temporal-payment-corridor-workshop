@@ -112,13 +112,14 @@ so replay diverges. Read the `NOTE:` at the settlement block in
 > Docs: [Versioning](https://docs.temporal.io/develop/python/versioning).
 
 If you want a passing replay test *while the feature stays enabled*,
-regenerate the fixture for the new state (the memory service must be
-running — the capture drives the coordinator, which reads memory over
-HTTP):
+regenerate the fixture from a real run. The dev stack is already up, so no
+separate memory service is needed. Run the simulator with the feature
+enabled, take the printed `workflow: correction-pmt-XXXX` id, then pass it
+to `capture-history`:
 
 ```bash
-make memory            # in one terminal, if not already via `make dev`
-make capture-history   # regenerate the fixture for the enabled state
+make simulator                                        # prints the workflow id
+make capture-history WORKFLOW_ID=correction-pmt-XXXX  # capture the new state
 ```
 
 This is covered further in step [12](12-testing.md).

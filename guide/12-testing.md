@@ -9,7 +9,7 @@
 |                       |                                                                                                                                                                                                                                            |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Feature**           | none — the test suite is always present                                                                                                                                                                                                    |
-| **Key files**         | [`payments/test_replay.py`](../payments/test_replay.py), [`payments/test_workflows.py`](../payments/test_workflows.py), [`payments/test_agents.py`](../payments/test_agents.py), [`tools/capture_history.py`](../tools/capture_history.py) |
+| **Key files**         | [`payments/test_replay.py`](../payments/test_replay.py), [`payments/test_workflows.py`](../payments/test_workflows.py), [`payments/test_agents.py`](../payments/test_agents.py)                                                            |
 | **Temporal concepts** | `Replayer`, captured history, `WorkflowEnvironment`, mocking the model                                                                                                                                                                     |
 | **Docs**              | [Testing suite](https://docs.temporal.io/develop/python/testing-suite)                                                                                                                                                                     |
 
@@ -55,18 +55,27 @@ instead of silently recapturing.
 ### Regenerating the fixture
 
 If you want the replay test green while a shape-changing feature stays
-enabled, recapture the fixture. The capture drives the real coordinator,
-which reads corridor memory over HTTP, so the memory service must be up:
+enabled, recapture the fixture from a real run. With the dev stack up
+(`make dev`), the coordinator and the corridor-memory service it reads
+over HTTP are already running, so there is no separate service to start.
+
+Capture is a two-step flow because each correction gets a random workflow
+id. Run the simulator, note the `workflow: correction-pmt-XXXX` line it
+prints, then pass that id to `capture-history`:
 
 ```bash
-make memory            # if not already running via `make dev`
-make capture-history   # writes payments/testdata/coordinator-history.json
+make simulator                                        # prints the workflow id
+make capture-history WORKFLOW_ID=correction-pmt-XXXX  # writes the fixture
 ```
 
-> **Use the right memory port.** The capture reaches the memory service on
-> the port `make` uses; a bare invocation against the wrong port yields a
-> broken `applied:false` fixture. Always go through `make`. To restore the
-> committed baseline: `git checkout payments/testdata/coordinator-history.json`.
+The default `memory-hit` scenario replays the seeded `US->IN` /
+`WRONG_BIC` anomaly: a guaranteed memory hit, no model call, and the same
+history shape as the committed fixture. It closes in under a second, so by
+capture time the workflow is complete and its full history is available.
+
+The target shells out to the `temporal` CLI and `jq` (both must be on your
+`PATH`). To restore the committed baseline:
+`git checkout payments/testdata/coordinator-history.json`.
 
 ## Testing agents without the network
 
