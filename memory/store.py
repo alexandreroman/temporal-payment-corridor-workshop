@@ -19,14 +19,24 @@ from __future__ import annotations
 from shared.models import AnomalyType, CorridorPattern
 
 
-def _key(corridor: str, anomaly_type: AnomalyType) -> str:
+def _key(
+    corridor: str,
+    anomaly_type: AnomalyType,
+    beneficiary_bank_id: str | None = None,
+) -> str:
     """Build the stable dict key for a (corridor, anomaly_type) pair.
 
     A single flat string key (``"US->IN|wrong_bic"``) mirrors the key form
     the future durable memory workflow uses, so the two backing stores stay
     interchangeable behind the same lookup/remember contract.
+
+    NOTE: append the beneficiary-bank discriminator only when present, so a
+    wrong_bic pattern is beneficiary-specific while corridor-wide anomaly
+    types (bank_id None) keep the original corridor|anomaly_type key. Both
+    backends must build the key identically to stay interchangeable.
     """
-    return f"{corridor}|{anomaly_type}"
+    base = f"{corridor}|{anomaly_type}"
+    return f"{base}|{beneficiary_bank_id}" if beneficiary_bank_id else base
 
 
 def seed() -> dict[str, CorridorPattern]:
@@ -56,7 +66,11 @@ def seed() -> dict[str, CorridorPattern]:
 _PATTERNS: dict[str, CorridorPattern] = seed()
 
 
-def lookup(corridor: str, anomaly_type: AnomalyType) -> CorridorPattern | None:
+def lookup(
+    corridor: str,
+    anomaly_type: AnomalyType,
+    beneficiary_bank_id: str | None = None,
+) -> CorridorPattern | None:
     """Return the stored pattern for a corridor + anomaly type, or None.
 
     NOTE: This read is intentionally pure — it never mutates ``hit_count`` or
@@ -65,9 +79,11 @@ def lookup(corridor: str, anomaly_type: AnomalyType) -> CorridorPattern | None:
     read-only and cannot durably mutate workflow state, so counting hits here
     would create a behaviour the durable version could not reproduce.
     """
-    return _PATTERNS.get(_key(corridor, anomaly_type))
+    return _PATTERNS.get(_key(corridor, anomaly_type, beneficiary_bank_id))
 
 
 def remember(pattern: CorridorPattern) -> None:
     """Upsert a learned correction pattern (last-write-wins)."""
-    _PATTERNS[_key(pattern.corridor, pattern.anomaly_type)] = pattern
+    _PATTERNS[
+        _key(pattern.corridor, pattern.anomaly_type, pattern.beneficiary_bank_id)
+    ] = pattern

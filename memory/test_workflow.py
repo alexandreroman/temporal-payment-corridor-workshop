@@ -222,6 +222,36 @@ def test_continue_as_new_preserves_accumulated_patterns():
     asyncio.run(scenario())
 
 
+def test_query_with_bank_id_keys_a_distinct_pattern():
+    async def scenario() -> None:
+        async with await WorkflowEnvironment.start_local() as env:
+            client = await _client(env)
+            async with _worker(client):
+                handle = await _start_seeded(client)
+                specific = CorridorPattern(
+                    corridor="US->GB",
+                    anomaly_type=AnomalyType.WRONG_BIC,
+                    beneficiary_bank_id="BARCGB22",
+                    field_to_fix="bic",
+                    proposed_value="BARCGB22XXX",
+                    confidence=0.9,
+                )
+                await handle.execute_update(MemoryWorkflow.remember, specific)
+
+                hit = await handle.query(
+                    MemoryWorkflow.lookup,
+                    args=["US->GB", AnomalyType.WRONG_BIC, "BARCGB22"],
+                )
+                miss = await handle.query(
+                    MemoryWorkflow.lookup, args=["US->GB", AnomalyType.WRONG_BIC]
+                )
+
+        assert hit == specific
+        assert miss is None
+
+    asyncio.run(scenario())
+
+
 async def _eventually(condition, *, attempts: int = 50, delay: float = 0.1) -> None:
     """Poll an async predicate until it holds, to absorb continue-as-new lag."""
     for _ in range(attempts):

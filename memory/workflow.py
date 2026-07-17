@@ -53,8 +53,13 @@ class MemoryWorkflow:
         self._updates = 0
 
     @staticmethod
-    def _key(corridor: str, anomaly_type: AnomalyType) -> str:
-        return f"{corridor}|{anomaly_type}"
+    def _key(
+        corridor: str,
+        anomaly_type: AnomalyType,
+        beneficiary_bank_id: str | None = None,
+    ) -> str:
+        base = f"{corridor}|{anomaly_type}"
+        return f"{base}|{beneficiary_bank_id}" if beneficiary_bank_id else base
 
     @workflow.run
     async def run(self, initial: dict[str, CorridorPattern] | None = None) -> None:
@@ -72,7 +77,11 @@ class MemoryWorkflow:
 
     @workflow.update
     async def remember(self, pattern: CorridorPattern) -> None:
-        self._patterns[self._key(pattern.corridor, pattern.anomaly_type)] = pattern
+        self._patterns[
+            self._key(
+                pattern.corridor, pattern.anomaly_type, pattern.beneficiary_bank_id
+            )
+        ] = pattern
         self._updates += 1
 
     @remember.validator
@@ -86,6 +95,11 @@ class MemoryWorkflow:
 
     @workflow.query
     def lookup(
-        self, corridor: str, anomaly_type: AnomalyType
+        self,
+        corridor: str,
+        anomaly_type: AnomalyType,
+        beneficiary_bank_id: str | None = None,
     ) -> CorridorPattern | None:
-        return self._patterns.get(self._key(corridor, anomaly_type))
+        return self._patterns.get(
+            self._key(corridor, anomaly_type, beneficiary_bank_id)
+        )

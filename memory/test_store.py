@@ -88,6 +88,23 @@ def test_lookup_does_not_mutate_hit_count():
     assert second.hit_count == 0
 
 
+def test_beneficiary_bank_id_keys_a_distinct_pattern():
+    specific = CorridorPattern(
+        corridor="US->GB",
+        anomaly_type=AnomalyType.WRONG_BIC,
+        beneficiary_bank_id="BARCGB22",
+        field_to_fix="bic",
+        proposed_value="BARCGB22XXX",
+        confidence=0.9,
+    )
+    store.remember(specific)
+
+    # A lookup carrying the same bank id hits; a corridor-wide lookup (no
+    # discriminator) is a different key and misses.
+    assert store.lookup("US->GB", AnomalyType.WRONG_BIC, "BARCGB22") == specific
+    assert store.lookup("US->GB", AnomalyType.WRONG_BIC) is None
+
+
 def test_seed_returns_a_fresh_isolated_dict_each_call():
     first = store.seed()
     assert set(first) == {"US->IN|wrong_bic"}
