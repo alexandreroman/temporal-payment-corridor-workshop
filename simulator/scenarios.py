@@ -130,6 +130,10 @@ SCENARIOS: dict[str, Scenario] = {
         currency="USD",
         anomaly_type=AnomalyType.WRONG_BIC,
         beneficiary_name="private individual",
+        # No beneficiary_bank_id (defaults to None): a private individual has
+        # no known institution, so this keys corridor-wide (US->GB|wrong_bic)
+        # rather than to a bank, keeping it isolated from any bank-specific
+        # pattern and never auto-applied.
         # Deliberately sparse and ambiguous: no bank name and a BIC fragment too
         # short to disambiguate, so the agent has little to anchor a confident
         # fix on. Best-effort only — see the module-level caveat.

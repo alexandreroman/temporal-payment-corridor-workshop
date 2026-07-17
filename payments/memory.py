@@ -43,7 +43,8 @@ async def read_corridor_memory(
     anomaly_type: AnomalyType,
     beneficiary_bank_id: str | None = None,
 ) -> CorridorPattern | None:
-    """Look up a known correction pattern for a corridor + anomaly type.
+    """Look up a known correction pattern for a corridor + anomaly type,
+    optionally scoped to a beneficiary bank.
 
     NOTE: The HTTP call lives in an activity precisely because workflow code
     must stay deterministic — all I/O belongs in activities. The memory

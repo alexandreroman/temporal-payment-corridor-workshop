@@ -442,7 +442,8 @@ class PaymentCorrectionCoordinator:
 
         # Passive learning: once a correction the agents *reasoned out* -- not
         # one already recalled from memory -- is applied, remember it so the
-        # next matching anomaly on this corridor short-circuits the model.
+        # next matching anomaly for this beneficiary bank on this corridor
+        # short-circuits the model.
         # Best-effort by design: the correction is already applied, so a
         # memory-service hiccup must never fail the workflow.
         # Source: https://docs.temporal.io/develop/python/failure-detection

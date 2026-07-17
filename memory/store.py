@@ -24,7 +24,8 @@ def _key(
     anomaly_type: AnomalyType,
     beneficiary_bank_id: str | None = None,
 ) -> str:
-    """Build the stable dict key for a (corridor, anomaly_type) pair.
+    """Build the stable dict key for a corridor + anomaly type, optionally
+    scoped to a beneficiary bank.
 
     A single flat string key (``"US->IN|wrong_bic"``) mirrors the key form
     the future durable memory workflow uses, so the two backing stores stay
@@ -72,7 +73,8 @@ def lookup(
     anomaly_type: AnomalyType,
     beneficiary_bank_id: str | None = None,
 ) -> CorridorPattern | None:
-    """Return the stored pattern for a corridor + anomaly type, or None.
+    """Return the stored pattern for a corridor + anomaly type, optionally
+    scoped to a beneficiary bank, or None.
 
     NOTE: This read is intentionally pure — it never mutates ``hit_count`` or
     any other state. That keeps the baseline consistent with the future durable

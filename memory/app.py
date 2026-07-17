@@ -140,7 +140,8 @@ async def lookup(
     anomaly_type: AnomalyType,
     beneficiary_bank_id: str | None = None,
 ) -> CorridorPattern | None:
-    """Look up a known correction pattern for a corridor + anomaly type.
+    """Look up a known correction pattern for a corridor + anomaly type,
+    optionally scoped to a beneficiary bank.
 
     A miss returns ``null`` with HTTP 200 (not 404): "no pattern known yet" is
     an expected, ordinary answer for a lookup, not a client error.
