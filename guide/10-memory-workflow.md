@@ -69,7 +69,9 @@ HTTP handlers are a `REPLACE`:
 
 ```python
 # lookup: baseline -> store.lookup(...); enabled -> a Temporal query
-pattern = await handle.query(MemoryWorkflow.lookup, args=[corridor, anomaly_type])
+pattern = await handle.query(
+    MemoryWorkflow.lookup, args=[corridor, anomaly_type, beneficiary_bank_id]
+)
 
 # remember: baseline -> store.remember(...); enabled -> a Temporal update
 await handle.execute_update(MemoryWorkflow.remember, pattern)

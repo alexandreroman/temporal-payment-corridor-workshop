@@ -51,6 +51,7 @@ branch now waits instead of refusing. The core is:
 ```python
 self._awaiting = True
 _set_status("awaiting-approval")
+self._review = ReviewState(proposal=proposal, verdict=verdict)
 await workflow.wait_condition(
     lambda: self._decision is not None, timeout=_APPROVAL_TIMEOUT
 )
@@ -58,11 +59,13 @@ await workflow.wait_condition(
 
 Read the `NOTE:` blocks and note three things:
 
-- The coordinator now exposes a **signal** and two **queries** at the
+- The coordinator now exposes a **signal** and three **queries** at the
   bottom of the class:
   - `approve_correction(decision)` — the signal a reviewer sends.
   - `decision()` — returns the stored decision.
   - `awaiting_approval()` — returns whether it is currently blocked.
+  - `pending_review()` — returns the pending `ReviewState` (proposal and
+    verdict) the approval panel renders, or `None` when not awaiting.
 - `_APPROVAL_TIMEOUT` defaults to `None` (wait forever). Step
   [04](04-approval-timeout.md) turns it into a real deadline.
 - The waiting state is published through **two seams**: the in-memory

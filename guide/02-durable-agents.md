@@ -82,7 +82,7 @@ Their `run` methods delegate to two shared helpers, `_propose` and
 ```python
 pattern = await workflow.execute_activity(
     read_corridor_memory,
-    args=[anomaly.corridor, anomaly.anomaly_type],
+    args=[anomaly.corridor, anomaly.anomaly_type, _beneficiary_bank_id(anomaly)],
     start_to_close_timeout=timedelta(seconds=10),
 )
 if pattern is not None and pattern.confidence >= CONFIDENCE_THRESHOLD:

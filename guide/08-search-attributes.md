@@ -83,7 +83,7 @@ actually upserts. This is the second seam from step
   the query string:
 
   ```python
-  query = f"WorkflowType = '{_WORKFLOW_TYPE}' AND ExecutionStatus = 'Running'"
+  query = f"WorkflowType = '{_WORKFLOW_TYPE}'"
   if awaiting_approval:
       query += " AND status = 'awaiting-approval'"
   ```
