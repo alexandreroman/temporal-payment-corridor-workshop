@@ -67,19 +67,11 @@
         </div>
       </header>
 
-      <!-- List heading -->
-      <div class="mb-4 mt-10 flex items-center justify-between">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-white/50">
-          Payment anomalies:
-          <span class="text-white/30" x-text="anomalies.length"></span>
-        </h2>
-      </div>
-
       <!-- Inline error state: the payments API is unreachable. refresh() keeps
            retrying every 3s, so this clears itself as soon as it responds. -->
       <p
         x-show="error"
-        class="rounded-xl border border-red-400/30 bg-red-400/10 px-5 py-4 text-sm text-red-300"
+        class="mt-10 rounded-xl border border-red-400/30 bg-red-400/10 px-5 py-4 text-sm text-red-300"
       >
         Corrections unavailable — retrying every 3s.
       </p>
@@ -87,12 +79,12 @@
       <!-- Empty state -->
       <p
         x-show="!error && anomalies.length === 0"
-        class="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm text-white/50"
+        class="mt-10 rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm text-white/50"
       >
         No payment anomalies yet.
       </p>
 
-      <ul class="space-y-3" x-show="!error && anomalies.length > 0">
+      <ul class="mt-10 space-y-3" x-show="!error && anomalies.length > 0">
         <template x-for="a in anomalies" :key="a.payment_id">
           <li class="rounded-xl border border-white/10 bg-white/[0.03]">
             <div class="flex items-center gap-4 px-5 py-4">
