@@ -123,6 +123,10 @@ class _StubHandle:
         # region FEATURE-ON: human-approval-signal
         # if _query is PaymentCorrectionCoordinator.pending_review:
         #     return self._review
+        # if _query is PaymentCorrectionCoordinator.awaiting_approval:
+        #     # Awaiting a human exactly while a pending review is populated; the
+        #     # listing's _query_awaiting round-trips this query per running row.
+        #     return self._review is not None
         # endregion FEATURE-ON: human-approval-signal
         # The baseline listing only ever queries describe_anomaly; the awaiting
         # state comes from _query_awaiting (a no-op returning False), not a query.

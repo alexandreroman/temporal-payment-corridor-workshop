@@ -134,9 +134,18 @@ async def write_corridor_memory(pattern: CorridorPattern) -> None:
 
 # A TestModel-backed agent: deterministic, offline, and still routed through
 # a real Temporal model-request activity, so it exercises the same code path
-# a live model would (just without the network call).
+# a live model would (just without the network call). The output is a fixed,
+# valid BIC proposal (via custom_output_args) rather than TestModel's
+# auto-generated example, so downstream BIC validation accepts it.
 _test_instruction_agent = Agent(
-    TestModel(),
+    TestModel(
+        custom_output_args={
+            "field_to_fix": "bic",
+            "proposed_value": "HDFCINBBXXX",
+            "rationale": "Test double proposal.",
+            "confidence": 0.0,
+        }
+    ),
     name="instruction_agent",
     output_type=AgentCorrection,
     instructions="Test double; TestModel never reads this.",
@@ -251,8 +260,8 @@ def test_instruction_agent_returns_llm_proposal_on_memory_miss():
                 )
 
         assert proposal.source == CorrectionSource.LLM
-        # Values come straight from TestModel's generated example output;
-        # the point is that the LLM path actually ran and populated them.
+        # The fake returns a fixed, valid BIC proposal; the point is that the
+        # LLM path actually ran and populated them.
         assert proposal.field_to_fix
         assert proposal.proposed_value
         assert proposal.rationale
@@ -265,8 +274,9 @@ def test_coordinator_holds_when_compliance_fails():
 
     The instruction agent hits the seeded memory (US->IN / WRONG_BIC), so it
     returns a confident proposal offline. The compliance agent fails, so there
-    is no clearance -- the coordinator holds instead of applying. With human
-    oversight not yet wired (baseline), a held correction is refused.
+    is no clearance -- the coordinator holds instead of applying. In the
+    baseline, a held correction is refused outright; with human-approval-signal
+    on, the coordinator awaits a human who rejects it.
     """
 
     async def scenario() -> None:
@@ -303,6 +313,9 @@ def test_coordinator_holds_when_compliance_fails():
                     ),
                     details={"bic": "WRONG"},
                 )
+                # region FEATURE-OFF: human-approval-signal
+                # Baseline: no oversight wired, so a fail-closed hold (no
+                # verdict) is refused outright, surfacing the gate's reason.
                 outcome: CorrectionOutcome = await client.execute_workflow(
                     PaymentCorrectionCoordinator.run,
                     anomaly,
@@ -310,11 +323,45 @@ def test_coordinator_holds_when_compliance_fails():
                     task_queue=TASK_QUEUE,
                     execution_timeout=timedelta(seconds=30),
                 )
+                assert outcome.applied is False
+                assert outcome.proposal is not None
+                assert outcome.proposal.agent_name == "instruction_agent"
+                assert outcome.verdict is None
+                # endregion FEATURE-OFF: human-approval-signal
 
-        assert outcome.applied is False
-        assert outcome.proposal is not None
-        assert outcome.proposal.agent_name == "instruction_agent"
-        assert outcome.verdict is None  # compliance failed -> no verdict recorded
+                # region FEATURE-ON: human-approval-signal
+                # # With oversight wired, a fail-closed hold no longer refuses on
+                # # its own: it waits for a human. awaiting_approval() reports True
+                # # until a decision arrives; the reviewer REJECTS, so the
+                # # correction is refused and never applied.
+                # handle = await client.start_workflow(
+                #     PaymentCorrectionCoordinator.run,
+                #     anomaly,
+                #     id="test-coordinator-holds-when-compliance-fails",
+                #     task_queue=TASK_QUEUE,
+                #     execution_timeout=timedelta(seconds=30),
+                # )
+                # awaiting = False
+                # for _ in range(50):
+                #     awaiting = await handle.query(
+                #         PaymentCorrectionCoordinator.awaiting_approval
+                #     )
+                #     if awaiting:
+                #         break
+                #     await asyncio.sleep(0.1)
+                # assert awaiting
+                # await handle.signal(
+                #     PaymentCorrectionCoordinator.approve_correction,
+                #     ApprovalDecision(approved=False, approver="tester"),
+                # )
+                # outcome: CorrectionOutcome = await handle.result()
+                # assert outcome.applied is False
+                # assert outcome.proposal is not None
+                # assert outcome.proposal.agent_name == "instruction_agent"
+                # assert outcome.verdict is None  # compliance failed -> no verdict
+                # assert outcome.decision is not None
+                # assert outcome.decision.approved is False
+                # endregion FEATURE-ON: human-approval-signal
 
     asyncio.run(scenario())
 
@@ -348,6 +395,9 @@ def test_coordinator_applies_when_compliant_and_confident():
                     read_corridor_memory,
                     write_corridor_memory,
                     apply_correction,
+                    # region FEATURE-ON: settlement-confirmation
+                    # confirm_settlement,
+                    # endregion FEATURE-ON: settlement-confirmation
                 ],
             ):
                 anomaly = PaymentAnomaly(
