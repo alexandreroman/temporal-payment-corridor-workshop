@@ -29,7 +29,7 @@ class _StoreBackedHandle:
     """A workflow-handle stand-in that serves the in-memory store."""
 
     async def query(self, _query, args):
-        return store.lookup(args[0], args[1])
+        return store.lookup(*args)
 
     async def execute_update(self, _update, pattern):
         store.remember(pattern)
@@ -133,5 +133,38 @@ def test_remember_returns_204_then_lookup_finds_the_pattern():
             )
         assert found.status_code == 200
         assert found.json()["proposed_value"] == "GBP"
+
+    asyncio.run(scenario())
+
+
+def test_lookup_with_bank_id_keys_a_distinct_pattern():
+    pattern = {
+        "corridor": "US->GB",
+        "anomaly_type": "wrong_bic",
+        "beneficiary_bank_id": "BARCGB22",
+        "field_to_fix": "bic",
+        "proposed_value": "BARCGB22XXX",
+        "confidence": 0.9,
+    }
+
+    async def scenario() -> None:
+        async with _client() as client:
+            stored = await client.post("/api/memory/v1/remember", json=pattern)
+            assert stored.status_code == 204
+
+            hit = await client.get(
+                "/api/memory/v1/lookup",
+                params={
+                    "corridor": "US->GB",
+                    "anomaly_type": "wrong_bic",
+                    "beneficiary_bank_id": "BARCGB22",
+                },
+            )
+            miss = await client.get(
+                "/api/memory/v1/lookup",
+                params={"corridor": "US->GB", "anomaly_type": "wrong_bic"},
+            )
+        assert hit.json()["proposed_value"] == "BARCGB22XXX"
+        assert miss.json() is None
 
     asyncio.run(scenario())
