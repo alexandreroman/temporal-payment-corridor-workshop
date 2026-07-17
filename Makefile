@@ -30,13 +30,14 @@ endif
 ifneq (,$(wildcard compose.override.yaml))
 GATEWAY_PORT          := $(shell sed -nE 's/.*"([0-9]+):8080".*/\1/p' compose.override.yaml | head -n1)
 TEMPORAL_GRPC_PORT    := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.override.yaml | head -n1)
-MEMORY_PORT           := $(shell sed -nE 's/.*"([0-9]+):8010".*/\1/p' compose.override.yaml | head -n1)
-# Metrics and the payments API are no longer published container ports (see
-# compose.yaml / worktree-ports), so there is nothing to read back for them.
-# In dev they run as HOST processes; derive their ports from the gateway's
-# (already worktree-unique) host port with the same offsets worktree-ports uses
-# for the published services, so parallel worktrees never collide.
+# Metrics, the payments API, and memory are no longer published container
+# ports (see compose.yaml / worktree-ports), so there is nothing to read back
+# for them. In dev they run as HOST processes; derive their ports from the
+# gateway's (already worktree-unique) host port with the same offsets
+# worktree-ports uses for the published services, so parallel worktrees
+# never collide.
 PAYMENTS_METRICS_PORT := $(shell echo $$(($(GATEWAY_PORT) + 2)))
+MEMORY_PORT           := $(shell echo $$(($(GATEWAY_PORT) + 4)))
 PAYMENTS_API_PORT     := $(shell echo $$(($(GATEWAY_PORT) + 5)))
 # Point the host-side dev flow (uv run payments/payments-api) at the remapped
 # ports. Assign unconditionally (:=, not ?=): the override file is the source
@@ -161,17 +162,17 @@ worktree-init: ## Initialise a worktree: install deps and remap host ports off C
 # in sync (including --ui-public-path, which must stay /temporal here too).
 #
 # Only the genuinely published services are remapped below: gateway
-# (CASPER_PORT itself), temporal gRPC (+1), and memory (+4). The Web UI is
-# static and has no port to remap — it's served by the gateway from a
-# volume mount. Metrics and the payments API are no longer published
-# container ports; their host-side dev-process ports are instead derived
-# arithmetically from GATEWAY_PORT (offsets +2/+5, see the ifneq block
+# (CASPER_PORT itself) and temporal gRPC (+1). The Web UI is static and has
+# no port to remap — it's served by the gateway from a volume mount.
+# Metrics, the payments API, and memory are no longer published container
+# ports; their host-side dev-process ports are instead derived
+# arithmetically from GATEWAY_PORT (offsets +2/+4/+5, see the ifneq block
 # above). Offset +3 is unused.
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
-		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --ui-public-path\n      - /temporal\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n  gateway:\n    ports: !override\n      - "%s:8080"\n  memory:\n    ports: !override\n      - "%s:8010"\n' \
-			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" $$((CASPER_PORT + 4)) > compose.override.yaml; \
+		printf 'services:\n  temporal:\n    ports: !override\n      - "%s:7233"\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - http://localhost:%s/codec\n      - --ui-public-path\n      - /temporal\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n  gateway:\n    ports: !override\n      - "%s:8080"\n' \
+			$$((CASPER_PORT + 1)) "$$CASPER_PORT" "$$CASPER_PORT" > compose.override.yaml; \
 		echo "Wrote compose.override.yaml (CASPER_PORT=$$CASPER_PORT)"; \
 	fi
 

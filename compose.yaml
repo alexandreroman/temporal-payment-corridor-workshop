@@ -132,8 +132,11 @@ services:
       # runs an embedded worker on its own namespace); harmless otherwise.
       TEMPORAL_ADDRESS: temporal:7233
       MEMORY_TEMPORAL_NAMESPACE: memory
-    ports:
-      - "8010:8010" # http — corridor memory API (/api/memory/v1)
+    # Reached only in-network by the payments containers (memory:8010) —
+    # publishes no host port. Nothing outside the Compose network needs it
+    # (capture-history now uses the temporal CLI over gRPC, not memory).
+    expose:
+      - "8010"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8010/healthz')\""]
       interval: 10s

@@ -39,3 +39,4 @@
 - [Gateway (Caddy) healthcheck reports unhealthy by design](references/reference_gateway_healthcheck_unhealthy.md) — the gateway probe hits the unavailable Caddy admin API; ignore its Health column, Caddy still serves the Web UI and /codec.
 - [Enforced format is ruff defaults (88 cols)](references/feedback_ruff_line_length.md) — no ruff config, so line length is 88 (not CLAUDE.md's 120); a pre-commit hook lints the whole tree, so every commit needs the entire repo clean.
 - [Implementation status](references/project_implementation_status.md) — reusable scaffold tracking pending workshop feature-set work; currently nothing pending.
+- [Memory service publishes no host port](references/reference_memory_port_unpublished.md) — memory is `expose`d only (memory:8010 in-network); MEMORY_PORT for dev is derived from GATEWAY_PORT+4, not read from the override.
