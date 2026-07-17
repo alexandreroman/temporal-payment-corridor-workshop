@@ -82,8 +82,10 @@ _APPROVAL_TIMEOUT: timedelta | None = None
 # _CORRIDOR_SA = SearchAttributeKey.for_keyword("corridor")
 # _ANOMALY_TYPE_SA = SearchAttributeKey.for_keyword("anomalyType")
 # # NOTE: status carries the correction lifecycle ("processing" ->
-# # "awaiting-approval") so the payments API can list and filter executions
-# # server-side. Registered on the dev server via compose.yaml.
+# # "awaiting-approval" -> "applied"/"held") so the payments API can list and
+# # filter executions server-side. A terminal value ("applied"/"held") is
+# # published before every terminal return, so a completed execution never
+# # lingers as "processing". Registered on the dev server via compose.yaml.
 # _STATUS_SA = SearchAttributeKey.for_keyword("status")
 #
 #
@@ -367,6 +369,7 @@ class PaymentCorrectionCoordinator:
         decision, message = _gate(proposal, verdict)
 
         if decision is GateDecision.NO_PROPOSAL:
+            _set_status("held")
             return CorrectionOutcome(
                 payment_id=anomaly.payment_id,
                 applied=False,
@@ -383,8 +386,10 @@ class PaymentCorrectionCoordinator:
             # # in-memory flag feeds the awaiting_approval() query (client-side
             # # listing), and _set_status(...) upserts the status search attribute
             # # (server-side filtering) when that feature is enabled. The finally
-            # # block resets both once the wait resolves, so an approved-and-
-            # # resuming correction no longer lists as awaiting.
+            # # block resets only the client-side flags; the terminal returns
+            # # publish "held", and the approved-resume path republishes
+            # # "processing", so a completed or resuming correction never lingers
+            # # as awaiting-approval.
             # self._awaiting = True
             # _set_status("awaiting-approval")
             # # NOTE: The pending proposal + verdict, read by the pending_review()
@@ -398,6 +403,7 @@ class PaymentCorrectionCoordinator:
             #         lambda: self._decision is not None, timeout=_APPROVAL_TIMEOUT
             #     )
             # except asyncio.TimeoutError:
+            #     _set_status("held")
             #     return CorrectionOutcome(
             #         payment_id=anomaly.payment_id,
             #         applied=False,
@@ -408,9 +414,9 @@ class PaymentCorrectionCoordinator:
             # finally:
             #     self._awaiting = False
             #     self._review = None
-            #     _set_status("processing")
             # assert self._decision is not None
             # if not self._decision.approved:
+            #     _set_status("held")
             #     return CorrectionOutcome(
             #         payment_id=anomaly.payment_id,
             #         applied=False,
@@ -419,11 +425,15 @@ class PaymentCorrectionCoordinator:
             #         decision=self._decision,
             #         message="Correction rejected by reviewer.",
             #     )
+            # # The correction is approved and resuming: republish "processing"
+            # # so it no longer lists as awaiting-approval while applying.
+            # _set_status("processing")
             # endregion FEATURE-ON: human-approval-signal
 
             # region FEATURE-OFF: human-approval-signal
             # Starting point (no oversight wired yet): refuse a held correction
             # outright, surfacing the gate's reason.
+            _set_status("held")
             return CorrectionOutcome(
                 payment_id=anomaly.payment_id,
                 applied=False,
@@ -460,6 +470,10 @@ class PaymentCorrectionCoordinator:
                 workflow.logger.warning(
                     "Corridor-memory write-back failed; correction still applied"
                 )
+
+        # The correction is applied: publish the terminal status so a completed
+        # execution no longer lists as "processing" in Visibility.
+        _set_status("applied")
 
         # region FEATURE-ON: settlement-confirmation
         # # Once the correction is applied, wait for the downstream rail to

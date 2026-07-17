@@ -274,6 +274,7 @@ def test_coordinator_holds_when_compliance_fails():
             search_attributes=[
                 SearchAttributeKey.for_keyword("corridor"),
                 SearchAttributeKey.for_keyword("anomalyType"),
+                SearchAttributeKey.for_keyword("status"),
             ],
         ) as env:
             client = await _local_env_client(env)
@@ -331,6 +332,7 @@ def test_coordinator_applies_when_compliant_and_confident():
             search_attributes=[
                 SearchAttributeKey.for_keyword("corridor"),
                 SearchAttributeKey.for_keyword("anomalyType"),
+                SearchAttributeKey.for_keyword("status"),
             ],
         ) as env:
             client = await _local_env_client(env)
@@ -367,6 +369,21 @@ def test_coordinator_applies_when_compliant_and_confident():
                     execution_timeout=timedelta(seconds=30),
                 )
 
+                # region FEATURE-ON: search-attributes
+                # # NOTE: The coordinator must publish a terminal status
+                # # ("applied") before returning, so a completed execution never
+                # # lingers at "processing" in Visibility. Read it back through
+                # # describe() rather than trusting the returned outcome.
+                # handle = client.get_workflow_handle(
+                #     "test-coordinator-applies-when-compliant"
+                # )
+                # desc = await handle.describe()
+                # status = desc.typed_search_attributes.get(
+                #     SearchAttributeKey.for_keyword("status")
+                # )
+                # assert status == "applied"
+                # endregion FEATURE-ON: search-attributes
+
         assert outcome.applied is True
         assert outcome.proposal is not None
         assert outcome.proposal.agent_name == "instruction_agent"
@@ -397,6 +414,7 @@ def test_payload_encryption_encrypts_history():
             search_attributes=[
                 SearchAttributeKey.for_keyword("corridor"),
                 SearchAttributeKey.for_keyword("anomalyType"),
+                SearchAttributeKey.for_keyword("status"),
             ],
         ) as env:
             plain_client = await _local_env_client(env)
