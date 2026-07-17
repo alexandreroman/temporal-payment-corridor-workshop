@@ -216,7 +216,7 @@
       </ul>
 
       <p class="mt-8 text-center text-xs text-white/30">
-        Newest first · running corrections + recent history · list re-fetched every 3s via webui → payments API
+        Newest first · running corrections + recent history · list re-fetched every 3s from the payments API (same origin, via the gateway)
       </p>
     </div>
 
@@ -225,7 +225,7 @@
       // NOTE: The browser calls the payments API same-origin, through the
       // gateway that fronts both webui and the API on one port — webui itself
       // never proxies this request, so no httpx/PAYMENTS_API_* config lives
-      // server-side. Source: docs/superpowers/specs (gateway topology).
+      // server-side.
       function corridor() {
         return {
           anomalies: [],
@@ -314,8 +314,16 @@
           },
 
           init() {
-            this.refresh();
-            setInterval(() => this.refresh(), 3000);
+            this.poll();
+          },
+
+          // Drives the periodic refresh with a self-chaining setTimeout
+          // instead of setInterval: the next poll is scheduled only once the
+          // current refresh() (fetch + merge + pending reviews) has settled,
+          // so a slow cycle can never overlap with the next one.
+          async poll() {
+            await this.refresh();
+            setTimeout(() => this.poll(), 3000);
           },
 
           // Maps a row's status to the Tailwind classes for its badge pill.

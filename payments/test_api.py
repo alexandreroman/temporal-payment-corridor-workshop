@@ -415,7 +415,7 @@ def test_list_anomalies_caps_at_20_newest_rows():
         for wid in workflow_ids
     }
     # pay-0 is newest (0 minutes ago); pay-20 is oldest (20 minutes ago), matching
-    # the newest-first order the "ORDER BY StartTime DESC" query relies on.
+    # the newest-first order that summaries.sort(key=..., reverse=True) produces.
     workflows = [_wf(wid, minutes_ago) for minutes_ago, wid in enumerate(workflow_ids)]
     stub = _StubClient(handles=handles, workflows=workflows)
     api.app.state.temporal_client = stub
@@ -454,7 +454,8 @@ def test_list_anomalies_cap_does_not_evict_an_old_awaiting_row(monkeypatch):
         )
 
     # Newest first: the 20 newer rows (0..19 minutes ago), then the much older
-    # awaiting row last, mirroring what "ORDER BY StartTime DESC" would yield.
+    # awaiting row last -- list_workflows yields them in this order here, and
+    # summaries.sort(key=..., reverse=True) would reproduce it for real rows too.
     workflows = [_wf(wid, minutes_ago) for minutes_ago, wid in enumerate(newer_ids)]
     workflows.append(_wf(old_awaiting_id, 1_000))
     stub = _StubClient(handles=handles, workflows=workflows)
