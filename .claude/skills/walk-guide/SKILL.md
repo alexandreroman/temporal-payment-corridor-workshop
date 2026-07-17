@@ -109,6 +109,22 @@ the whole guide in order, starting at `00`.
    misleads outranks imprecision), and the concrete correction. Skip
    anything that held up.
 
+### Worktree port remapping is never a finding
+
+If you are running in a worktree, `make worktree-ports` writes a
+`compose.override.yaml` that remaps the gateway host port to `CASPER_PORT`
+(and Temporal off `CASPER_PORT + 1`). So the `make dev` banner, the Web UI
+URLs, and any `curl http://localhost:8080/…` will show a **different port**
+than the guide's canonical `8080`.
+
+That difference is expected — **do not flag it and do not "correct" the
+ports.** The guide is written against the canonical `8080` on purpose; a
+worktree remap is a local-environment artifact, not guide drift. To
+actually run and observe, substitute the real host port yourself (check
+`compose.override.yaml` / `$CASPER_PORT`), but leave every `8080` in the
+guide as-is. Only flag a port when it is wrong *independently* of remapping
+(e.g. the guide points at `:8081` where the app never listens).
+
 ### Visual checks (Web UI)
 
 Many steps tell the learner to *look* — at the Temporal Web UI
