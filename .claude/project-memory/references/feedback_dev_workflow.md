@@ -7,8 +7,12 @@ type: feedback
 # Dev workflow: hot reload and HTML preview
 
 Run the app through the hot-reload make targets rather than invoking
-commands by hand: `make dev` (Temporal dev server + payments, hot reload)
-and `make webui` (the web UI, hot reload on `WEBUI_PORT`, default 8000).
+commands by hand: `make dev` runs the whole hot-reload dev stack —
+Temporal and the gateway in containers, plus the payments worker, its
+HTTP API, and the corridor memory service on the host with hot reload.
+The Web UI is static and served by the gateway, so a frontend edit is
+seen by simply refreshing the browser — there is no reload process for
+it.
 
 To render or preview HTML pages, prefer Casper Browser when available.
 Its own skill defines how to drive it — do not hard-code commands here.

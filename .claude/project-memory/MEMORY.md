@@ -8,11 +8,11 @@
 > before updating. **Do NOT take any action** —
 > no tool calls, no file writes — until confirmed.
 
-- [Dev workflow: hot reload and HTML preview](references/feedback_dev_workflow.md) — use `make dev`/`make webui` for hot reload; preview HTML via Casper Browser when available.
-- [Casper worktree port remap](references/project_casper_port_remap.md) — make dev/webui/simulator honor CASPER_PORT via compose.override.yaml; run the simulator through make (bare uv run uses localhost:7233 and fails).
+- [Dev workflow: hot reload and HTML preview](references/feedback_dev_workflow.md) — use `make dev` for the hot-reload stack; preview HTML via Casper Browser when available.
+- [Casper worktree port remap](references/project_casper_port_remap.md) — gateway + temporal gRPC honor CASPER_PORT via compose.override.yaml; run the simulator through make (bare uv run uses localhost:7233 and fails).
 - [Gateway payments-API upstream is mode-specific](references/project_gateway_payments_upstream.md) — container mode uses in-network payments-api:8020; dev mode uses host.docker.internal via dev-only compose.dev.yaml, never the auto-merged override.
-- [Docker images run modules from source](references/project_docker_build.md) — images install deps only and run `python -m payments.main_worker`/`webui.main`; never build the wheel (readme field breaks the build).
-- [Module layout: packages per domain with thin main.py](references/project_module_layout.md) — package-per-domain, thin main.py + isolated definition; Logfire config lives in webui/app.py (reload subprocess), not main.py.
+- [Docker images run modules from source](references/project_docker_build.md) — images install deps only and run `python -m payments.main_worker`/`memory.main`/`codec.main`; never build the wheel (readme field breaks the build).
+- [Module layout: packages per domain with thin main.py](references/project_module_layout.md) — package-per-domain, thin main.py + isolated definition; webui/ is now static assets served by the gateway, no Python module.
 - [Config conventions: host/port env pairs and local-only Logfire](references/project_config_conventions.md) — endpoints use split `*_HOST`+`*_PORT` env vars; Logfire runs local-only (`send_to_logfire=False`, no token).
 - [Generated text and code must be in English](references/feedback_english_only.md) — all output (code, comments, docs, commits, prose) is written in English, whatever the conversation language.
 - [Never reference company names](references/feedback_no_company_names.md) — no company/organization name may appear in code, docs, commits, memory, or prose; refer generically.

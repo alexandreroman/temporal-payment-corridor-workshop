@@ -91,7 +91,7 @@ static files served by the gateway from a mounted volume, so there is no
 web UI process to run in either mode:
 
 ```bash
-make dev       # Temporal dev server + payments worker & API, web UI & memory (hot reload)
+make dev       # Temporal dev server + gateway + payments worker & API & memory
 ```
 
 For a fully containerized run, `make app-up` brings the whole stack up in

@@ -16,8 +16,9 @@ expected — not a regression and not a bug to fix.
 Caddy itself serves traffic normally: it routes `/` to the static Web
 UI and `/codec` to the codec service, both reachable on the gateway's
 port `8080` (remapped to a host port by `compose.override.yaml` in
-Casper worktrees). The other services (`temporal`, `payments`,
-`payments-api`, `memory`, `codec`) report `healthy`.
+Casper worktrees). The other services that define a healthcheck
+(`temporal`, `payments`, `payments-api`, `memory`) report `healthy`;
+`codec` defines no healthcheck, so it shows no health column at all.
 
 **Why:** the admin endpoint quirk makes `gateway` look broken during any
 launch verification; treat the gateway's own HTTP responses (Web UI +

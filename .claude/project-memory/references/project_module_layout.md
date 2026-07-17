@@ -7,14 +7,16 @@ type: project
 # Module layout: packages per domain with thin main.py
 
 The repo is organized as one Python package per functional domain —
-`shared/` (models), `payments/` (payment-correction component), `webui/`
-(FastAPI web UI), `memory/` (FastAPI corridor-memory service), `simulator/`
-(client) —
-with absolute imports (`from shared.models import …`). Every executable
+`shared/` (models), `payments/` (payment-correction component),
+`memory/` (FastAPI corridor-memory service), and `simulator/` (client) —
+with absolute imports (`from shared.models import …`). The `webui/`
+directory is no longer a Python package: it now holds static Web UI
+assets (`index.html` + `static/`) served by the gateway's Caddy
+`file_server`, with no Python module of its own. Every executable
 module has a **thin `main.py` bootstrap** (infra init + logs + entry
 point) and the component definition isolated in its own file:
-`payments/worker.py` exposes `build_worker(client)`; `webui/app.py` and
-`memory/app.py` hold their FastAPI `app`.
+`payments/worker.py` exposes `build_worker(client)`; `memory/app.py` and
+`payments/api.py` hold their FastAPI `app`.
 
 The `memory/` package is a standalone service reached only over HTTP
 (`/api/memory/v1`); it runs in its own Temporal namespace (`memory`),
@@ -22,23 +24,16 @@ separate from payments' own namespace (`payments`). `memory/store.py` is the
 in-memory baseline backend and `memory/workflow.py` holds `MemoryWorkflow`,
 the durable backend enabled by the `memory-workflow` FEATURE.
 
-Two subtle invariants must be preserved when editing these bootstraps:
+One subtle invariant must be preserved when editing these bootstraps:
 
-- **Logfire is configured in `webui/app.py`, not `webui/main.py`.** With
-  `uvicorn.run("webui.app:app", reload=True)`, the app runs in a reload
-  subprocess that imports only `webui.app` and never executes
-  `main.py`. Any config the served app needs (Logfire, `load_dotenv`)
-  must live in `app.py`. Payments does not have this issue because its
-  watchfiles subprocess runs `main()`.
 - **`payments/main_worker.py` calls `load_dotenv()` before importing
   `payments.worker`**, because `payments/agents.py` reads `CORRIDOR_MODEL`
   from the environment at import time (kept with `# noqa: E402`).
 
 **Why:** clean domain boundaries and a uniform bootstrap/definition
-split; the two invariants are non-obvious traps that a naive
+split; the invariant is a non-obvious trap that a naive
 "simplification" of a `main.py` would reintroduce, silently breaking
-observability or env-dependent agent config.
+env-dependent agent config.
 
 **How to apply:** add new features inside the owning package; keep
-`main.py` files thin; when touching the webui entry point, remember the
-reload-subprocess boundary. See also [[feedback_dev_workflow]].
+`main.py` files thin. See also [[feedback_dev_workflow]].
