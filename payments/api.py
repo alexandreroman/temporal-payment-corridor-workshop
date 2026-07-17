@@ -126,6 +126,12 @@ class AnomalySummary(BaseModel):
     workflow_id: str
     start_time: datetime
     outcome_summary: str | None = None
+    # Payment context shown on every row (amount, currency, beneficiary name),
+    # read from the anomaly during listing. Optional so the search-attributes
+    # listing path -- which does not carry the full payment -- still validates.
+    amount: float | None = None
+    currency: str | None = None
+    beneficiary: str | None = None
 
 
 class AnomalyDetail(BaseModel):
@@ -306,6 +312,9 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                         payment_id=anomaly.payment_id,
                         corridor=anomaly.corridor,
                         anomaly_type=anomaly.anomaly_type,
+                        amount=anomaly.amount,
+                        currency=anomaly.currency,
+                        beneficiary=anomaly.beneficiary.name,
                         status="applied" if outcome.applied else "held",
                         workflow_id=wf.id,
                         start_time=wf.start_time,
@@ -324,6 +333,9 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                         payment_id=anomaly.payment_id,
                         corridor=anomaly.corridor,
                         anomaly_type=anomaly.anomaly_type,
+                        amount=anomaly.amount,
+                        currency=anomaly.currency,
+                        beneficiary=anomaly.beneficiary.name,
                         status=closed_status,
                         workflow_id=wf.id,
                         start_time=wf.start_time,
@@ -340,6 +352,9 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                         payment_id=anomaly.payment_id,
                         corridor=anomaly.corridor,
                         anomaly_type=anomaly.anomaly_type,
+                        amount=anomaly.amount,
+                        currency=anomaly.currency,
+                        beneficiary=anomaly.beneficiary.name,
                         status="awaiting-approval" if awaiting else "processing",
                         workflow_id=wf.id,
                         start_time=wf.start_time,
