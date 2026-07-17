@@ -97,9 +97,13 @@
           <li class="rounded-xl border border-white/10 bg-white/[0.03]">
             <div class="flex items-center gap-4 px-5 py-4">
               <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-3">
-                  <span class="font-mono text-sm text-white/90" x-text="a.payment_id"></span>
-                  <span class="rounded-md px-2 py-0.5 text-xs font-medium ring-1" :class="badge(a.status)">
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span class="font-mono text-sm text-white/90" x-text="a.payment_id"></span>
+                    <span class="text-white/30">•</span>
+                    <span class="shrink-0 text-xs text-white/50" x-text="ago(a.start_time)"></span>
+                  </div>
+                  <span class="shrink-0 rounded-md px-2 py-0.5 text-xs font-medium ring-1" :class="badge(a.status)">
                     <!-- Only the in-flight `processing` status pulses; every
                          other status (awaiting-approval, applied, held,
                          failed, ...) shows the plain status text. -->
@@ -113,8 +117,6 @@
                 <div class="mt-1 flex items-center gap-3 text-xs text-white/50">
                   <span class="text-white/70" x-text="a.corridor.replace('->', ' → ')"></span>
                   <span class="font-mono" x-text="a.anomaly_type"></span>
-                  <span>·</span>
-                  <span x-text="ago(a.start_time)"></span>
                   <span x-show="a.outcome_summary" x-text="'· ' + a.outcome_summary"></span>
                 </div>
               </div>
