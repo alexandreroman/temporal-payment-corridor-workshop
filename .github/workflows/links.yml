@@ -40,6 +40,7 @@ jobs:
       # recently-seen URLs; 429 (rate-limited) and 206 (partial content) still
       # count as reachable, and each URL is retried a few times before failing.
       - name: Check links
+        id: lychee
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
@@ -52,7 +53,15 @@ jobs:
             README.md
             production-ready-checklist.md
             "guide/**/*.md"
-          # Fail the job on a broken link so it is visible; branch protection
-          # intentionally does not require this job, so a red run reports
-          # without blocking merges.
-          fail: true
+          # Do not fail the job on a broken link: external link rot must never
+          # turn this run red. Broken links are surfaced as a warning annotation
+          # (see the next step) instead, keeping the job green while staying
+          # visible in the run's summary and annotations.
+          fail: false
+
+      # Turn lychee's non-zero exit code (broken links present) into a warning
+      # annotation. `exit_code` is the action's documented output; the job stays
+      # green, but the annotation keeps the broken links visible.
+      - name: Warn on broken links
+        if: steps.lychee.outputs.exit_code != 0
+        run: echo "::warning title=Broken links detected::lychee found broken links. See the job summary for the full report."
