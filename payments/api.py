@@ -135,6 +135,10 @@ class AnomalyDetail(BaseModel):
     workflow_id: str
     status: str
     outcome: CorrectionOutcome | None = None
+    # The payment under correction, surfaced so the approval panel can show
+    # what is being changed (amount, beneficiary, original field value).
+    # Populated for a running row (see get_anomaly); null once completed/closed.
+    anomaly: PaymentAnomaly | None = None
     # region FEATURE-OFF: human-approval-signal
     # NOTE: Typed loosely as `object` rather than `ReviewState`, which the
     # human-approval-signal feature introduces in shared/models.py. Until that
@@ -520,11 +524,22 @@ async def get_anomaly(payment_id: str) -> AnomalyDetail:
     # # _query_awaiting round trip needed here.
     # review = await handle.query(PaymentCorrectionCoordinator.pending_review)
     # endregion FEATURE-ON: human-approval-signal
+    anomaly = None
+    # region FEATURE-OFF: search-attributes
+    # NOTE: The approval panel shows the payment being corrected (amount,
+    # beneficiary, original field value); with search-attributes off it is read
+    # back through the describe_anomaly query. When that feature is enabled this
+    # block is removed and the payment context is simply omitted (anomaly stays
+    # None) -- the corridor/type/status search attributes do not carry the full
+    # payment.
+    anomaly = await handle.query(PaymentCorrectionCoordinator.describe_anomaly)
+    # endregion FEATURE-OFF: search-attributes
     return AnomalyDetail(
         payment_id=payment_id,
         workflow_id=workflow_id,
         status=status_sa or "running",
         review=review,
+        anomaly=anomaly,
     )
 
 

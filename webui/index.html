@@ -147,6 +147,21 @@
               x-show="a.status === 'awaiting-approval'"
               class="border-t border-white/10 bg-white/[0.02] px-5 py-4"
             >
+              <!-- Payment being corrected: context for the human decision. -->
+              <div
+                x-show="a.anomaly"
+                class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-white/50"
+              >
+                <span class="uppercase tracking-wide text-white/40">Payment</span>
+                <span class="text-white/70" x-text="a.anomaly && `${a.anomaly.amount.toLocaleString()} ${a.anomaly.currency}`"></span>
+                <span class="text-white/30">•</span>
+                <span x-text="a.anomaly && `to ${a.anomaly.beneficiary.name}`"></span>
+                <span
+                  x-show="a.anomaly && a.anomaly.beneficiary.bank_id"
+                  class="font-mono text-white/60"
+                  x-text="a.anomaly && a.anomaly.beneficiary.bank_id"
+                ></span>
+              </div>
               <template x-if="a.review">
                 <div class="grid items-stretch gap-4 sm:grid-cols-2">
                   <!-- Proposed correction -->
@@ -156,7 +171,12 @@
                       <dt class="text-white/40">field</dt>
                       <dd class="font-mono" x-text="a.review.proposal.field_to_fix"></dd>
                       <dt class="text-white/40">value</dt>
-                      <dd class="font-mono text-accent" x-text="a.review.proposal.proposed_value"></dd>
+                      <dd class="font-mono">
+                        <template x-if="a.anomaly && a.anomaly.details[a.review.proposal.field_to_fix]">
+                          <span class="text-white/40" x-text="a.anomaly.details[a.review.proposal.field_to_fix] + ' → '"></span>
+                        </template>
+                        <span class="text-accent" x-text="a.review.proposal.proposed_value"></span>
+                      </dd>
                     </dl>
                     <!-- Rationale is unbounded LLM prose, so clamp it by default and
                          let the reviewer expand on demand — keeps the card compact. -->
@@ -326,6 +346,7 @@
                 approver: "operator",
                 comment: "",
                 review: null,
+                anomaly: null,
                 approvalError: "",
                 rationaleExpanded: false,
                 verdictExpanded: false,
@@ -352,7 +373,9 @@
             try {
               const response = await fetch(`/api/payments/v1/anomalies/${a.payment_id}`);
               if (!response.ok) throw new Error(response.status);
-              a.review = (await response.json()).review;
+              const detail = await response.json();
+              a.review = detail.review;
+              a.anomaly = detail.anomaly;
             } catch (e) {
               // Leave review unset; the next poll retries.
             }
