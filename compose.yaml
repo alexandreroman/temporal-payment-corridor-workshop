@@ -206,9 +206,10 @@ services:
 
   # The gateway is the sole published HTTP entry point (Temporal Web UI at
   # /temporal, payment-corridor Web UI at /, codec at /codec, payments API at
-  # /api/payments/v1). It intentionally does NOT depend on the codec service,
-  # so `/codec` only 502s during the brief window before the codec is up (or if
-  # the codec is manually stopped) — the codec itself always starts.
+  # /api/payments/v1). It intentionally does NOT depend on the codec service
+  # or the webui service, so `/codec` and `/` only 502 during the brief window
+  # before each is up (or if one is manually stopped) — codec and webui
+  # themselves always start.
   gateway:
     image: caddy:2
     # Optional so a fresh clone can start without first copying `.env`.
@@ -226,8 +227,6 @@ services:
       - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:
       temporal:
-        condition: service_healthy
-      webui:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:2019/config/"]
