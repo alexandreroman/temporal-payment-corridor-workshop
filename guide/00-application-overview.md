@@ -99,7 +99,31 @@ the guide:
    ever speak HTTP to the gateway; they never open a Temporal client of
    their own.
 
-![The application's component topology and the gateway as the single entry point](images/00-architecture.png)
+```mermaid
+graph TD
+    Sim[simulator]
+    User[operator's browser]
+    Sim -->|HTTP| GW
+    User -->|HTTP| GW
+    GW[Gateway<br/>single HTTP entry point]
+    GW -->|/| Web[App · static Web UI]
+    GW -->|/api/payments/v1| API[Payments API<br/>Temporal client]
+    GW -->|/temporal| TUI[Temporal Web UI]
+    GW -->|/codec| Codec[Codec server]
+    Worker[Payments worker]
+    Mem[Corridor memory service]
+    subgraph payments_ns [payments namespace]
+        Coord[PaymentCorrectionCoordinator<br/>+ agent child workflows]
+    end
+    subgraph memory_ns [memory namespace]
+        MemWf[MemoryWorkflow<br/>durable backend, optional]
+    end
+    API -->|start · list · approve| Coord
+    Worker --> Coord
+    Worker -->|/api/memory/v1 · HTTP, never Temporal| Mem
+    Mem -.-> MemWf
+    Codec -.->|decrypts payloads| TUI
+```
 
 ## The lifecycle of one correction
 

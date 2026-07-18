@@ -115,7 +115,9 @@ though a workflow already running keeps the timer it was started with.
 Once the window elapses without an approval, the coordinator fires the
 timer, catches `asyncio.TimeoutError`, and completes with the auto-reject
 message. In the app the row turns **held**, its summary reading "No
-decision within the approval window; auto-rejected."
+decision within the approval window; auto-rejected.":
+
+![The app homepage: a correction held after the approval window elapsed](images/04-app-held.png)
 
 To see the *other* branch, run another `needs-approval` correction and
 approve it **in the app** (step [03](03-human-approval-signal.md)) *before*

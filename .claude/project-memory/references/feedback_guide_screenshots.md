@@ -19,9 +19,25 @@ cycle: enable the feature, produce the data, capture, then complete or
 approve any held run and disable the feature — so only the new PNG remains
 changed and the baseline other steps depend on is intact.
 
+Not every figure is a screenshot. Two subjects are **not** captured as PNGs:
+the component-topology diagram in step 00 is an inline Mermaid `graph`
+(themeable, version-controlled — no `00-architecture.png`), and any CLI/text
+output such as the `/metrics` scrape in step 11 is a fenced Markdown code
+block, not a screenshot. When adding such a text block, only use real
+`corridor_*` metric base names — `tools/test_guide.py` asserts every
+`corridor_*` token in the guide exists verbatim in source, so Prometheus
+suffixes like `_bucket`/`_sum`/`_count` (absent from source) break the build.
+
+App-state PNGs cover each distinct outcome pill: applied (`01-app-homepage`),
+awaiting-approval (`03-approval-panel`), applied-after-approval
+(`03-app-applied`), held-after-timeout (`04-app-held`), failed
+(`05-app-failed`). Every finished PNG is framed as a rounded dark card
+(pad `#0d1117` → cut transparent corners → stroke `#374151`, 24px, once each).
+
 **Why:** the guide teaches Temporal through the real Web UI, so fake or
 stale images mislead learners; a left-enabled feature or a half-finished
-running workflow pollutes the clean baseline every other step assumes.
+running workflow pollutes the clean baseline every other step assumes; a
+diagram or CLI listing reads better as live Markdown than a static image.
 
 **How to apply:** follow the `capture-guide-screenshots` skill for the
 mechanics — real ports via `$CASPER_PORT`, produce data with
