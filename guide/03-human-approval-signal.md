@@ -150,7 +150,9 @@ temporal workflow signal \
 
 The coordinator wakes, applies the correction (or records the rejection),
 and completes. In the app the row flips from **awaiting-approval** to
-**applied** (or **held** on a reject), the final outcome shown inline.
+**applied** (or **held** on a reject), the final outcome shown inline:
+
+![The app homepage: the same correction now applied after a human approved it](images/03-app-applied.png)
 
 > [!NOTE]
 > **Who sends the approval?** Not the simulator — it only submits the

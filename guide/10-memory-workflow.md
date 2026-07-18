@@ -106,7 +106,12 @@ payoff of the interface boundary from step [02](02-durable-agents.md).
 Restart the memory service so the lifespan wires up the worker (hot reload
 under `make dev` handles this). Then, in the Temporal Web UI, switch to the
 **`memory` namespace** and find the `corridor-memory` workflow — it is
-Running, holding the seeded patterns.
+Running, holding the seeded patterns:
+
+![The memory namespace Workflows list, with the singleton corridor-memory execution](images/10-memory-namespace.png)
+
+Open it: its input carries the seeded corridor patterns the entity workflow
+holds as durable, in-workflow state — no database behind it.
 
 ![The singleton corridor-memory Entity Workflow in the memory namespace](images/10-entity-workflow.png)
 

@@ -53,7 +53,28 @@ The `corridor_*` metrics are created through `activity.metric_meter()` in
 [`payments/memory.py`](../payments/memory.py) — read those to see exactly
 what is measured and how each series is tagged.
 
-![The merged /metrics endpoint showing temporal_* and corridor_* series](images/11-metrics-endpoint.png)
+A trimmed sample of what it returns — both families side by side on the one
+endpoint (labels abbreviated for readability):
+
+```text
+# Temporal SDK / worker metrics (temporal_*)
+temporal_worker_task_slots_available{namespace="payments",worker_type="ActivityWorker"} 1000
+temporal_long_request{namespace="payments",operation="PollActivityTaskQueue"} 10
+temporal_activity_execution_latency_count{namespace="payments",activity_type="read_corridor_memory"} 2
+
+# Application metrics (corridor_*)
+# HELP corridor_memory_lookups Passive corridor-memory lookups
+# TYPE corridor_memory_lookups counter
+corridor_memory_lookups{corridor="US->IN",result="hit"} 4
+# HELP corridor_corrections_applied Corrections applied to payments
+# TYPE corridor_corrections_applied counter
+corridor_corrections_applied{field="bic",source="memory"} 6
+# HELP corridor_correction_confidence Confidence of applied corrections
+# TYPE corridor_correction_confidence histogram
+# HELP corridor_correction_retries_alerted Corrections whose retries crossed the alert threshold
+# TYPE corridor_correction_retries_alerted counter
+corridor_correction_retries_alerted{field="bic",source="memory"} 4
+```
 
 ## Metrics in Temporal Cloud
 
