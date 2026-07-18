@@ -1,34 +1,43 @@
 ---
 name: walk-guide
-description: Empirically walk the learner guide (guide/) as a real attendee would — run every command, enable each feature, observe the outcome — to catch instructions, commands, code, or expected output that drift from reality, then review and correct in the same pass. User-invoked only, via /walk-guide.
+description: Empirically walk the learner guide (guide/) as a real attendee would — run every command, enable each feature, observe the outcome — to catch instructions, commands, code, or expected output that drift from reality, then review and correct in the same pass. Also runs a static, read-only semantic audit when the stack can't be run or when only a review is wanted. User-invoked only, via /walk-guide.
 disable-model-invocation: true
-argument-hint: "[optional: a guide step file, feature name, or arc to scope the walkthrough]"
+argument-hint: "[optional: a guide step file, feature name, or arc to scope it; add --static for a read-only audit]"
 ---
 
 **Walk the learner guide in `guide/` the way an attendee actually would** —
 execute each step against a live stack, observe the result, and fix every
 instruction that does not hold up.
 
-## Why this exists (and how it differs from `/review-guide`)
+## Two ways to run it: empirical (default) and static
 
-`/review-guide` is a **static, read-only** semantic audit: it reads prose
-and code side by side and waits for your approval before touching anything.
-It cannot catch what only surfaces when you *run* the guide.
+This skill has one job — keep the guide's prose, commands, code, and expected
+output true to the app — and two modes for doing it:
 
-`/walk-guide` is the **empirical** counterpart. It brings the stack up, runs
-the commands the guide prints, enables the features, fires the scenarios,
-and compares what the learner *sees* against what the guide *says*. It then
-**reviews and corrects in one pass** — no separate approval gate, because
-each finding is backed by an observation you can point at.
+- **Empirical (default).** Bring the stack up, run the commands the guide
+  prints, enable the features, fire the scenarios, and compare what the
+  learner *sees* against what the guide *says*. Then **review and correct in
+  one pass** — no separate approval gate, because each finding is backed by an
+  observation you can point at.
+- **Static (`/walk-guide --static`, or any run where you can't bring the stack
+  up).** A **read-only** semantic audit: read the prose and the code side by
+  side and check whether the explanations still match what the code does. It
+  cannot catch what only surfaces when you *run* the guide, so it is the weaker
+  check — and because nothing is observed, it **stops for your approval before
+  editing anything**. Use it when Docker or an LLM key is unavailable, or when
+  you explicitly want a review without touching state.
+
+Prefer the empirical mode whenever you can run the stack. Fall back to static
+only when you must, and say which mode you ran.
 
 Mechanical drift (`make` targets, `NAME=`, `SCENARIO=`, `corridor_*`
 metrics, internal links, screenshot manifest) is already covered by
 `tools/test_guide.py` in `make check` and by `.github/workflows/links.yml`.
-Assume those pass; do not re-check them. This skill catches what running the
-guide reveals: a command that fails or needs an unstated prerequisite,
-output that no longer matches, a feature whose enabled code behaves
-differently than described, an ordering that breaks because a prior step
-left state behind.
+Assume those pass; do not re-check them in either mode. This skill catches what
+those cannot: a command that fails or needs an unstated prerequisite, output
+that no longer matches, a feature whose enabled code behaves differently than
+described, an ordering that breaks because a prior step left state behind, or a
+stale explanation whose prose no longer describes what the code actually does.
 
 ## Adopt the learner persona
 
@@ -63,11 +72,12 @@ fix. Record what the guide said, what actually happened, and the correction.
 | "This obviously needs `X` first." | If the guide did not say so, the learner won't do it. Flag the missing prerequisite. |
 | "The output is close enough." | "Close enough" is where stale expected-output lives. Diff it literally. |
 
-## Procedure
+## Procedure (empirical)
 
 Scope from the argument, if any (e.g. `/walk-guide 05-non-retryable-validation`,
 `/walk-guide approval-timeout`, `/walk-guide "Arc 1"`). No argument → walk
-the whole guide in order, starting at `00`.
+the whole guide in order, starting at `00`. If the argument is `--static` (with
+or without a scope), run the **static mode** below instead.
 
 1. **Confirm a clean baseline.** `make feature-status` should show every
    feature disabled and `git status` should be clean. If not, stop and tell
@@ -81,8 +91,8 @@ the whole guide in order, starting at `00`.
    - Docker only → offline `memory-hit` path runs; key-gated scenarios are
      verified statically (read the code path), **explicitly marked as not
      empirically exercised**. Never let a static check masquerade as a run.
-   - No Docker → degrade to static verification for the whole run and say so
-     up front; the review is weaker and you must label it as such.
+   - No Docker → you cannot walk empirically; switch to the **static mode**
+     below and label the review as such up front.
 
 3. **Bring the stack up once** with `make dev` (background it; it hot-reloads
    your later feature edits). Wait for the banner and the two URLs before
@@ -141,11 +151,50 @@ inspect the page; only fall back to an external browser (e.g.
 references a screenshot in `images/`, use your capture as the ground truth
 for whether the caption and surrounding claims still match the real view.
 
-## Review, then correct — in the same pass
+## Static mode (read-only audit)
 
-Relay the complete review first (findings ranked by severity), then apply
-the corrections without waiting for a separate approval — the observations
-are the justification. Route each fix by *where the truth is*:
+Use this when you cannot bring the stack up, or when invoked with `--static`.
+It is a **semantic accuracy audit**: does the prose still describe what the
+code actually does? Stale explanations, conceptual claims that no longer hold,
+a `NOTE:` the guide summarizes incorrectly, steps whose observed behavior has
+changed, ordering/prerequisite contradictions between steps.
+
+Dispatch the **`skillbox:code-reviewer`** subagent (read-only) with this brief:
+
+> Review the learner guide (`guide/**/*.md`) for **semantic** accuracy
+> against the reference application, focusing on whether each explanation
+> still matches current behavior. Cross-check claims against the source:
+> `README.md`, `Makefile`, `tools/features.py`, `payments/*.py`,
+> `memory/*.py`, `shared/*.py`, `simulator/*.py`, `.env.example`,
+> `compose.yaml`, `gateway/Caddyfile`, `production-ready-checklist.md`.
+> For each guide step, verify:
+>
+> 1. The described concept and behavior match the live code path (read the
+>    `FEATURE-ON`/`FEATURE-OFF` blocks the step enables, and the `NOTE:`
+>    comments it references — the guide must not contradict them).
+> 2. The "At a glance" table (files touched, concepts, prerequisites) is
+>    still correct and complete.
+> 3. The "Run and observe" instructions would actually produce what the
+>    prose claims (commands, expected outputs, what shows up in the Web UI
+>    / Event History / metrics).
+> 4. Ordering and prerequisites are consistent across steps.
+>
+> Do NOT check things `tools/test_guide.py` already covers (existence of
+> features, targets, scenarios, metric names, internal links) — assume
+> those pass. Do NOT modify any file. Produce a concise report of concrete
+> findings ranked by severity (factual/behavioral errors first), each with
+> the file, the exact claim, and the correction. Skip anything that is
+> still correct.
+
+If a scope argument was given, focus the brief there but still flag
+cross-references that break. Relay the findings to me ranked by severity, then
+**wait for me to confirm which fixes to apply** — there is no observation to
+justify auto-correcting in static mode. When I approve, apply the fixes using
+the routing in "Review, then correct" below, then follow "After correcting".
+
+## Review, then correct
+
+Route each fix by *where the truth is*:
 
 - **Guide is wrong / imprecise** → edit the Markdown in `guide/` directly
   (prose, commands, expected output, tables). This is documentation, so it
@@ -156,18 +205,24 @@ are the justification. Route each fix by *where the truth is*:
 - **Genuinely ambiguous which should change** → surface it in the review and
   ask me; do not guess.
 
+**In empirical mode**, relay the complete review first (findings ranked by
+severity), then apply the corrections without waiting for a separate approval —
+the observations are the justification. **In static mode**, relay the findings
+and wait for my approval before editing anything (see "Static mode" above).
+
 ## After correcting
 
 - Re-run `make check` (runs `tools/test_guide.py`) — it must pass.
 - Re-align any Markdown table you touched with
   `skillbox`'s `general-rules/scripts/check_tables.py`.
 - If a fix was behavioral, re-walk that one step to confirm the guide now
-  matches reality.
+  matches reality (empirical mode).
 
 ## Leave no trace
 
 A learner walkthrough mutates state. Before finishing, restore the clean
-baseline a fresh attendee expects, and confirm it:
+baseline a fresh attendee expects, and confirm it (static mode mutates
+nothing, so this applies only when you ran empirically):
 
 - `make feature-disable NAME=…` for every feature you enabled.
 - Undo every hand-edit the guide told you to make (`_SIMULATE_*` switches,
