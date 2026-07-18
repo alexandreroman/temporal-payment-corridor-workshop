@@ -58,8 +58,9 @@ make app-down     # if you used containers
 
 ## Measure it against production-ready
 
-Open the [production-ready checklist](../production-ready-checklist.md) and
-map each item to what you saw. Every box is backed by code you read:
+Map what you built onto Temporal's [best
+practices](https://docs.temporal.io/best-practices). Every point below is
+backed by code you read:
 
 - **Correctness** — idempotent activities (step [02](02-durable-agents.md)),
   non-retryable classification (step [05](05-non-retryable-validation.md)),
@@ -91,7 +92,7 @@ map each item to what you saw. Every box is backed by code you read:
 ## Reference index
 
 - [Application README](../README.md) — full reference documentation.
-- [Production-ready checklist](../production-ready-checklist.md).
+- [Temporal best practices](https://docs.temporal.io/best-practices).
 - [Temporal Python docs](https://docs.temporal.io/develop/python).
 - [Pydantic AI + Temporal](https://ai.pydantic.dev/durable_execution/temporal/).
 

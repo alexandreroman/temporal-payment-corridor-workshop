@@ -106,8 +106,8 @@ checklist item "the model/LLM is mocked in agent tests: no network calls."
 
 ## What good coverage looks like here
 
-The [production-ready checklist](../production-ready-checklist.md) testing
-section is the rubric:
+Temporal's [pre-production testing best practices](https://docs.temporal.io/best-practices/pre-production-testing)
+are the rubric:
 
 - [ ] Failure paths are tested: retries exhausted, worker restart,
       cancellation.

@@ -58,7 +58,7 @@ the ones before it.
 
 | Step                      | Topic                | What you learn                                                   |
 | ------------------------- | -------------------- | ---------------------------------------------------------------- |
-| [11](11-observability.md) | Observability        | The one metrics endpoint, Logfire, the Temporal Web UI, decoding payloads |
+| [11](11-observability.md) | Observability        | One metrics endpoint (local & Temporal Cloud), the Temporal Web UI, decoding payloads |
 | [12](12-testing.md)       | Testing durable code | The test suite, replay tests, mocking the model                  |
 | [13](13-wrap-up.md)       | Wrap-up              | Reset the app, production-ready checklist, where to go next      |
 

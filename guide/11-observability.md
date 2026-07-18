@@ -2,9 +2,8 @@
 
 > [!NOTE]
 > **Goal of this step.** Know where to *look*. This is a reference for the
-> three observability surfaces the app exposes: one metrics endpoint,
-> local tracing with Logfire, and the Temporal Web UI (including decoded
-> payloads).
+> observability surfaces the app exposes: one metrics endpoint (local, and
+> in Temporal Cloud), and the Temporal Web UI (including decoded payloads).
 
 ## At a glance
 
@@ -13,8 +12,9 @@
   [`payments/activities.py`](../payments/activities.py),
   [`payments/memory.py`](../payments/memory.py)
 - **Temporal concepts:** SDK metrics, custom metrics, the Prometheus runtime,
-  the Temporal Web UI
+  Temporal Cloud metrics, the Temporal Web UI
 - **Docs:** [Observability](https://docs.temporal.io/develop/python/observability)
+  · [Temporal Cloud metrics](https://docs.temporal.io/cloud/metrics)
 
 > [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
@@ -51,24 +51,26 @@ curl -s http://localhost:9464/metrics | grep -E '^(temporal_|corridor_)'
 The `corridor_*` metrics are created through `activity.metric_meter()` in
 [`payments/activities.py`](../payments/activities.py) and
 [`payments/memory.py`](../payments/memory.py) — read those to see exactly
-what is measured and how each series is tagged. The
-`LogfirePlugin(..., metrics=False)` in the worker is deliberate: metrics
-already flow through the Prometheus endpoint, so a second OTel-based
-pipeline would be redundant.
+what is measured and how each series is tagged.
 
 ![The merged /metrics endpoint showing temporal_* and corridor_* series](images/11-metrics-endpoint.png)
 
-## Local tracing with Logfire
+## Metrics in Temporal Cloud
 
-Every process configures Pydantic Logfire the same way:
-`logfire.configure(service_name="payment-corridor", send_to_logfire=False)`.
+The `temporal_*` SDK metrics you scrape locally are complemented, in
+production, by **Temporal Cloud metrics**: a Prometheus-compatible
+OpenMetrics endpoint (`metrics.temporal.io`) that exposes server-side
+`temporal_cloud_*` series — workflow and task-queue health, latencies, and
+platform limits — for every namespace in your account, authenticated with a
+metrics-scoped API key and consumable by Datadog, Grafana Cloud, and the
+like.
 
-> [!NOTE]
-> **Local-only, by design.** `send_to_logfire=False` means spans are
-> produced locally for instrumentation but *nothing is shipped* to any
-> backend — no token, no network. FastAPI apps call
-> `logfire.instrument_fastapi(app)`, and the worker calls
-> `instance.instrument_pydantic_ai()` so agent runs are traced too.
+Temporal also publishes **reference Grafana dashboards** for both the
+SDK/worker metrics and the Cloud metrics — a starting point to adapt, not a
+production-final board.
+
+- Temporal Cloud metrics: <https://docs.temporal.io/cloud/metrics>
+- Reference dashboards: <https://github.com/temporalio/dashboards>
 
 ## The Temporal Web UI
 
@@ -94,8 +96,8 @@ appear with no manual configuration.
 
 ## Logging discipline
 
-The [production-ready checklist](../production-ready-checklist.md) calls it
-out, and the code follows it: logging goes through `workflow.logger` and
+Temporal's [best practices](https://docs.temporal.io/best-practices) call
+it out, and the code follows it: logging goes through `workflow.logger` and
 `activity.logger`, never `print`. `workflow.logger` is replay-aware (it
 does not double-log on replay), which `print` cannot be.
 
@@ -103,7 +105,7 @@ does not double-log on replay), which `print` cannot be.
 
 - [ ] You can scrape both `temporal_*` and `corridor_*` from `/metrics`.
 - [ ] You can name which metric each activity emits and how it is tagged.
-- [ ] You can explain why Logfire runs local-only (`send_to_logfire=False`).
+- [ ] You can point to Temporal Cloud's metrics endpoint and dashboards.
 
 ---
 

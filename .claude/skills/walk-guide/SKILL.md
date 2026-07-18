@@ -166,7 +166,7 @@ Dispatch the **`skillbox:code-reviewer`** subagent (read-only) with this brief:
 > still matches current behavior. Cross-check claims against the source:
 > `README.md`, `Makefile`, `tools/features.py`, `payments/*.py`,
 > `memory/*.py`, `shared/*.py`, `simulator/*.py`, `.env.example`,
-> `compose.yaml`, `gateway/Caddyfile`, `production-ready-checklist.md`.
+> `compose.yaml`, `gateway/Caddyfile`.
 > For each guide step, verify:
 >
 > 1. The described concept and behavior match the live code path (read the

@@ -132,9 +132,8 @@ temporal workflow show \
 ## Step 5 — The production caveat
 
 The reference codec server requires a bearer token, but with the insecure
-defaults it is effectively an **unauthenticated decryption oracle** — the
-[production-ready checklist](../production-ready-checklist.md) spells this
-out: a codec server must be authenticated (mTLS or a bearer token) and
+defaults it is effectively an **unauthenticated decryption oracle**: a
+codec server must be authenticated (mTLS or a bearer token) and
 TLS-terminated, or anyone who can reach it can decrypt any payload. Set
 `CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` to real values to
 close that gap.
