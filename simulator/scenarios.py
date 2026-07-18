@@ -139,6 +139,49 @@ SCENARIOS: dict[str, Scenario] = {
         # fix on. Best-effort only — see the module-level caveat.
         details={"beneficiary": "private individual", "bic": "GB"},
     ),
+    "needs-approval": Scenario(
+        name="needs-approval",
+        description=(
+            "US->GB missing intermediary bank, valid beneficiary and matching "
+            "currency — compliant, but too little routing info for a confident "
+            "fix, so it holds for human approval."
+        ),
+        reaches_agents=True,
+        corridor="US->GB",
+        amount=48250.0,
+        # GBP matches the GB destination and BARCGB22 is a valid, verifiable
+        # BIC. Crucially, the details spell out that every candidate
+        # correspondent is already sanctions-screened and cleared, so
+        # compliance has nothing to flag and returns compliant=true, no
+        # violations. What blocks an auto-fix is left entirely to the
+        # instruction agent: a USD-side correspondent must be picked, but the
+        # corridor offers several equally valid, already-cleared options with
+        # no basis to prefer one — so the agent stays unsure which fix to apply
+        # and reports a sub-threshold confidence. Compliant yet low-confidence
+        # lands the coordinator in the awaiting-approval state. Best-effort —
+        # see the module-level caveat.
+        currency="GBP",
+        anomaly_type=AnomalyType.MISSING_INTERMEDIARY_BANK,
+        beneficiary_name="Globex Trading Ltd",
+        beneficiary_bank_id="BARCGB22",
+        details={
+            "beneficiary": "Globex Trading Ltd",
+            "bank": "Barclays Bank UK PLC",
+            "bic": "BARCGB22",
+            "sanctions_screening": (
+                "all candidate correspondents screened and cleared"
+            ),
+            "candidate_correspondents": (
+                "Citi (CITIUS33), JPMorgan (CHASUS33), BofA (BOFAUS3N) — all cleared"
+            ),
+            "note": (
+                "A USD-side correspondent bank must be selected to settle; "
+                "the corridor allows several equally valid, sanctions-cleared "
+                "options and none is preferred, so the correct choice is "
+                "genuinely ambiguous."
+            ),
+        },
+    ),
 }
 
 # The no-argument default: byte-for-byte the current offline happy path.

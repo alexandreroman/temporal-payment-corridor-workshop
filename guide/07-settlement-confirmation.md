@@ -148,7 +148,7 @@ This is covered further in step [12](12-testing.md).
 make simulator
 ```
 
-In the Web UI, open the coordinator. After `apply_correction` you now see
+In Temporal, open the coordinator. After `apply_correction` you now see
 a `confirm_settlement` activity that **heartbeats** across several cycles
 before completing, and the final `CorrectionOutcome` carries a
 `settlement` object (`status: settled`, `poll_count: N`).
@@ -156,7 +156,7 @@ before completing, and the final `CorrectionOutcome` carries a
 ![The heartbeating confirm_settlement activity in the Event History](images/07-heartbeat-settlement.png)
 
 To watch cancellation, start a correction and cancel the coordinator from
-the Web UI (or `temporal workflow cancel`) while `confirm_settlement` is
+Temporal (or `temporal workflow cancel`) while `confirm_settlement` is
 mid-poll — the activity receives the cancellation through its next
 heartbeat and unwinds cleanly.
 

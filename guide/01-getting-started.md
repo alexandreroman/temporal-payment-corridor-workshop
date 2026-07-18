@@ -24,8 +24,8 @@
   [03](03-human-approval-signal.md) on) and to capture a replay fixture
   (step [12](12-testing.md)). The dev server runs in Docker, so the CLI is
   a separate install.
-- **[jq](https://jqlang.github.io/jq/)** — the guide pipes `curl` output
-  through it, starting with this step's outcome fetch below.
+- **[jq](https://jqlang.github.io/jq/)** — used by `make capture-history`
+  when you regenerate the replay fixture (step [12](12-testing.md)).
 - *(Optional, for later steps)* an **LLM provider API key** matching
   `CORRIDOR_MODEL`, e.g. `ANTHROPIC_API_KEY`. You only need it once a
   scenario misses corridor memory and an agent actually calls a model.
@@ -59,7 +59,7 @@ make dev
 
 | URL                              | What            |
 | -------------------------------- | --------------- |
-| <http://localhost:8080>          | Web UI          |
+| <http://localhost:8080>          | The app         |
 | <http://localhost:8080/temporal> | Temporal Web UI |
 
 Prefer a fully containerized run instead? `make app-up` brings the whole
@@ -95,9 +95,18 @@ matches the pre-seeded corridor pattern in
 the LLM** and return the fix from memory at confidence `0.95`. No API key
 is needed for this path.
 
-## Observe the correction in the Web UI
+## See the correction in the app
 
-Open the Temporal Web UI at <http://localhost:8080/temporal> and find the
+Open **the app** at <http://localhost:8080>. Its homepage lists every
+correction; your `memory-hit` payment shows as **applied**, with a
+`source: memory` pill — corrected from the seeded pattern, no model call.
+
+![The app homepage: the first payment corrected from memory](images/01-app-homepage.png)
+
+## Inspect the durable execution in Temporal
+
+For *how* it ran, open the **Temporal Web UI** at
+<http://localhost:8080/temporal> and find the
 `correction-<payment_id>` workflow. You will see:
 
 - the `PaymentCorrectionCoordinator` execution, and
@@ -112,19 +121,14 @@ at work.
 
 ![The coordinator and its two agent child workflows in the Temporal Web UI](images/01-webui-workflow-tree.png)
 
-## Fetch the outcome over HTTP
+## Read the outcome
 
-The simulator only *submits* the anomaly. To read the final outcome, ask
-the payments API (through the gateway):
-
-```bash
-curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
-```
-
-A completed correction returns `applied: true`, the proposal (with
-`source: "memory"`), the compliance verdict, and a human-readable
-message. The API routes are defined in
-[`payments/api.py`](../payments/api.py).
+The simulator only *submits* the anomaly; the result shows up in **the
+app** — the row you just saw, `applied` with a `source: memory` pill and a
+one-line summary. The full structured outcome (the proposal, the compliance
+verdict, and a message) is what the app reads from the payments API
+([`payments/api.py`](../payments/api.py)) under
+`/api/payments/v1/anomalies/<payment_id>`.
 
 ## Try a scenario that reaches the agents
 
@@ -143,6 +147,7 @@ make simulator-list
 | `instruction`    | yes             | An anomaly in the instruction domain                   |
 | `compliance`     | yes             | An anomaly in the compliance domain                    |
 | `low-confidence` | yes             | Ambiguous details that nudge a low-confidence proposal |
+| `needs-approval` | yes             | A compliant fix held for approval on low confidence    |
 
 To run one, set your provider key in `.env` (e.g.
 `ANTHROPIC_API_KEY=...`) and pass `SCENARIO`:
@@ -157,7 +162,7 @@ make simulator SCENARIO=memory-miss
 > A scenario only steers which *domain* the anomaly falls in. See the
 > caveats in [`simulator/scenarios.py`](../simulator/scenarios.py).
 
-Now watch this run in the Web UI: this time the Event History *does*
+Now watch this run in Temporal: this time the Event History *does*
 include the model-call activities that Pydantic AI offloaded from the
 agents — durable execution of an LLM call.
 
@@ -167,8 +172,8 @@ Before moving on, confirm you can:
 
 - [ ] Bring up the stack with `make dev`.
 - [ ] Correct the `memory-hit` payment with `make simulator` (no key).
-- [ ] Find the coordinator and its two child workflows in the Web UI.
-- [ ] Fetch the outcome with `curl` against the payments API.
+- [ ] See it as **applied** (source: memory) in the app.
+- [ ] Find the coordinator and its two child workflows in Temporal.
 
 All green? Now dig into *how* it works.
 

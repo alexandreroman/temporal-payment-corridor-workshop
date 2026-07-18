@@ -83,8 +83,8 @@ gateway.
 | Payments worker | [`payments/`](../payments/main_worker.py) | Temporal worker: coordinator, agent child workflows, activities                              |
 | Payments API    | [`payments/`](../payments/api.py)         | Temporal *client* (no worker): `/api/payments/v1` — start, list, approve                     |
 | Corridor memory | [`memory/`](../memory/app.py)             | Separate service & namespace: `/api/memory/v1` over an in-memory store or a durable workflow |
-| Web UI          | [`webui/`](../webui/index.html)           | Static homepage — served by the gateway at `/`                                               |
-| Codec server    | [`codec/`](../codec/)                     | Decrypts payloads for the Web UI (once encryption is on)                                     |
+| App             | [`webui/`](../webui/index.html)           | Static homepage — served by the gateway at `/`                                               |
+| Codec server    | [`codec/`](../codec/)                     | Decrypts payloads for the Temporal Web UI (once encryption is on)                                     |
 | Gateway         | [`gateway/`](../gateway/)                 | The single published HTTP entry point                                                        |
 | Simulator       | [`simulator/`](../simulator/main.py)      | Client that submits an anomaly                                                               |
 

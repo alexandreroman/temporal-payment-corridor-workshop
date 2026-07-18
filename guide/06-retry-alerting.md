@@ -94,7 +94,7 @@ apply step:
 make simulator
 ```
 
-In the Web UI, open the `apply_correction` activity and watch it fail on
+In Temporal, open the `apply_correction` activity and watch it fail on
 attempts 1 (and 2, depending on the threshold), then **succeed** — the
 correction completes.
 

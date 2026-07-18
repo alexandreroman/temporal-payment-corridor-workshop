@@ -101,11 +101,11 @@ baseline cleanly.
 Trigger a held correction and then *do nothing*:
 
 ```bash
-make simulator SCENARIO=low-confidence
+make simulator SCENARIO=needs-approval
 ```
 
-In the Web UI, open the coordinator. Its Event History now contains a
-**Timer** event started when it entered the `REVIEW` branch.
+In the **Temporal Web UI**, open the coordinator. Its Event History now
+contains a **Timer** event started when it entered the `REVIEW` branch.
 
 ![A durable Timer event in the coordinator's Event History](images/04-durable-timer.png)
 
@@ -114,15 +114,12 @@ For a fast demo you can temporarily shorten the window in the enabled
 though a workflow already running keeps the timer it was started with.
 Once the window elapses without an approval, the coordinator fires the
 timer, catches `asyncio.TimeoutError`, and completes with the auto-reject
-message. Confirm the outcome:
+message. In the app the row turns **held**, its summary reading "No
+decision within the approval window; auto-rejected."
 
-```bash
-curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq .outcome.message
-```
-
-To see the *other* branch, run another `low-confidence` correction and
-approve it (step [03](03-human-approval-signal.md)) *before* the window
-elapses — the timer is cancelled and the correction is applied.
+To see the *other* branch, run another `needs-approval` correction and
+approve it **in the app** (step [03](03-human-approval-signal.md)) *before*
+the window elapses — the timer is cancelled and the correction is applied.
 
 ## Step 5 — Checkpoint
 

@@ -4,7 +4,7 @@
 > **Goal of this step.** Encrypt every payload that crosses the Temporal
 > boundary, so sensitive fields (bank identifiers, amounts) rest in Event
 > History as ciphertext — then use a **codec server** to decrypt them on
-> demand in the Web UI.
+> demand in the Temporal Web UI.
 
 ## At a glance
 
@@ -31,7 +31,7 @@ A cross-border payment carries data you do not want sitting in plaintext
 in Event History — BICs, amounts, beneficiary details. A **`PayloadCodec`**
 sits at the very edge of serialization: the SDK calls `encode` on the way
 out and `decode` on the way in, so payloads travel and rest as ciphertext.
-The trade-off: the Web UI now shows ciphertext too — which is where the
+The trade-off: Temporal now shows ciphertext too — which is where the
 **codec server** comes in. This is a headline production concern for the
 workshop.
 
@@ -55,7 +55,7 @@ make feature-enable NAME=payload-encryption
 > (public, **insecure**) dev default, so the `cp .env.example .env` from
 > step [01](01-getting-started.md) already covers it. On the *decode* side
 > the codec server falls back to that same key when unset, logging a
-> warning, so the Web UI decodes out of the box. Set your own values in
+> warning, so the Temporal Web UI decodes out of the box. Set your own values in
 > `.env` when you want to actually secure the setup.
 
 ## Step 3 — Read the code
@@ -93,7 +93,7 @@ when you do not pass one, and dropping it breaks `TemporalAgent` sandbox
 validation at worker start-up.
 
 **The codec server** — [`codec/`](../codec/) is a small HTTP service that
-reuses the same key to decrypt payloads on demand; the Web UI and the CLI
+reuses the same key to decrypt payloads on demand; Temporal and the CLI
 call it to display cleartext. It comes up with the stack and needs no extra
 configuration.
 
@@ -105,14 +105,14 @@ Fire a correction:
 make simulator
 ```
 
-**Before wiring the UI to the codec:** open the coordinator in the Web UI
-and inspect Event History — payloads now show as raw ciphertext.
+**Before wiring the UI to the codec:** open the coordinator in Temporal and
+inspect Event History — payloads now show as raw ciphertext.
 
 ![Encrypted (ciphertext) payloads in Event History before decoding](images/09-ciphertext.png)
 
-**Decoded:** the dev server is already pointed at the codec server, so the
-Web UI decrypts payloads for display automatically — the same Event History
-now shows cleartext.
+**Decoded:** the dev server is already pointed at the codec server, so
+Temporal decrypts payloads for display automatically — the same Event
+History now shows cleartext.
 
 ![The same payloads shown as cleartext after the codec decodes them](images/09-decoded.png)
 
@@ -132,9 +132,8 @@ temporal workflow show \
 ## Step 5 — The production caveat
 
 The reference codec server requires a bearer token, but with the insecure
-defaults it is effectively an **unauthenticated decryption oracle** — the
-[production-ready checklist](../production-ready-checklist.md) spells this
-out: a codec server must be authenticated (mTLS or a bearer token) and
+defaults it is effectively an **unauthenticated decryption oracle**: a
+codec server must be authenticated (mTLS or a bearer token) and
 TLS-terminated, or anyone who can reach it can decrypt any payload. Set
 `CODEC_ENCRYPTION_KEY` and `CODEC_SERVER_AUTH_TOKEN` to real values to
 close that gap.
@@ -142,7 +141,7 @@ close that gap.
 ## Step 6 — Checkpoint
 
 - [ ] Event History shows ciphertext with the feature on.
-- [ ] The Web UI decodes payloads through the codec server.
+- [ ] Temporal decodes payloads through the codec server.
 - [ ] You can explain why the codec server must be authenticated in
       production.
 

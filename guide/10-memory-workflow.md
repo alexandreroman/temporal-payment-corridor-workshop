@@ -104,7 +104,7 @@ payoff of the interface boundary from step [02](02-durable-agents.md).
 ## Step 4 — Run and observe
 
 Restart the memory service so the lifespan wires up the worker (hot reload
-under `make dev` handles this). Then, in the Web UI, switch to the
+under `make dev` handles this). Then, in the Temporal Web UI, switch to the
 **`memory` namespace** and find the `corridor-memory` workflow — it is
 Running, holding the seeded patterns.
 
@@ -121,12 +121,6 @@ Watch, in the `memory` namespace, an **Update** land on `corridor-memory`
 (the write-back), and its state grow. Re-run the *same* corridor and it now
 resolves from memory via a **Query** — no model call, no new history event
 for the read.
-
-You can also drive it directly through the HTTP API:
-
-```bash
-curl -s "http://localhost:8010/api/memory/v1/lookup?corridor=US-%3EIN&anomaly_type=wrong_bic&beneficiary_bank_id=HDFCINBB" | jq
-```
 
 ## Step 5 — Checkpoint
 
