@@ -143,6 +143,7 @@ make simulator-list
 | `instruction`    | yes             | An anomaly in the instruction domain                   |
 | `compliance`     | yes             | An anomaly in the compliance domain                    |
 | `low-confidence` | yes             | Ambiguous details that nudge a low-confidence proposal |
+| `needs-approval` | yes             | A compliant fix held for approval on low confidence    |
 
 To run one, set your provider key in `.env` (e.g.
 `ANTHROPIC_API_KEY=...`) and pass `SCENARIO`:

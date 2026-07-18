@@ -98,13 +98,14 @@ delivered; the coordinator resumes and finishes asynchronously.
 
 ## Step 4 — Run and observe
 
-You need a correction that the gate *holds*. The `low-confidence`
-scenario is designed to nudge the model toward a sub-threshold proposal
-(it needs a provider key and is best-effort — see
+You need a correction that the gate *holds*. The `needs-approval`
+scenario is built for exactly that: a **compliant** correction whose
+instruction fix is too ambiguous to auto-apply, so it lands sub-threshold
+and holds for a human (it needs a provider key and is best-effort — see
 [`simulator/scenarios.py`](../simulator/scenarios.py)):
 
 ```bash
-make simulator SCENARIO=low-confidence
+make simulator SCENARIO=needs-approval
 ```
 
 In the Web UI, open the coordinator. With the feature enabled it no longer
@@ -119,6 +120,14 @@ temporal workflow query \
 ```
 
 ![A coordinator paused, awaiting a human decision, in the Web UI](images/03-awaiting-approval.png)
+
+The app's own Web UI renders the same paused correction as an **approval
+panel** — the proposed fix beside the compliance verdict, with Approve /
+Reject controls. Because `needs-approval` produces a *compliant* correction,
+the verdict reads **Compliant — no violations** even though the fix still
+waits on a human decision:
+
+![The app Web UI approval panel: a compliant correction awaiting a human decision](images/03-approval-panel.png)
 
 Now approve it — either through the gateway API:
 
@@ -154,7 +163,7 @@ curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
 
 ## Step 5 — Checkpoint
 
-- [ ] A low-confidence correction stays **Running**, blocked on a human.
+- [ ] A `needs-approval` correction stays **Running**, blocked on a human.
 - [ ] `awaiting_approval` query returns `true` while it waits.
 - [ ] Approving via the API *or* the CLI signal resumes and completes it.
 

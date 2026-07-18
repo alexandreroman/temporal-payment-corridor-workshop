@@ -13,6 +13,7 @@ resolve. Expected files, by step:
 | `01-webui-workflow-tree.png`      | [01](../01-getting-started.md)          | Coordinator + two agent child workflows in the Web UI               |
 | `02-event-history-memory-hit.png` | [02](../02-durable-agents.md)           | A memory-hit coordinator's Event History                            |
 | `03-awaiting-approval.png`        | [03](../03-human-approval-signal.md)    | A coordinator paused, awaiting a human decision                     |
+| `03-approval-panel.png`           | [03](../03-human-approval-signal.md)    | The app Web UI approval panel: a compliant correction awaiting a human decision |
 | `04-durable-timer.png`            | [04](../04-approval-timeout.md)         | A durable Timer event in Event History                              |
 | `05-non-retryable-failure.png`    | [05](../05-non-retryable-validation.md) | `apply_correction` failing on attempt 1, no retries                 |
 | `06-retry-attempts.png`           | [06](../06-retry-alerting.md)           | `apply_correction` climbing through retry attempts, then succeeding |
