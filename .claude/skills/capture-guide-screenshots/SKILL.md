@@ -60,9 +60,12 @@ real mapping any time with `cat compose.override.yaml` / `docker ps`.
 
 6. **Crop to the subject** (see cropping below).
 
-7. **Verify.** Read the cropped PNG back and confirm it matches the
-   manifest's "What to capture". PNG, cropped, legible; redact any real key
-   or token before capturing.
+7. **Round the corners** — the final step on every guide image (see
+   rounding below).
+
+8. **Verify.** Read the cropped PNG back and confirm it matches the
+   manifest's "What to capture". PNG, cropped, corners rounded, legible;
+   redact any real key or token before capturing.
 
 ## Casper capture loop
 
@@ -101,6 +104,48 @@ Get `WxH+X+Y` by eyeballing the full PNG (Read it — the tool reports the
 displayed→original scale factor), then **Read the crop and iterate** until
 it is tight on the subject. `sips -g pixelWidth -g pixelHeight <png>` prints
 dimensions. `magick`/`convert` and Python PIL are available.
+
+## Round the corners
+
+Every guide image gets **rounded corners** as its last transformation —
+after cropping and after any compose/stack step, on the final
+`guide/images/<name>.png`. Two steps, both at a **24 px** radius:
+
+1. **Cut the corners** — make them transparent (the PNGs carry an alpha
+   channel):
+
+   ```bash
+   magick guide/images/<name>.png \
+     \( +clone -alpha extract \
+        -draw "fill black polygon 0,0 0,24 24,0 fill white circle 24,24 24,0" \
+        \( +clone -flip \) -compose Multiply -composite \
+        \( +clone -flop \) -compose Multiply -composite \) \
+     -alpha off -compose CopyOpacity -composite guide/images/<name>.png
+   ```
+
+2. **Stroke a rounded border** — the screenshots are dark-themed, and the
+   guide is plain Markdown viewed on **either** a light *or* a dark
+   background (GitHub theme, VS Code preview). On a dark background the
+   transparent corners reveal dark ≈ the image's own dark edge, so the
+   rounding is invisible without an outline. A thin neutral-gray border
+   follows the arc and reads on both:
+
+   ```bash
+   read W H < <(magick identify -format "%w %h" guide/images/<name>.png)
+   magick guide/images/<name>.png -fill none -stroke '#6b7280' -strokewidth 2 \
+     -draw "roundrectangle 1,1 $((W-2)),$((H-2)) 24,24" guide/images/<name>.png
+   ```
+
+Both steps run **in place** and are dimension-independent, so they also
+round an **existing** screenshot after the fact — point them at the current
+file and run; no capture needed. Neither step is idempotent (re-running
+step 1 deepens the corner, step 2 double-draws the stroke), so apply each
+exactly once per file.
+
+Do **not** verify the result by flattening onto white (`-background white
+-flatten`) — a dark screenshot can render misleadingly. Flatten onto a
+dark matte instead (`-background '#1e1e1e' -flatten`) to see it as VS Code /
+GitHub-dark shows it.
 
 ## Compose when the subject spans more than one view
 
@@ -141,6 +186,7 @@ then Read the screenshot to confirm the region is in frame.
 | Capture | `casper browser open` → `wait "svg"` → `screenshot --out` |
 | Crop | `magick in.png -crop WxH+X+Y +repage guide/images/<name>.png` |
 | Subject spans two views | crop each region to the same width, `magick a.png b.png -append out.png` |
+| Round corners (last step) | 24 px radius: cut transparent corners **then** stroke a `#6b7280` border — see "Round the corners" (also rounds an existing PNG) |
 | Enforce filenames | `make check` (manifest two-way link) |
 
 ## Common mistakes
@@ -154,3 +200,10 @@ then Read the screenshot to confirm the region is in frame.
   Workflows list has nothing to show.
 - **Leaving the nav sidebar / browser chrome in the crop** — frame only the
   caption's subject.
+- **Forgetting to round the corners** — it is the last step on every guide
+  image; a square-cornered PNG is unfinished. But round each file only
+  **once** — neither step is idempotent.
+- **Cutting corners without the border** — transparent corners vanish on a
+  dark background (the screenshots are dark, and the guide is viewed on
+  dark themes too). The `#6b7280` stroke is what makes the arc visible on
+  both light and dark; do not skip it.
