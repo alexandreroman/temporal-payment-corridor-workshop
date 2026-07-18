@@ -15,6 +15,8 @@ end-to-end on a local dev server.
 > you from the running baseline to a production-shaped system, one Temporal
 > concept at a time. This README is the reference documentation.
 
+![Payment Corridor Web UI listing corrections in several states: one failed, one awaiting human approval with its proposal and compliance verdict, and one applied from corridor memory](app.png)
+
 > [!NOTE]
 > The payment/transfer domain model is intentionally simplified to keep
 > the workshop focused on durable execution with Temporal, not on
