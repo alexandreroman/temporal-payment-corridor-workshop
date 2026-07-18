@@ -108,9 +108,19 @@ and holds for a human (it needs a provider key and is best-effort — see
 make simulator SCENARIO=needs-approval
 ```
 
-In the Web UI, open the coordinator. With the feature enabled it no longer
-completes — it is **Running**, blocked on `wait_condition`. Query its
-state from the CLI:
+Open **the app** at <http://localhost:8080>. The correction shows as
+**awaiting-approval**: an approval panel with the proposed fix beside the
+compliance verdict and Approve / Reject controls. Because `needs-approval`
+produces a *compliant* correction, the verdict reads **Compliant — no
+violations** even though the fix still waits on a human decision:
+
+![The app's approval panel: a compliant correction awaiting a human decision](images/03-approval-panel.png)
+
+Behind that panel the coordinator is **durably waiting**. In the **Temporal
+Web UI**, open the coordinator: with the feature enabled it no longer
+completes — it is **Running**, blocked on `wait_condition`. The
+`awaiting_approval` **Query** answers "are you waiting?" without disturbing
+it — exactly the question the app's panel is built on:
 
 ```bash
 temporal workflow query \
@@ -119,26 +129,16 @@ temporal workflow query \
   --type awaiting_approval
 ```
 
-![A coordinator paused, awaiting a human decision, in the Web UI](images/03-awaiting-approval.png)
+![A coordinator paused, awaiting a human decision, in the Temporal Web UI](images/03-awaiting-approval.png)
 
-The app's own Web UI renders the same paused correction as an **approval
-panel** — the proposed fix beside the compliance verdict, with Approve /
-Reject controls. Because `needs-approval` produces a *compliant* correction,
-the verdict reads **Compliant — no violations** even though the fix still
-waits on a human decision:
+Now record a decision. **In the app, click Approve** (or Reject) on the
+panel — the primary path: the app POSTs an `ApprovalDecision` that the
+payments API relays to the coordinator as the `approve_correction`
+**Signal** (the route you read in Step 3).
 
-![The app Web UI approval panel: a compliant correction awaiting a human decision](images/03-approval-panel.png)
-
-Now approve it — either through the gateway API:
-
-```bash
-curl -X POST \
-  http://localhost:8080/api/payments/v1/anomalies/<payment_id>/approval \
-  -H 'content-type: application/json' \
-  -d '{"approved": true, "approver": "ops@bank.example"}'
-```
-
-or straight from the Temporal CLI as a raw signal:
+That decision is *just a Signal* — a message deliverable from anywhere, not
+only the app. To see that, send one by hand from the Temporal CLI instead
+of clicking:
 
 ```bash
 temporal workflow signal \
@@ -149,7 +149,8 @@ temporal workflow signal \
 ```
 
 The coordinator wakes, applies the correction (or records the rejection),
-and completes. Fetch the outcome:
+and completes. In the app the row flips from **awaiting-approval** to
+**applied** (or **held** on a reject); to read the full outcome over HTTP:
 
 ```bash
 curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
@@ -158,14 +159,15 @@ curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
 > [!NOTE]
 > **Who sends the approval?** Not the simulator — it only submits the
 > anomaly and returns. The decision arrives *out-of-band* from a separate
-> client (an ops process, or you via CLI). The teaching aside in
+> client: the operator clicking in the app, an ops process POSTing to the
+> gateway, or you sending the raw Signal from the CLI. The teaching aside in
 > [`simulator/main.py`](../simulator/main.py) spells this out.
 
 ## Step 5 — Checkpoint
 
 - [ ] A `needs-approval` correction stays **Running**, blocked on a human.
 - [ ] `awaiting_approval` query returns `true` while it waits.
-- [ ] Approving via the API *or* the CLI signal resumes and completes it.
+- [ ] Approving in the app *or* via the raw CLI Signal resumes and completes it.
 
 ## Revert
 

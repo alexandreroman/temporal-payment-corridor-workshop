@@ -4,7 +4,7 @@
 > **Goal of this step.** Tag every correction with its business
 > dimensions — corridor, anomaly type, lifecycle status — so the whole
 > fleet becomes filterable through Temporal's Visibility index, from the
-> CLI and the Web UI. The app's own API and Web UI are left untouched;
+> CLI and the Temporal Web UI. The app's own API and UI are left untouched;
 > this is purely operator-facing visibility.
 
 ## At a glance
@@ -33,11 +33,12 @@ the `US->IN` corridor" or "show me everything awaiting approval" becomes a
 real operational need. Temporal answers it without any bespoke query
 endpoint: **upsert Search Attributes** onto each workflow and its business
 fields land in the Visibility index, queryable fleet-wide from the CLI and
-the Web UI. This is one of the workshop's headline production concerns —
+the Temporal Web UI. This is one of the workshop's headline production
+concerns —
 operators get a searchable view of thousands of executions for free.
 
 > **Scope.** This feature only *tags* the workflows. It deliberately does
-> not change the payments API or Web UI — those keep reading each
+> not change the payments API or the app — those keep reading each
 > correction directly, so nothing on the app's screens depends on it.
 
 ## Step 1 — Preview the change
@@ -100,12 +101,12 @@ upserts.
 ## Step 4 — Run and observe
 
 Start a few corrections (mix `memory-hit` and, if you have a key,
-`low-confidence` from step [03](03-human-approval-signal.md) so some are
+`needs-approval` from step [03](03-human-approval-signal.md) so some are
 awaiting):
 
 ```bash
 make simulator
-make simulator SCENARIO=low-confidence   # needs a provider key
+make simulator SCENARIO=needs-approval   # needs a provider key
 ```
 
 **From the CLI**, filter the fleet by any dimension:
@@ -129,7 +130,7 @@ corridor = 'US->IN'
 status = 'awaiting-approval'
 ```
 
-![Filtering executions by the corridor Search Attribute in the Web UI](images/08-search-attribute-filter.png)
+![Filtering executions by the corridor Search Attribute in the Temporal Web UI](images/08-search-attribute-filter.png)
 
 Without Search Attributes you could only list *every* execution and sift
 through them by hand; now Temporal's Visibility store answers the question

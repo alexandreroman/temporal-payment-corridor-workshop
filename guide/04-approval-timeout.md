@@ -104,8 +104,8 @@ Trigger a held correction and then *do nothing*:
 make simulator SCENARIO=needs-approval
 ```
 
-In the Web UI, open the coordinator. Its Event History now contains a
-**Timer** event started when it entered the `REVIEW` branch.
+In the **Temporal Web UI**, open the coordinator. Its Event History now
+contains a **Timer** event started when it entered the `REVIEW` branch.
 
 ![A durable Timer event in the coordinator's Event History](images/04-durable-timer.png)
 
@@ -121,8 +121,8 @@ curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq .outco
 ```
 
 To see the *other* branch, run another `needs-approval` correction and
-approve it (step [03](03-human-approval-signal.md)) *before* the window
-elapses — the timer is cancelled and the correction is applied.
+approve it **in the app** (step [03](03-human-approval-signal.md)) *before*
+the window elapses — the timer is cancelled and the correction is applied.
 
 ## Step 5 — Checkpoint
 

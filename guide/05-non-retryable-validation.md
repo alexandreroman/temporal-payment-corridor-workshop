@@ -89,12 +89,18 @@ up), then fire a correction that reaches the apply step:
 make simulator            # memory-hit still reaches apply_correction
 ```
 
-In the Web UI, open the coordinator and the `apply_correction` activity.
+In **Temporal**, open the coordinator and its `apply_correction` activity.
 You will see it fail on **attempt 1** and *not* retry — even though the
 coordinator's policy allows three attempts. The failure is an
 `ApplicationError` marked non-retryable.
 
-![apply_correction failing on attempt 1, no retries, in the Web UI](images/05-non-retryable-failure.png)
+![apply_correction failing on attempt 1, no retries, in the Temporal Web UI](images/05-non-retryable-failure.png)
+
+In **the app**, the same correction lands as **failed** — the business
+outcome of a fix that could never be applied, with no partial state left
+behind:
+
+![The app homepage: a correction that failed with no valid fix applied](images/05-app-failed.png)
 
 Contrast this deliberately with the *next* step, where a **retryable**
 failure does climb through the attempts. When you are done, set

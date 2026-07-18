@@ -13,7 +13,7 @@
   [`payments/activities.py`](../payments/activities.py),
   [`payments/memory.py`](../payments/memory.py)
 - **Temporal concepts:** SDK metrics, custom metrics, the Prometheus runtime,
-  the Web UI
+  the Temporal Web UI
 - **Docs:** [Observability](https://docs.temporal.io/develop/python/observability)
 
 > [!IMPORTANT]

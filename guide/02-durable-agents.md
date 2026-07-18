@@ -197,13 +197,13 @@ Study `apply_correction` and its `NOTE:` on idempotency:
 
 ## Run it and map code to history
 
-Fire the offline scenario and follow it in the Web UI:
+Fire the offline scenario and follow it in the Temporal Web UI:
 
 ```bash
 make simulator
 ```
 
-Open the `correction-<payment_id>` coordinator in the Web UI and match its
+Open the `correction-<payment_id>` coordinator in Temporal and match its
 Event History to the code you just read:
 
 - two `StartChildWorkflowExecution` events (the fan-out),

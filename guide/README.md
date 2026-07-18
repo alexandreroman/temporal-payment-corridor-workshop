@@ -13,7 +13,7 @@ Pydantic AI idea, backed by working code you can inspect.
 ## Who this is for
 
 You are comfortable with Python and have already met Temporal's core
-ideas (workflows, activities, workers, the dev server, the Web UI). You
+ideas (workflows, activities, workers, the dev server, the Temporal Web UI). You
 work in or near payments, or you simply want a realistic domain to hang
 durable-execution concepts on. No Kubernetes and no cloud account are
 required — everything runs locally against a Temporal dev server.
@@ -58,7 +58,7 @@ the ones before it.
 
 | Step                      | Topic                | What you learn                                                   |
 | ------------------------- | -------------------- | ---------------------------------------------------------------- |
-| [11](11-observability.md) | Observability        | The one metrics endpoint, Logfire, the Web UI, decoding payloads |
+| [11](11-observability.md) | Observability        | The one metrics endpoint, Logfire, the Temporal Web UI, decoding payloads |
 | [12](12-testing.md)       | Testing durable code | The test suite, replay tests, mocking the model                  |
 | [13](13-wrap-up.md)       | Wrap-up              | Reset the app, production-ready checklist, where to go next      |
 

@@ -59,7 +59,7 @@ make dev
 
 | URL                              | What            |
 | -------------------------------- | --------------- |
-| <http://localhost:8080>          | Web UI          |
+| <http://localhost:8080>          | The app         |
 | <http://localhost:8080/temporal> | Temporal Web UI |
 
 Prefer a fully containerized run instead? `make app-up` brings the whole
@@ -95,9 +95,18 @@ matches the pre-seeded corridor pattern in
 the LLM** and return the fix from memory at confidence `0.95`. No API key
 is needed for this path.
 
-## Observe the correction in the Web UI
+## See the correction in the app
 
-Open the Temporal Web UI at <http://localhost:8080/temporal> and find the
+Open **the app** at <http://localhost:8080>. Its homepage lists every
+correction; your `memory-hit` payment shows as **applied**, with a
+`source: memory` pill — corrected from the seeded pattern, no model call.
+
+![The app homepage: the first payment corrected from memory](images/01-app-homepage.png)
+
+## Inspect the durable execution in Temporal
+
+For *how* it ran, open the **Temporal Web UI** at
+<http://localhost:8080/temporal> and find the
 `correction-<payment_id>` workflow. You will see:
 
 - the `PaymentCorrectionCoordinator` execution, and
@@ -158,7 +167,7 @@ make simulator SCENARIO=memory-miss
 > A scenario only steers which *domain* the anomaly falls in. See the
 > caveats in [`simulator/scenarios.py`](../simulator/scenarios.py).
 
-Now watch this run in the Web UI: this time the Event History *does*
+Now watch this run in Temporal: this time the Event History *does*
 include the model-call activities that Pydantic AI offloaded from the
 agents — durable execution of an LLM call.
 
@@ -168,7 +177,8 @@ Before moving on, confirm you can:
 
 - [ ] Bring up the stack with `make dev`.
 - [ ] Correct the `memory-hit` payment with `make simulator` (no key).
-- [ ] Find the coordinator and its two child workflows in the Web UI.
+- [ ] See it as **applied** (source: memory) in the app.
+- [ ] Find the coordinator and its two child workflows in Temporal.
 - [ ] Fetch the outcome with `curl` against the payments API.
 
 All green? Now dig into *how* it works.
