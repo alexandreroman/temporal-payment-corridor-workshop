@@ -76,6 +76,40 @@ backed by code you read:
 - **Testing** — replay tests, mocked model, failure paths (step
   [12](12-testing.md)).
 
+## Deploying: Temporal Cloud vs self-hosting
+
+Throughout the workshop the Temporal Service ran as a dev server in a
+container. In production you either **self-host** the Service — running and
+scaling its datastore, the front-end / history / matching services, the
+Visibility store, upgrades and backups yourself — or you point the same
+workers and clients at **Temporal Cloud** and operate none of it. For an app
+like this one, Cloud carries real weight:
+
+- **No Service to run.** The coordinator, agent and memory workers, the
+  payments API and the simulator connect exactly as they do now; only the
+  target address and credentials change. There is no cluster, datastore, or
+  Visibility store to size, patch, or keep alive — Temporal runs it, with an
+  availability SLA and prioritized support.
+- **Managed, isolated namespaces.** The two namespaces this app uses —
+  `payments` and `memory` — are each provisioned in a click (up to 100 per
+  account), with their own retention and access, instead of being configured
+  on a cluster you operate.
+- **High availability when it matters.** Standard namespaces run
+  highly-available; HA namespaces add cross-region failover for the
+  strictest continuity needs — no capacity planning on your side.
+- **Security built in.** Connections authenticate with mTLS certificates or
+  API keys, and each namespace is isolated per account.
+- **End-to-end encryption stays yours.** The `PayloadCodec` from step
+  [09](09-payload-encryption.md) encrypts payloads *before* they leave your
+  process, so even Temporal Cloud only ever stores ciphertext; the codec
+  server that decrypts for the UI runs on your side, not theirs.
+- **Metrics without a monitoring stack.** The Cloud OpenMetrics endpoint
+  and reference dashboards (step [11](11-observability.md)) give you the
+  `temporal_cloud_*` fleet view without running Prometheus yourself.
+
+Docs: [Temporal Cloud](https://docs.temporal.io/cloud) ·
+[Cloud vs self-hosted](https://docs.temporal.io/evaluate/development-production-features/cloud-vs-self-hosted-features).
+
 ## Where to go next
 
 - Combine features. Enable `search-attributes` *and* `human-approval-signal`
