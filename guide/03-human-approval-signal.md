@@ -150,11 +150,7 @@ temporal workflow signal \
 
 The coordinator wakes, applies the correction (or records the rejection),
 and completes. In the app the row flips from **awaiting-approval** to
-**applied** (or **held** on a reject); to read the full outcome over HTTP:
-
-```bash
-curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
-```
+**applied** (or **held** on a reject), the final outcome shown inline.
 
 > [!NOTE]
 > **Who sends the approval?** Not the simulator — it only submits the

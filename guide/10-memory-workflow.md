@@ -122,12 +122,6 @@ Watch, in the `memory` namespace, an **Update** land on `corridor-memory`
 resolves from memory via a **Query** — no model call, no new history event
 for the read.
 
-You can also drive it directly through the HTTP API:
-
-```bash
-curl -s "http://localhost:8010/api/memory/v1/lookup?corridor=US-%3EIN&anomaly_type=wrong_bic&beneficiary_bank_id=HDFCINBB" | jq
-```
-
 ## Step 5 — Checkpoint
 
 - [ ] `corridor-memory` runs as a singleton workflow in the `memory`

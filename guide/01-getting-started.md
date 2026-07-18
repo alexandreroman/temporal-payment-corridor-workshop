@@ -24,8 +24,8 @@
   [03](03-human-approval-signal.md) on) and to capture a replay fixture
   (step [12](12-testing.md)). The dev server runs in Docker, so the CLI is
   a separate install.
-- **[jq](https://jqlang.github.io/jq/)** — the guide pipes `curl` output
-  through it, starting with this step's outcome fetch below.
+- **[jq](https://jqlang.github.io/jq/)** — used by `make capture-history`
+  when you regenerate the replay fixture (step [12](12-testing.md)).
 - *(Optional, for later steps)* an **LLM provider API key** matching
   `CORRIDOR_MODEL`, e.g. `ANTHROPIC_API_KEY`. You only need it once a
   scenario misses corridor memory and an agent actually calls a model.
@@ -121,19 +121,14 @@ at work.
 
 ![The coordinator and its two agent child workflows in the Temporal Web UI](images/01-webui-workflow-tree.png)
 
-## Fetch the outcome over HTTP
+## Read the outcome
 
-The simulator only *submits* the anomaly. To read the final outcome, ask
-the payments API (through the gateway):
-
-```bash
-curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq
-```
-
-A completed correction returns `applied: true`, the proposal (with
-`source: "memory"`), the compliance verdict, and a human-readable
-message. The API routes are defined in
-[`payments/api.py`](../payments/api.py).
+The simulator only *submits* the anomaly; the result shows up in **the
+app** — the row you just saw, `applied` with a `source: memory` pill and a
+one-line summary. The full structured outcome (the proposal, the compliance
+verdict, and a message) is what the app reads from the payments API
+([`payments/api.py`](../payments/api.py)) under
+`/api/payments/v1/anomalies/<payment_id>`.
 
 ## Try a scenario that reaches the agents
 
@@ -179,7 +174,6 @@ Before moving on, confirm you can:
 - [ ] Correct the `memory-hit` payment with `make simulator` (no key).
 - [ ] See it as **applied** (source: memory) in the app.
 - [ ] Find the coordinator and its two child workflows in Temporal.
-- [ ] Fetch the outcome with `curl` against the payments API.
 
 All green? Now dig into *how* it works.
 

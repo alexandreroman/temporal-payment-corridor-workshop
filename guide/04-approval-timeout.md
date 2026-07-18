@@ -114,11 +114,8 @@ For a fast demo you can temporarily shorten the window in the enabled
 though a workflow already running keeps the timer it was started with.
 Once the window elapses without an approval, the coordinator fires the
 timer, catches `asyncio.TimeoutError`, and completes with the auto-reject
-message. Confirm the outcome:
-
-```bash
-curl -s http://localhost:8080/api/payments/v1/anomalies/<payment_id> | jq .outcome.message
-```
+message. In the app the row turns **held**, its summary reading "No
+decision within the approval window; auto-rejected."
 
 To see the *other* branch, run another `needs-approval` correction and
 approve it **in the app** (step [03](03-human-approval-signal.md)) *before*
