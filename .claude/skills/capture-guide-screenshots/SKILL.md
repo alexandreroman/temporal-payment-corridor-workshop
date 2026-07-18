@@ -107,12 +107,22 @@ dimensions. `magick`/`convert` and Python PIL are available.
 
 ## Round the corners
 
-Every guide image gets **rounded corners** as its last transformation —
-after cropping and after any compose/stack step, on the final
-`guide/images/<name>.png`. Two steps, both at a **24 px** radius:
+Every guide image gets a **rounded card frame** as its last transformation
+— after cropping and after any compose/stack step, on the final
+`guide/images/<name>.png`. Three steps: pad, cut the corners, stroke the
+border. Radius **24 px**, padding **24 px**:
 
-1. **Cut the corners** — make them transparent (the PNGs carry an alpha
-   channel):
+1. **Pad the image** — a dark-card matte gives the content breathing room
+   inside the border (so the stroke doesn't hug the screenshot). The
+   screenshots are dark, so a near-black matte blends into the content
+   edge:
+
+   ```bash
+   magick guide/images/<name>.png -bordercolor '#0d1117' -border 24 guide/images/<name>.png
+   ```
+
+2. **Cut the corners** — round the padded canvas, making the corners
+   transparent (the PNGs carry an alpha channel):
 
    ```bash
    magick guide/images/<name>.png \
@@ -123,23 +133,23 @@ after cropping and after any compose/stack step, on the final
      -alpha off -compose CopyOpacity -composite guide/images/<name>.png
    ```
 
-2. **Stroke a rounded border** — the screenshots are dark-themed, and the
-   guide is plain Markdown viewed on **either** a light *or* a dark
-   background (GitHub theme, VS Code preview). On a dark background the
-   transparent corners reveal dark ≈ the image's own dark edge, so the
-   rounding is invisible without an outline. A thin neutral-gray border
-   follows the arc and reads on both:
+3. **Stroke a rounded border** — the guide is plain Markdown viewed on
+   **either** a light *or* a dark background (GitHub theme, VS Code
+   preview). On a dark background the transparent corners reveal dark ≈ the
+   matte, so the rounding is invisible without an outline. A thin dark-gray
+   border follows the arc and reads on both:
 
    ```bash
    read W H < <(magick identify -format "%w %h" guide/images/<name>.png)
-   magick guide/images/<name>.png -fill none -stroke '#6b7280' -strokewidth 2 \
+   magick guide/images/<name>.png -fill none -stroke '#374151' -strokewidth 2 \
      -draw "roundrectangle 1,1 $((W-2)),$((H-2)) 24,24" guide/images/<name>.png
    ```
 
-Both steps run **in place** and are dimension-independent, so they also
-round an **existing** screenshot after the fact — point them at the current
-file and run; no capture needed. Neither step is idempotent (re-running
-step 1 deepens the corner, step 2 double-draws the stroke), so apply each
+All three steps run **in place** and are dimension-independent (steps 2–3
+touch only the four corners), so they also frame an **existing** screenshot
+after the fact — point them at the current file and run in order; no capture
+needed. None of the steps is idempotent (re-padding grows the matte,
+re-cutting deepens the corner, re-stroking double-draws), so apply each
 exactly once per file.
 
 Do **not** verify the result by flattening onto white (`-background white
@@ -186,7 +196,7 @@ then Read the screenshot to confirm the region is in frame.
 | Capture | `casper browser open` → `wait "svg"` → `screenshot --out` |
 | Crop | `magick in.png -crop WxH+X+Y +repage guide/images/<name>.png` |
 | Subject spans two views | crop each region to the same width, `magick a.png b.png -append out.png` |
-| Round corners (last step) | 24 px radius: cut transparent corners **then** stroke a `#6b7280` border — see "Round the corners" (also rounds an existing PNG) |
+| Round corners (last step) | 24 px: pad `#0d1117` (24 px) → cut transparent corners → stroke a `#374151` border — see "Round the corners" (also frames an existing PNG) |
 | Enforce filenames | `make check` (manifest two-way link) |
 
 ## Common mistakes
@@ -200,10 +210,10 @@ then Read the screenshot to confirm the region is in frame.
   Workflows list has nothing to show.
 - **Leaving the nav sidebar / browser chrome in the crop** — frame only the
   caption's subject.
-- **Forgetting to round the corners** — it is the last step on every guide
-  image; a square-cornered PNG is unfinished. But round each file only
-  **once** — neither step is idempotent.
+- **Forgetting to frame the corners** — pad + round + border is the last
+  step on every guide image; a square-cornered PNG is unfinished. But run
+  each step only **once** per file — none is idempotent.
 - **Cutting corners without the border** — transparent corners vanish on a
   dark background (the screenshots are dark, and the guide is viewed on
-  dark themes too). The `#6b7280` stroke is what makes the arc visible on
+  dark themes too). The `#374151` stroke is what makes the arc visible on
   both light and dark; do not skip it.
