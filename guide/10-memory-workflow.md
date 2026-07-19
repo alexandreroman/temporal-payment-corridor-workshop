@@ -115,17 +115,21 @@ holds as durable, in-workflow state — no database behind it.
 
 ![The singleton corridor-memory Entity Workflow in the memory namespace](images/10-entity-workflow.png)
 
-Now exercise it end to end. Run an agent scenario that misses memory,
-learns a fix, and writes it back:
+Now exercise it end to end. Run an agent scenario that misses memory so the
+agents reason out a fix:
 
 ```bash
 make simulator SCENARIO=memory-miss   # needs a provider key
 ```
 
-Watch, in the `memory` namespace, an **Update** land on `corridor-memory`
-(the write-back), and its state grow. Re-run the *same* corridor and it now
-resolves from memory via a **Query** — no model call, no new history event
-for the read.
+When that fix clears the gate and is applied, an **Update** lands on
+`corridor-memory` (the write-back) in the `memory` namespace and its state
+grows; re-run the *same* corridor and it now resolves from memory via a
+**Query** — no model call, no new history event for the read. If the model
+lands the proposal below the confidence threshold, the correction is held
+rather than applied, so no Update arrives until the fix is applied — for
+example by approving it with `human-approval-signal` (step
+[03](03-human-approval-signal.md)), which then triggers the same write-back.
 
 ## Step 5 — Checkpoint
 
