@@ -234,6 +234,64 @@ human-in-the-loop path step [03](03-human-approval-signal.md) wires up.
 Approving a held correction there applies the fix and triggers the same
 write-back.
 
+## Live demo: crash & resume
+
+Steps 00 and 02 claim a correction survives a worker crash. Here you
+stage it and watch it happen — on the plain baseline, no feature needed.
+
+> [!NOTE]
+> Start from a clean baseline (`make feature-reset`) with the stack up via
+> `make dev`, and a provider API key configured. The demo needs the
+> (slower) LLM activity to leave a window to interrupt; the offline
+> `memory-hit` scenario finishes too fast to catch.
+
+1. Start a correction that calls the model:
+
+   ```bash
+   make simulator SCENARIO=memory-miss
+   ```
+
+   Expect: a new `correction-<payment_id>` coordinator, status Running,
+   fanned out to two agent child workflows.
+
+2. Open that coordinator in the Temporal Web UI.
+
+   Expect: both agents running; inside a child workflow, an
+   `agent__instruction_agent__model_request` activity is scheduled (the
+   durable LLM call).
+
+3. Crash it — press Ctrl-C in the terminal running `make dev`.
+
+   Expect: the worker, API, and memory service stop, but the Temporal
+   server keeps running, so the coordinator stays Running and the model
+   activity is left pending with no worker to run it (no pollers).
+
+4. Bring it back:
+
+   ```bash
+   make dev
+   ```
+
+   Expect: the worker re-polls, picks up the pending activity, and the
+   correction finishes — status Completed. It was never restarted from
+   scratch.
+
+5. Inspect the resume: in the child workflow's Event History, compare the
+   model activity's Scheduled and Started times.
+
+   Expect: a gap of tens of seconds spanning exactly the outage. The
+   activity waited durably in the task queue while no worker existed, then
+   the restarted worker drained it. Nothing was lost.
+
+> [!NOTE]
+> The workflow's state lives in Temporal, not in the worker: an in-flight
+> activity survives the worker's death and resumes on its own.
+
+> [!IMPORTANT]
+> `memory-miss` leaves roughly a 20–30 second window. If the coordinator
+> already shows Completed, you were too quick — just run the simulator
+> again.
+
 ## Checkpoint
 
 - [ ] You can point to where determinism is preserved (I/O in activities,
