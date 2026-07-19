@@ -221,10 +221,18 @@ Now run an agent scenario (needs a provider key) and compare:
 make simulator SCENARIO=memory-miss
 ```
 
-This time you will see the Pydantic AI model activities in the child
-workflows, and — because the fix was LLM-reasoned and applied — a
-`write_corridor_memory` activity in the parent. Submit the *same* corridor
-again and watch it become a memory hit.
+This time the child workflows' Event History *does* include the Pydantic AI
+model activities — durable execution of an LLM call, offloaded from the
+agents. What happens next depends on the gate. When the reasoned-out fix
+clears it (compliant *and* confidence ≥ `CONFIDENCE_THRESHOLD`), the
+coordinator applies it and — because the fix was reasoned out, not recalled —
+runs a `write_corridor_memory` activity in the parent; submit the *same*
+corridor again and it resolves from memory. When the model is less sure (a
+conservative model often lands `memory-miss` just below the threshold), the
+correction is *held* instead — `applied=false`, no write-back — which is the
+human-in-the-loop path step [03](03-human-approval-signal.md) wires up.
+Approving a held correction there applies the fix and triggers the same
+write-back.
 
 ## Checkpoint
 
