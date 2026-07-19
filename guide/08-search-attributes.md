@@ -119,7 +119,7 @@ temporal workflow list --namespace payments \
   --query "status = 'awaiting-approval'"
 
 temporal workflow list --namespace payments \
-  --query "anomalyType = 'wrong_bic' AND status = 'awaiting-approval'"
+  --query "anomalyType = 'missing_intermediary_bank' AND status = 'awaiting-approval'"
 ```
 
 **In the Temporal Web UI** (`/temporal`), the same queries work in the
