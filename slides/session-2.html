@@ -365,7 +365,7 @@ flowchart LR
       <!-- 14 · Pseudo-code (H) -->
       <section id="retry-alerting-code" class="type-code">
         <span class="kicker">React to a retry, keep succeeding</span>
-        <h2>Notice the retry, raise an alert</h2>
+        <h2>Notice the retry, emit an alert</h2>
         <div class="body">
           <pre><code><span class="c"># an activity can see its own retry count — react when it climbs</span>
 attempt = <span class="hl">activity.info().attempt</span>
