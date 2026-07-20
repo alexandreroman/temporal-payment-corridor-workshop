@@ -68,7 +68,8 @@ endif
 # advertised — the gateway is the single entry point (see gateway/Caddyfile).
 define show_urls
 	@echo ""
-	@echo "The stack is up. Open:"
+	@echo "The stack is up."
+	@echo "Open:"
 	@echo "  Web UI            http://localhost:$(GATEWAY_PORT)"
 	@echo "  Temporal Web UI   http://localhost:$(GATEWAY_PORT)/temporal"
 endef

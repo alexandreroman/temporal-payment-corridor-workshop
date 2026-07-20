@@ -1,0 +1,830 @@
+/*
+ * Temporal reveal.js theme — the entire visual design system for the
+ * workshop decks. All colours are CSS custom properties on :root so the
+ * palette can be swapped in one place. No build step: this file is loaded
+ * directly by every HTML shell after reveal.css.
+ *
+ * Fonts (Inter, JetBrains Mono) are pulled from Google Fonts in the HTML
+ * shells. For fully offline use, vendor the .woff2 files under assets/ and
+ * replace the <link> tags with local @font-face declarations.
+ */
+
+/* ── Palette ─────────────────────────────────────────────────────────── */
+:root {
+  --t-bg:        #0b0d1a; /* base near-black navy */
+  --t-bg-2:      #0e1120; /* card/panel darker */
+  --t-surface:   #151a2e; /* raised surface */
+  --t-border:    #2a3050; /* subtle borders */
+  --t-text:      #f3f4fa; /* primary text (near-white) */
+  --t-muted:     #9aa2bd; /* muted/subtitle gray */
+
+  --t-green:     #4ce0a0; /* PRIMARY accent — mint green */
+  --t-teal:      #2dd4bf; /* Temporal orchestration */
+  --t-blue:      #3b82f6; /* client / API */
+  --t-amber:     #f59e0b; /* activities */
+  --t-red:       #f87171; /* streaming / failures */
+  --t-magenta:   #c026d3; /* durable-tool / external */
+  --t-indigo:    #6366f1; /* card accents / human */
+  --t-llm:       #b8b84a; /* LLM node olive */
+
+  --t-font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --t-font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ── Global surface ──────────────────────────────────────────────────── */
+/*
+ * Cosmic backdrop — a soft aurora of radial glows over the base navy,
+ * mirroring the Temporal brand deck: teal top-right, warm amber top-left,
+ * magenta/purple bloom along the bottom, blue bottom-left. It lives on
+ * .reveal itself (not .reveal-viewport) because .reveal paints an opaque
+ * layer on top of the viewport — putting the gradient there would hide it.
+ * Kept moderate so slide content stays perfectly readable.
+ */
+.reveal {
+  font-family: var(--t-font-sans);
+  color: var(--t-text);
+  background:
+    radial-gradient(48% 58% at 90% 2%, rgba(45, 212, 191, 0.28), transparent 70%),
+    radial-gradient(42% 48% at 4% 0%, rgba(242, 150, 70, 0.16), transparent 72%),
+    radial-gradient(75% 62% at 62% 118%, rgba(150, 70, 205, 0.32), transparent 68%),
+    radial-gradient(52% 56% at 0% 98%, rgba(60, 90, 210, 0.22), transparent 72%),
+    var(--t-bg);
+}
+
+/* Base navy under everything (and behind any slide-background layer). */
+.reveal-viewport {
+  background: var(--t-bg);
+}
+
+/* Content is top-aligned by default because Reveal runs with center:false. */
+.reveal .slides section {
+  top: 0;
+  height: 100%;
+  padding: 48px 64px;
+  box-sizing: border-box;
+  text-align: left;
+  font-size: 1.6rem;
+  line-height: 1.5;
+}
+
+/* ── Headings ────────────────────────────────────────────────────────── */
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+  font-family: var(--t-font-sans);
+  color: var(--t-text);
+  font-weight: 300; /* light — the deck's large thin titles */
+  letter-spacing: -0.5px;
+  text-transform: none; /* reveal uppercases headings by default; undo it */
+  line-height: 1.15;
+  margin: 0 0 0.5em;
+}
+
+.reveal h1 { font-size: 2.8rem; }
+.reveal h2 { font-size: 2.2rem; }
+.reveal h3 { font-size: 1.7rem; }
+
+/* The deck's signature bold-green keyword inside a heading. */
+.reveal h1 strong,
+.reveal h2 strong,
+.reveal h3 strong,
+.reveal h4 strong {
+  color: var(--t-green);
+  font-weight: 700;
+}
+
+/* ── Inline emphasis & links ─────────────────────────────────────────── */
+.reveal .hl,
+.reveal strong.hl {
+  color: var(--t-green);
+  font-weight: 700;
+}
+
+.reveal a {
+  color: var(--t-teal);
+  text-decoration: none;
+}
+.reveal a:hover {
+  text-decoration: underline;
+}
+
+/* ── Code ────────────────────────────────────────────────────────────── */
+.reveal code,
+.reveal pre {
+  font-family: var(--t-font-mono);
+}
+
+.reveal code {
+  background: var(--t-bg-2);
+  border: 1px solid var(--t-border);
+  border-radius: 6px;
+  padding: 0.1em 0.4em;
+  font-size: 0.85em;
+}
+
+.reveal pre {
+  width: 100%;
+  box-shadow: none;
+}
+
+.reveal pre code {
+  background: var(--t-bg-2);
+  border: 1px solid var(--t-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-size: 0.7em;
+  line-height: 1.5;
+}
+
+/* ── Persistent furniture ────────────────────────────────────────────── */
+.reveal .deck-logo {
+  /* Square Temporal mark; equal height and width. */
+  position: fixed;
+  bottom: 22px;
+  left: 26px;
+  height: 38px;
+  width: 38px;
+  opacity: 0.85;
+  z-index: 40;
+  border: none;
+  background: none;
+  box-shadow: none;
+  margin: 0;
+}
+
+/* Built-in slide number, restyled: plain muted mono, no box. */
+.reveal .slide-number {
+  right: 24px;
+  bottom: 20px;
+  left: auto;
+  top: auto;
+  background: none;
+  color: var(--t-muted);
+  font-family: var(--t-font-mono);
+  font-size: 0.75rem;
+}
+
+/* ── Kicker (eyebrow label) ──────────────────────────────────────────── */
+.reveal .kicker {
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--t-muted);
+  margin-bottom: 0.6em;
+}
+.reveal .kicker--green   { color: var(--t-green); }
+.reveal .kicker--teal    { color: var(--t-teal); }
+.reveal .kicker--blue    { color: var(--t-blue); }
+.reveal .kicker--amber   { color: var(--t-amber); }
+.reveal .kicker--magenta { color: var(--t-magenta); }
+
+/* ── Layout helpers ──────────────────────────────────────────────────── */
+.reveal .cols {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+.reveal .cols > * {
+  flex: 1;
+}
+
+/* Card grid + cards. */
+.reveal .cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-top: 12px;
+}
+.reveal .card {
+  background: var(--t-bg-2);
+  border: 1px solid var(--t-border);
+  border-radius: 14px;
+  padding: 22px 24px;
+  font-size: 1.1rem;
+}
+.reveal .card--accent {
+  border-color: var(--t-indigo);
+}
+.reveal .card--accent .eyebrow,
+.reveal .card--accent .num {
+  color: var(--t-green);
+  font-weight: 700;
+}
+
+/* Pill badges (chips). */
+.reveal .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.reveal .chip {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--t-border);
+  background: var(--t-bg-2);
+  color: var(--t-muted);
+  font-size: 0.9rem;
+  font-family: var(--t-font-mono);
+}
+.reveal .chip.on {
+  color: var(--t-green);
+  border-color: var(--t-green);
+}
+.reveal .chip.off {
+  color: var(--t-muted);
+  border-color: var(--t-border);
+  opacity: 0.7;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Per-slide-type layouts.
+ * Applied in markdown via <!-- .slide: class="type-xxx" -->.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Title slide — centered vertically, left-aligned, thin huge title. */
+.reveal .type-title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+/* Prominent brand mark on the cover; the corner furniture is hidden here. */
+.reveal .type-title .title-mark {
+  height: 64px;
+  width: 64px;
+  opacity: 0.95;
+  margin-bottom: 28px;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+.reveal-viewport.cover .deck-logo {
+  display: none;
+}
+.reveal .type-title h1 {
+  font-size: 3.4rem;
+  font-weight: 300;
+  margin-bottom: 0.3em;
+}
+.reveal .type-title .subtitle {
+  color: var(--t-muted);
+  font-size: 1.6rem;
+}
+
+/* Section divider — big centered title with a green kicker above. */
+.reveal .type-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 100%;
+}
+.reveal .type-section h2 {
+  font-size: 3rem;
+}
+
+/* (A) Objectives — "by the end you'll be able to…" list. */
+.reveal .type-objectives ul {
+  list-style: none;
+  margin: 0.4em 0 0;
+  padding: 0;
+}
+.reveal .type-objectives li {
+  position: relative;
+  padding-left: 1.6em;
+  margin: 0; /* spacing handled by the ul's flex gap */
+  font-size: 1.5rem;
+}
+.reveal .type-objectives li::before {
+  content: "\25BA"; /* ► */
+  position: absolute;
+  left: 0;
+  color: var(--t-green);
+}
+
+/* (B) Recap — two columns + chips. */
+.reveal .type-recap h3 {
+  color: var(--t-muted);
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* (C) Framing — title anchored top; the 3-sentence body centres beneath it. */
+.reveal .type-framing {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+}
+.reveal .type-framing .kicker {
+  color: var(--t-green);
+}
+.reveal .type-framing h2 {
+  font-size: 2.6rem;
+  margin-bottom: 0.8em;
+}
+.reveal .framing > div {
+  margin: 0.5em 0;
+  font-size: 1.5rem;
+  line-height: 1.5;
+}
+.reveal .framing .problem {
+  color: var(--t-text);
+}
+.reveal .framing .concept {
+  color: var(--t-muted);
+}
+.reveal .framing .concept .hl {
+  color: var(--t-green);
+}
+.reveal .framing .observe {
+  color: var(--t-muted);
+  font-style: italic;
+}
+
+/* (D) Diagram — kicker, underlined title, centered mermaid, caption/legend. */
+.reveal .type-diagram {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.reveal .type-diagram .kicker {
+  color: var(--t-green);
+}
+.reveal .type-diagram h2 {
+  font-size: 2rem;
+  margin-bottom: 0.15em;
+}
+.reveal .type-diagram .mermaid {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+.reveal .type-diagram .mermaid svg {
+  max-height: 100%;
+}
+.reveal .diagram-caption {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--t-bg-2);
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  padding: 12px 18px;
+  color: var(--t-muted);
+  font-size: 1rem;
+  margin-top: 12px;
+}
+
+/* Legend row of colored chips. */
+.reveal .legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 0.95rem;
+  color: var(--t-muted);
+}
+.reveal .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.reveal .legend-item::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--chip, var(--t-border));
+}
+/* Legend chip colour helpers — match the mermaid classDef palette. */
+.reveal .legend-item.c-client   { --chip: var(--t-blue); }
+.reveal .legend-item.c-temporal { --chip: var(--t-teal); }
+.reveal .legend-item.c-activity { --chip: var(--t-amber); }
+.reveal .legend-item.c-stream   { --chip: var(--t-red); }
+.reveal .legend-item.c-store    { --chip: var(--t-green); }
+.reveal .legend-item.c-external { --chip: var(--t-magenta); }
+.reveal .legend-item.c-llm      { --chip: var(--t-llm); }
+.reveal .legend-item.c-human    { --chip: var(--t-indigo); }
+
+/* (E) Hands-on cue — title anchored top (consistent with content slides);
+ * the command card + predict prompt centre in the body beneath it. */
+.reveal .type-handson {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+}
+.reveal .type-handson > .body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  text-align: center;
+  min-height: 0;
+  padding-top: 1.2em;
+  gap: 1.6rem; /* even spacing between the command card and the predict prompt */
+}
+.reveal .cmd {
+  background: var(--t-bg-2);
+  border: 1px solid var(--t-green);
+  border-radius: 12px;
+  box-shadow: 0 0 24px rgba(76, 224, 160, 0.18); /* green glow */
+  padding: 22px 30px;
+  font-family: var(--t-font-mono);
+  font-size: 1.2rem;
+  line-height: 1.7;
+  color: var(--t-text);
+  text-align: left;
+  /* A terminal block spans the full content width (like a real terminal
+     window); commands stay left-aligned inside. pre-wrap preserves the
+     spacing in captured output (e.g. the aligned URL banner). */
+  width: 100%;
+  align-self: stretch;
+  white-space: pre-wrap;
+  margin: 0;
+}
+/* Captured program output, muted to set it apart from typed commands. */
+.reveal .cmd .out {
+  color: var(--t-muted);
+}
+/* Shell prompt marker: a green "$" before each entered command line
+ * (comments and continuation lines carry none). */
+.reveal .cmd .prompt {
+  color: var(--t-green);
+  user-select: none;
+}
+.reveal .predict {
+  color: var(--t-muted);
+  font-style: italic;
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+/* (F) Checkpoint — "what we just saw" checklist + tie-back line. */
+.reveal .type-checkpoint .check {
+  list-style: none;
+  margin: 0.4em 0;
+  padding: 0;
+}
+.reveal .type-checkpoint .check li {
+  position: relative;
+  padding-left: 1.6em;
+  margin: 0; /* spacing handled by the check list's flex gap */
+  font-size: 1.4rem;
+}
+.reveal .type-checkpoint .check li::before {
+  content: "\2713"; /* ✓ */
+  position: absolute;
+  left: 0;
+  color: var(--t-green);
+  font-weight: 700;
+}
+.reveal .type-checkpoint .tieback {
+  color: var(--t-muted);
+  font-size: 1.1rem;
+  margin-top: 1.2em;
+}
+
+/* (G) Bridge — teaser of the next session. */
+.reveal .type-bridge {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 100%;
+}
+.reveal .type-bridge h2 {
+  font-size: 2.6rem;
+  font-weight: 300;
+  margin: 0 0 0.7em;
+}
+.reveal .type-bridge .teaser {
+  color: var(--t-muted);
+  font-size: 1.35rem;
+  line-height: 1.6;
+  text-align: center;
+  max-width: 60%;
+  margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Landing page (index.html) — reuses the theme outside a reveal deck.
+ * ════════════════════════════════════════════════════════════════════ */
+body.landing {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--t-font-sans);
+  color: var(--t-text);
+  background:
+    radial-gradient(48% 58% at 90% 2%, rgba(45, 212, 191, 0.28), transparent 70%),
+    radial-gradient(42% 48% at 4% 0%, rgba(242, 150, 70, 0.16), transparent 72%),
+    radial-gradient(75% 62% at 62% 118%, rgba(150, 70, 205, 0.32), transparent 68%),
+    radial-gradient(52% 56% at 0% 98%, rgba(60, 90, 210, 0.22), transparent 72%),
+    var(--t-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  box-sizing: border-box;
+}
+body.landing .landing-logo {
+  /* Square Temporal mark; equal height and width. */
+  height: 56px;
+  width: 56px;
+  opacity: 0.9;
+  margin-bottom: 24px;
+}
+body.landing h1 {
+  font-weight: 300;
+  letter-spacing: -0.5px;
+  font-size: 2.8rem;
+  text-align: center;
+  margin: 0 0 8px;
+}
+body.landing h1 strong {
+  color: var(--t-green);
+  font-weight: 700;
+}
+body.landing .lede {
+  color: var(--t-muted);
+  font-size: 1.2rem;
+  margin: 0 0 40px;
+}
+body.landing .session-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  width: 100%;
+  max-width: 1000px;
+}
+body.landing .session-card {
+  display: block;
+  background: var(--t-bg-2);
+  border: 1px solid var(--t-border);
+  border-radius: 16px;
+  padding: 28px;
+  text-decoration: none;
+  color: var(--t-text);
+  transition: border-color 0.2s, transform 0.2s;
+}
+body.landing .session-card:hover {
+  border-color: var(--t-green);
+  transform: translateY(-3px);
+}
+body.landing .session-card .num {
+  font-family: var(--t-font-mono);
+  color: var(--t-green);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+body.landing .session-card h2 {
+  font-weight: 400;
+  font-size: 1.5rem;
+  margin: 12px 0 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Skill-scaffold compatibility.
+ * The reveal.js skill scaffold loads reset.css and uses .section-divider
+ * / .content / .footnote plus text utilities. These rules make our
+ * Temporal theme work with that scaffold and with inline-HTML slides.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* reset.css strips bold (font: inherit) — restore it. */
+.reveal strong,
+.reveal b {
+  font-weight: 700;
+}
+
+/* Section-divider slides (title breaks between steps): centered, thin. */
+.reveal .slides section.section-divider {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  height: 100%;
+}
+.reveal .slides section.section-divider h1 {
+  font-size: 3rem;
+  font-weight: 300;
+}
+.reveal .slides section.section-divider .kicker {
+  color: var(--t-green);
+}
+.reveal .slides section.section-divider .teaser {
+  color: var(--t-muted);
+  font-size: 1.4rem;
+  margin-top: 0.4em;
+}
+
+/* Optional .content wrapper (fills remaining vertical space). */
+.reveal .slides section > .content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Footnote / source line pinned to the bottom of a slide. */
+.reveal .slides section > .footnote {
+  position: absolute;
+  bottom: 16px;
+  left: 64px;
+  right: 64px;
+  font-size: 0.8rem;
+  color: var(--t-muted);
+}
+
+/* A concept card with an icon-ish eyebrow + body (motivation, overview). */
+.reveal .card .eyebrow {
+  display: block;
+  font-family: var(--t-font-mono);
+  font-size: 0.85rem;
+  color: var(--t-green);
+  margin-bottom: 0.4em;
+}
+.reveal .card p {
+  font-size: 1.05rem;
+  color: var(--t-muted);
+  margin: 0;
+}
+
+/* Text utilities (parity with the skill base). */
+.reveal .text-lg { font-size: 1.8rem; }
+.reveal .text-xl { font-size: 2rem; }
+.reveal .text-muted { color: var(--t-muted); }
+.reveal .text-center { text-align: center; }
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Space optimisation.
+ * Content-light slides vertically centre their block so the content sits in
+ * the optical middle instead of hugging the top with dead space below —
+ * matching the brand deck's balance.
+ * ════════════════════════════════════════════════════════════════════ */
+/*
+ * Working content slides: the title (kicker + h2) stays anchored at the top —
+ * the same Y as diagram slides, so the title never jumps between slides — and
+ * the body fills and vertically centres in the space beneath it.
+ */
+.reveal .type-objectives,
+.reveal .type-checkpoint,
+.reveal .type-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+}
+.reveal .type-objectives > .body,
+.reveal .type-checkpoint > .body,
+.reveal .type-content > .body,
+.reveal .type-framing > .body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+/*
+ * Distribute list / sentence items across the body so the vertical space
+ * reads evenly, instead of a short block floating in the middle with a large
+ * void above and below. The inner list becomes the flex distributor.
+ */
+/* Framing: distribute the 3 sentences evenly across the body. */
+.reveal .type-framing > .body {
+  justify-content: stretch;
+}
+.reveal .type-framing .framing {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  margin: 0;
+}
+
+/* Objectives: comfortable fixed spacing, anchored just under the title —
+ * not spread edge-to-edge (that reads too airy for short bullets). */
+.reveal .type-objectives > .body,
+.reveal .type-checkpoint > .body {
+  justify-content: flex-start;
+  padding-top: 0.6em;
+}
+.reveal .type-objectives ul,
+.reveal .type-checkpoint .check {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  margin: 0;
+}
+/* Keep the tie-back line pinned to the bottom of the checkpoint body. */
+.reveal .type-checkpoint .tieback {
+  margin-top: auto;
+}
+
+/* Card slides (motivation, overview): anchor the card row just under the
+ * title rather than floating it in the vertical middle. */
+.reveal .type-content > .body {
+  justify-content: flex-start;
+  padding-top: 0.6em;
+}
+
+/* Cards breathe more and fill the width on centred content slides. */
+.reveal .type-content .cards {
+  margin-top: 24px;
+  gap: 24px;
+}
+.reveal .type-content .card {
+  padding: 26px 28px;
+}
+
+/* Diagram slides: the title stays at the top, the diagram grows to fill,
+ * legend + caption pin to the bottom — no wasted vertical band. */
+.reveal .type-diagram {
+  justify-content: flex-start;
+}
+.reveal .type-diagram .mermaid {
+  flex: 1 1 auto;
+  width: 100%;
+}
+.reveal .type-diagram .mermaid svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Edge labels must not paint an opaque box over the connector line. Force the
+ * label background transparent (mermaid's themeVariable renders it black here)
+ * and give the text a subtle dark halo so it stays legible over the line. */
+.reveal .mermaid .edgeLabel,
+.reveal .mermaid .edgeLabel p,
+.reveal .mermaid .edgeLabel .label,
+.reveal .mermaid .edgeLabel foreignObject div,
+.reveal .mermaid .edgeLabels .edgeLabel rect,
+.reveal .mermaid .edgeLabel rect {
+  background: transparent !important;
+  background-color: transparent !important;
+  fill: transparent !important;
+}
+.reveal .mermaid .edgeLabel,
+.reveal .mermaid .edgeLabel p,
+.reveal .mermaid .edgeLabel span {
+  text-shadow:
+    0 0 4px var(--t-bg),
+    0 0 4px var(--t-bg),
+    0 0 6px var(--t-bg);
+}
+
+/* Landing: sessions not yet built are shown muted and non-interactive. */
+body.landing .session-card.is-pending {
+  opacity: 0.55;
+  cursor: default;
+}
+body.landing .session-card.is-pending:hover {
+  border-color: var(--t-border);
+  transform: none;
+}
+body.landing .session-card .soon {
+  display: inline-block;
+  margin-top: 12px;
+  font-family: var(--t-font-mono);
+  font-size: 0.8rem;
+  color: var(--t-muted);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+ * Layout activation.
+ * Reveal sets the active slide to `display: block` with high specificity,
+ * which would defeat our per-type flex layouts. Force flex so the vertical
+ * alignment (centering, title-top diagrams) actually takes effect on the
+ * shown slide. Each type keeps its own justify-content from the rules above.
+ * ════════════════════════════════════════════════════════════════════ */
+.reveal .slides section.type-title,
+.reveal .slides section.type-section,
+.reveal .slides section.section-divider,
+.reveal .slides section.type-objectives,
+.reveal .slides section.type-framing,
+.reveal .slides section.type-handson,
+.reveal .slides section.type-checkpoint,
+.reveal .slides section.type-bridge,
+.reveal .slides section.type-content,
+.reveal .slides section.type-diagram {
+  display: flex !important;
+  flex-direction: column;
+}
+.reveal .slides section.type-diagram {
+  justify-content: flex-start;
+}

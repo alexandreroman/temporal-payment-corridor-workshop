@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session 1 — Durable agents: the core</title>
+
+  <!-- Reveal.js core -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+
+  <!-- Fonts: Inter (thin display titles) + JetBrains Mono (commands/labels).
+       For offline decks, vendor the .woff2 files and swap for @font-face. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+  <!-- Temporal theme -->
+  <link rel="stylesheet" href="assets/theme.css">
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- Session title -->
+      <section id="title" class="type-title" data-state="cover">
+        <img class="title-mark" src="assets/temporal-mark.png" alt="Temporal" />
+        <span class="kicker kicker--green">Workshop · Durable AI on Temporal</span>
+        <h1>Durable agents: <strong>the core</strong></h1>
+        <p class="subtitle">Repairing anomalous cross-border payments with
+          durable Temporal workflows and Pydantic&nbsp;AI agents.</p>
+      </section>
+
+      <!-- Objectives (A) -->
+      <section id="objectives" class="type-objectives">
+        <span class="kicker kicker--green">Objectives</span>
+        <h2>By the end of this session, you'll be able to…</h2>
+        <div class="body">
+          <ul>
+            <li>Explain why <strong>durable execution</strong> fits agentic payment repair.</li>
+            <li>Trace one correction through the coordinator, its agent child workflows, and the memory-first gate.</li>
+            <li>Point to exactly where <strong>determinism</strong> is preserved — and why it must be.</li>
+            <li>Deliver a human decision to a running workflow with a <strong>Signal</strong>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 3 · Motivation -->
+      <section id="motivation" class="type-content">
+        <span class="kicker kicker--green">Why Temporal here</span>
+        <h2>Agentic payment repair is a <strong>durable-execution</strong> problem</h2>
+        <div class="body">
+        <div class="cards">
+          <div class="card">
+            <span class="eyebrow">survive crashes</span>
+            <p>Every model call runs as a Temporal activity, so an agent's reasoning
+              survives a worker restart and replays deterministically. No in-flight
+              correction is ever lost to a redeploy.</p>
+          </div>
+          <div class="card">
+            <span class="eyebrow">human oversight</span>
+            <p>A low-confidence correction simply <em>waits</em> — durably, for as long
+              as you allow — for a human decision. No queues, no cron, no lost timers.</p>
+          </div>
+          <div class="card">
+            <span class="eyebrow">no lock-in</span>
+            <p>The same code runs on any cloud or on Kubernetes. Payloads can be
+              encrypted end to end — a fit for banking's compliance constraints.</p>
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          Everything you already know from Temporal 101 and 102 is exactly what this
+          domain needs. Three properties matter here. First, agents that survive
+          crashes: because every model call is offloaded to an activity, a worker
+          restart never loses an in-flight correction. Second, human oversight is a
+          first-class, durable state — a workflow can wait for a person for as long as
+          the business needs. Third, it is cloud-agnostic and compliance-ready, which
+          matters when you run payments for banks. We will see all three, live, today.
+        </aside>
+      </section>
+
+      <!-- 4 · Divider: Step 00 -->
+      <section id="divider-00" class="section-divider">
+        <span class="kicker">Step 00</span>
+        <h1>The application, end to end</h1>
+        <p class="teaser">What it does, why it is shaped this way, and how one payment flows through it.</p>
+        <aside class="notes">
+          Before we run or change anything, let's build a shared mental model. I will
+          show you the components and then follow a single payment from arrival to
+          applied correction. Keep this map in your head: every feature we enable in
+          the next two sessions hardens or observes one edge of it.
+        </aside>
+      </section>
+
+      <!-- 5 · Architecture (D) -->
+      <section id="arch" class="type-diagram">
+        <span class="kicker">Architecture</span>
+        <h2>One gateway, two namespaces</h2>
+        <div class="mermaid">
+flowchart LR
+    Sim[simulator] --> GW
+    User[operator browser] --> GW
+    GW[Gateway<br/>single HTTP entry] --> WEB[App · Web UI]
+    GW --> API[Payments API]
+    GW --> TUI[Temporal Web UI]
+    API -->|start · list · approve| Coord(("Coordinator<br/>+ agent children"))
+    Worker[Payments worker] --> Coord
+    Worker -->|HTTP · never Temporal| Mem[(Corridor memory)]
+
+    classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
+    classDef external fill:#241033,stroke:#c026d3,color:#f0ccff,stroke-width:1.5px;
+    class Sim,User,GW,WEB,API client;
+    class Coord,Worker temporal;
+    class Mem store;
+    class TUI external;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-client">Client / entry</span>
+          <span class="legend-item c-temporal">Temporal</span>
+          <span class="legend-item c-store">Memory store</span>
+          <span class="legend-item c-external">Observability</span>
+        </div>
+        <div class="diagram-caption">
+          External callers only ever speak HTTP to the gateway. Payments runs in its own
+          Temporal namespace; corridor memory is a separate service in its own namespace,
+          reached over HTTP — never over Temporal.
+        </div>
+        <aside class="notes">
+          Two things to internalise here. One entry point: the simulator and the browser
+          only ever talk HTTP to the gateway — they never open a Temporal client of their
+          own. Two namespaces, cleanly separated: the payments workflows live in the
+          payments namespace, and the corridor-memory service lives in its own namespace.
+          The worker reaches memory over an HTTP call, not over Temporal. Two bounded
+          contexts, no shared Temporal between them.
+        </aside>
+      </section>
+
+      <!-- 6 · Lifecycle sequence (D) -->
+      <section id="lifecycle" class="type-diagram">
+        <span class="kicker">Lifecycle</span>
+        <h2>One correction, start to finish</h2>
+        <div class="mermaid">
+sequenceDiagram
+    participant API as payments API
+    participant Coord as Coordinator
+    participant Agent as agent child workflows
+    participant Mem as corridor memory
+    participant LLM as LLM
+    API->>Coord: start workflow (anomaly)
+    par both agents run concurrently
+        Coord->>Agent: execute child workflow
+        Agent->>Mem: read_corridor_memory
+        alt confident pattern in memory
+            Mem-->>Agent: correction (source = memory)
+        else memory miss
+            Agent->>LLM: agent.run (durable)
+        end
+    end
+    Note over Coord: gate — apply only if compliant AND confidence >= 0.75
+    Coord-->>API: correction outcome
+        </div>
+        <div class="diagram-caption">
+          The coordinator fans out to both agents at once. Each checks memory before the
+          model. The gate then applies the fix or holds it for a human.
+        </div>
+        <aside class="notes">
+          Here is the happy path as a sequence. The coordinator starts and fans out to
+          both agents concurrently — instruction and compliance. Each agent checks
+          corridor memory first; on a confident hit it returns immediately with source
+          equals memory and never touches the model. On a miss, it runs the model as a
+          durable activity. Then the gate decides: apply the fix only when compliance
+          clears it and the confidence is at least zero point seven five. Anything else
+          is held. Keep this picture — the whole workshop adds to it.
+        </aside>
+      </section>
+
+      <!-- Divider: Step 01 -->
+      <section id="divider-01" class="section-divider">
+        <span class="kicker">Step 01</span>
+        <h1>Getting started</h1>
+        <p class="teaser">Bring the stack up and correct your first payment — end to end.</p>
+        <aside class="notes">
+          Time to get hands-on for the first time. We bring the whole stack up with a
+          single command and put a payment through it, end to end, before we open any
+          code. Watch the app and the Temporal Web UI side by side.
+        </aside>
+      </section>
+
+      <!-- 7 · Getting started — hands-on (E) -->
+      <section id="getting-started" class="type-handson">
+        <span class="kicker kicker--green">Step 01 · Hands-on</span>
+        <h2>Bring it up, correct your first payment</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make dev<br><span class="out">The stack is up.<br>Open:<br>  Web UI            http://localhost:8080<br>  Temporal Web UI   http://localhost:8080/temporal</span><br><span class="prompt">$</span> make simulator<br><span class="out">scenario: memory-hit<br>payment : pmt-3f9a2c1d<br>workflow: correction-pmt-3f9a2c1d<br>accepted: submitted to http://localhost:8080/api/payments/v1/anomalies</span></div>
+          <p class="predict">Predict first: the default scenario is a seeded <code>US-&gt;IN</code>
+            wrong-BIC anomaly.<br>Will either agent call the model — and what will the
+            correction's <code>source</code> be?</p>
+        </div>
+      </section>
+
+      <!-- Divider: Step 02 -->
+      <section id="divider-02" class="section-divider">
+        <span class="kicker">Step 02</span>
+        <h1>Durable agents &amp; orchestration</h1>
+        <p class="teaser">Read the baseline: a coordinator, two agent child workflows, the memory-first gate, and determinism.</p>
+        <aside class="notes">
+          Now we read the baseline application closely — no feature to enable, just code
+          to understand. This is the coordinator, the two agent child workflows, the
+          memory-first flow, the compliance gate, and the determinism rules that
+          everything else in the workshop builds on.
+        </aside>
+      </section>
+
+      <!-- 8 · Durable agents overview -->
+      <section id="agents-overview" class="type-content">
+        <span class="kicker kicker--green">Step 02 · Baseline</span>
+        <h2>A coordinator, two agents, one gate</h2>
+        <div class="body">
+        <div class="cards">
+          <div class="card card--accent">
+            <span class="eyebrow">instruction agent</span>
+            <p>A payments-operations expert. Proposes the smallest fix that lets the
+              instruction settle — a valid BIC, a required intermediary bank.</p>
+          </div>
+          <div class="card card--accent">
+            <span class="eyebrow">compliance agent</span>
+            <p>A compliance officer. Does <em>not</em> propose a fix — it returns a
+              <strong>verdict</strong> on whether a compliant correction is even possible.</p>
+          </div>
+          <div class="card card--accent">
+            <span class="eyebrow">the gate</span>
+            <p>Applies the fix only when the verdict clears it <strong>and</strong>
+              confidence ≥ 0.75. Anything else is held — <strong>fail-closed</strong>.</p>
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          This is the always-on baseline — no feature to enable, just code to read. The
+          heart is a coordinator that fans out to two specialised agents, each running as
+          its own child workflow. The instruction agent proposes the smallest safe fix.
+          The compliance agent does not compete with a rival fix — it returns a verdict.
+          The coordinator treats compliance as a gate, not a proposer: it applies a
+          correction only when compliance clears it and confidence is high enough. A
+          missing clearance never auto-applies. It fails closed and holds for a human.
+        </aside>
+      </section>
+
+      <!-- 9 · Fan-out diagram (D) -->
+      <section id="fanout" class="type-diagram">
+        <span class="kicker">Orchestration</span>
+        <h2>Fan-out to child workflows</h2>
+        <div class="mermaid">
+flowchart LR
+    Coord(("Coordinator")) --> I["Instruction agent<br/>child workflow"]
+    Coord --> C["Compliance agent<br/>child workflow"]
+    I --> Gate{"Gate<br/>compliant AND<br/>confidence >= 0.75"}
+    C --> Gate
+    Gate -->|APPLY| Apply["apply_correction<br/>activity"]
+    Gate -->|REVIEW / NO_PROPOSAL| Hold["hold · fail-closed"]
+
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    classDef activity fill:#2a2410,stroke:#f59e0b,color:#ffe9c2,stroke-width:1.5px;
+    classDef human fill:#12203a,stroke:#6366f1,color:#d6dcff,stroke-width:1.5px;
+    class Coord,I,C,Gate temporal;
+    class Apply activity;
+    class Hold human;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-temporal">Workflow / gate</span>
+          <span class="legend-item c-activity">Activity</span>
+          <span class="legend-item c-human">Held for human</span>
+        </div>
+        <div class="diagram-caption">
+          <code>asyncio.gather(..., return_exceptions=True)</code> makes the fan-out
+          resilient — one agent failing degrades gracefully instead of failing the
+          whole correction.
+        </div>
+        <aside class="notes">
+          The coordinator runs both agents as child workflows, concurrently, with gather
+          and return-exceptions set to true. That is deliberate: if one agent fails, the
+          correction degrades gracefully instead of crashing. Both results feed the gate.
+          On APPLY, an activity applies the fix. On REVIEW or no proposal, it holds —
+          fail-closed. In the baseline, a hold just returns applied-false; step 03 turns
+          that hold into a real wait for a human.
+        </aside>
+      </section>
+
+      <!-- 10 · Memory-first gate (D) -->
+      <section id="memory-first" class="type-diagram">
+        <span class="kicker">Memory-first</span>
+        <h2>Check memory before the model</h2>
+        <div class="mermaid">
+flowchart LR
+    Start(["agent runs"]) --> Read["read_corridor_memory<br/>activity · HTTP"]
+    Read --> Q{"confident<br/>pattern?"}
+    Q -->|hit| Ret["return correction<br/>source = memory"]
+    Q -->|miss| LLM["agent.run<br/>model activity"]
+    LLM --> Prop["proposal<br/>source = llm"]
+
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    classDef activity fill:#2a2410,stroke:#f59e0b,color:#ffe9c2,stroke-width:1.5px;
+    class Start,Q,Ret,Prop temporal;
+    class Read,LLM activity;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-temporal">Workflow</span>
+          <span class="legend-item c-activity">Activity (I/O)</span>
+        </div>
+        <div class="diagram-caption">
+          A known high-confidence pattern is returned without a model call — which is why
+          the seeded <code>US-&gt;IN</code> / wrong-BIC path is fully offline.
+        </div>
+        <aside class="notes">
+          Before either agent spends a model call, it checks corridor memory — a store of
+          known corridor-and-anomaly to correction patterns. If a confident pattern
+          exists, the agent returns it immediately, tagged source equals memory, and
+          never touches the model. That is exactly why the seeded happy path runs with no
+          API key. When the agents do reason out a new fix and it is applied, the
+          coordinator writes the pattern back — but only for model-sourced fixes, never
+          for memory hits, because echoing a memory read would teach nothing.
+        </aside>
+      </section>
+
+      <!-- 11 · Determinism boundary (D) -->
+      <section id="determinism" class="type-diagram">
+        <span class="kicker">Determinism</span>
+        <h2>Deterministic workflow, all I/O in activities</h2>
+        <div class="mermaid">
+flowchart LR
+    subgraph WF["Workflow code · deterministic"]
+      d1["no wall-clock"]
+      d2["no network"]
+      d3["no randomness"]
+    end
+    subgraph IO["Activities &amp; durable agents · all I/O"]
+      a1["read / write memory"]
+      a2["apply_correction"]
+      a3["model requests"]
+    end
+    WF -->|execute_activity| IO
+
+    style WF fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    style IO fill:#2a2410,stroke:#f59e0b,color:#ffe9c2,stroke-width:1.5px;
+    classDef tnode fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5;
+    classDef anode fill:#2a2410,stroke:#f59e0b,color:#ffe9c2;
+    class d1,d2,d3 tnode;
+    class a1,a2,a3 anode;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-temporal">Deterministic workflow</span>
+          <span class="legend-item c-activity">Activities &amp; agents (I/O)</span>
+        </div>
+        <div class="diagram-caption">
+          The HTTP call to memory happens in the <code>read_corridor_memory</code>
+          activity, not in workflow code. <code>imports_passed_through()</code> lets the
+          agent objects reach the sandbox as real objects.
+        </div>
+        <aside class="notes">
+          This is the rule that makes replay safe. Workflow code must be deterministic:
+          no wall-clock, no network, no randomness. Notice the HTTP call to memory does
+          not happen in the workflow — it happens inside the read-corridor-memory
+          activity. All I/O lives in activities or inside the durable agents, which the
+          Pydantic AI integration offloads to activities for you. When you read the code,
+          look for imports-passed-through: that is how the agent objects reach the
+          deterministic sandbox as real objects.
+        </aside>
+      </section>
+
+      <!-- 12 · Crash & resume — hands-on (E) -->
+      <section id="crash-resume" class="type-handson">
+        <span class="kicker kicker--green">Step 02 · Live demo</span>
+        <h2>Crash it. Watch it resume.</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make simulator SCENARIO=memory-miss<br># … then Ctrl-C the terminal running `make dev`<br><span class="prompt">$</span> make dev</div>
+          <p class="predict">Predict first: when the worker dies mid-model-call, what happens
+            to the running correction — does it restart, fail, or wait?</p>
+        </div>
+        <aside class="notes">
+          This is the most compelling moment of the session, so slow down. Start a
+          correction that calls the model with the memory-miss scenario — that leaves us
+          a twenty-to-thirty second window. Open the coordinator in the Temporal Web UI
+          and find the pending model activity. Now crash it: press Ctrl-C in the terminal
+          running make dev. The worker, API, and memory service stop — but the Temporal
+          server keeps running, so the workflow stays alive, just with no worker to run
+          the activity. Bring it back with make dev. The worker re-polls, picks up the
+          pending activity, and the correction finishes — it was never restarted from
+          scratch. In the event history, the gap between the activity's scheduled and
+          started times is exactly the outage. The state lived in Temporal, not in the
+          worker.
+        </aside>
+      </section>
+
+      <!-- 13 · Divider: Step 03 -->
+      <section id="divider-03" class="section-divider">
+        <span class="kicker">Step 03</span>
+        <h1>Human-in-the-loop with Signals</h1>
+        <p class="teaser">Our first feature toggle: turn a held correction into one that waits for a person.</p>
+        <aside class="notes">
+          Now we enable our first feature with the toggle CLI. Everything so far was the
+          baseline. In the baseline, a hold is a dead end — the coordinator just returns
+          applied-false. This feature makes "hold for a human" mean actually wait for a
+          human, durably, using a Signal to deliver the decision and a Query to expose
+          the waiting state.
+        </aside>
+      </section>
+
+      <!-- 14 · Framing (C) -->
+      <section id="approval-framing" class="type-framing">
+        <span class="kicker">Human approval</span>
+        <h2>When the gate holds, wait for a human</h2>
+        <div class="body">
+        <div class="framing">
+          <div class="problem">
+            <strong>Problem.</strong> A low-confidence or non-compliant correction must
+            not auto-apply — but "hold" should mean <em>actually wait</em> for a decision,
+            for minutes or for days, surviving restarts.
+          </div>
+          <div class="concept">
+            <strong>Temporal concept.</strong> The workflow blocks on
+            <span class="hl">wait_condition</span> until a <span class="hl">Signal</span>
+            delivers the decision; a <span class="hl">Query</span> lets clients ask
+            "are you waiting?" without disturbing it.
+          </div>
+          <div class="observe">
+            <strong>Observe.</strong> With the feature on, the coordinator no longer
+            completes — it stays Running, blocked, until you approve.
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          Speak to this slide, do not read it. The problem first: a held correction must
+          not auto-apply, but holding should mean genuinely waiting for a person — for
+          minutes or for days — and surviving worker restarts the whole time. Temporal
+          makes that a first-class, durable state. The workflow blocks on wait-condition
+          until a Signal — a message you can send from anywhere — delivers the decision.
+          Meanwhile a Query lets a client ask "are you waiting?" without disturbing the
+          workflow. Watch for this in the demo: with the feature enabled, the coordinator
+          stops completing. It stays Running, blocked, until a human decides.
+        </aside>
+      </section>
+
+      <!-- 15 · Signals vs Queries (D) -->
+      <section id="signals-queries" class="type-diagram">
+        <span class="kicker">Message passing</span>
+        <h2>Signals write, Queries read</h2>
+        <div class="mermaid">
+flowchart LR
+    App["App / CLI"] -->|"approve_correction (SIGNAL)"| WF(("Coordinator<br/>wait_condition"))
+    App -.->|"awaiting_approval (QUERY)"| WF
+    WF -->|resumes · applies or records| Done["correction outcome"]
+
+    classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    class App client;
+    class WF,Done temporal;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-client">Client (app / CLI)</span>
+          <span class="legend-item c-temporal">Coordinator</span>
+        </div>
+        <div class="diagram-caption">
+          Solid = a <strong>Signal</strong> mutates state and resumes the wait.<br>
+          Dashed = a <strong>Query</strong> reads state without side effects. The
+          approval is just a message — deliverable from anywhere, not only the app.
+        </div>
+        <aside class="notes">
+          Two message types, one mental model. A Signal writes: approve-correction
+          mutates the workflow's state and wakes it from wait-condition. A Query reads:
+          awaiting-approval returns whether the workflow is blocked, with no side effects
+          — that is exactly the question the app's approval panel is built on. The key
+          teaching point: the approval is just a Signal, a message deliverable from
+          anywhere. The app sends it, an ops process could send it, or you can send the
+          raw Signal from the CLI.
+        </aside>
+      </section>
+
+      <!-- 16 · Approve — hands-on (E) -->
+      <section id="approve" class="type-handson">
+        <span class="kicker kicker--green">Step 03 · Hands-on</span>
+        <h2>Approve it — from the app, or the CLI</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make simulator SCENARIO=needs-approval<br># approve in the app — or send the raw Signal:<br><span class="prompt">$</span> temporal workflow signal \<br>&nbsp;&nbsp;--workflow-id correction-&lt;id&gt; --namespace payments \<br>&nbsp;&nbsp;--name approve_correction \<br>&nbsp;&nbsp;--input '{"approved": true, "approver": "ops@bank.example"}'</div>
+          <p class="predict">Predict first: before you approve, what will the
+            <code>awaiting_approval</code> Query return —<br>and what happens to the
+            workflow the instant the Signal lands?</p>
+        </div>
+      </section>
+
+      <!-- 17 · Checkpoint (F) -->
+      <section id="checkpoint" class="type-checkpoint">
+        <span class="kicker kicker--green">Checkpoint</span>
+        <h2>What we just saw</h2>
+        <div class="body">
+        <ul class="check">
+          <li>A correction fans out to two agent child workflows, gated fail-closed.</li>
+          <li>An in-flight correction survives a worker crash and resumes on its own.</li>
+          <li>A held correction waits durably; a Signal resumes it, a Query reads it.</li>
+        </ul>
+        <p class="tieback">All three are the same idea: state lives in Temporal, not in the
+          worker — that is durable execution.</p>
+        </div>
+        <aside class="notes">
+          Let's consolidate. Four things, all the same underlying idea. Corrections fan
+          out to child-workflow agents and are gated fail-closed. Memory-first means the
+          seeded path never calls a model. An in-flight correction survives a worker
+          crash and resumes on its own. And a held correction waits durably until a
+          Signal resumes it, while a Query reads its state. Every one of these works
+          because the state lives in Temporal, not in the worker. That is durable
+          execution.
+        </aside>
+      </section>
+
+      <!-- 18 · Bridge (G) -->
+      <section id="bridge" class="type-bridge">
+        <span class="kicker kicker--green">Next session</span>
+        <h2>Reliability &amp; control flow&nbsp;<strong>&rarr;</strong></h2>
+        <p class="teaser">Durable timers, retryable vs non-retryable errors, heartbeats
+          with cancellation, and fleet-wide visibility with search attributes.</p>
+        <aside class="notes">
+          That is the core. In the next session we harden it: bounded waiting with
+          durable timers, classifying errors as retryable or non-retryable, heartbeats
+          with cancellation for long settlement calls, and fleet-wide visibility with
+          search attributes. Same application, more of Temporal's control-flow surface.
+          See you there.
+        </aside>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script src="assets/deck.js"></script>
+  <script>
+    TemporalDeck.init();
+  </script>
+</body>
+</html>
