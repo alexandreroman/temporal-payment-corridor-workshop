@@ -106,7 +106,7 @@ awaiting):
 
 ```bash
 make simulator
-make simulator SCENARIO=needs-approval   # needs a provider key
+make simulator SCENARIO=needs-approval   # needs an LLM provider API key
 ```
 
 **From the CLI**, filter the fleet by any dimension:

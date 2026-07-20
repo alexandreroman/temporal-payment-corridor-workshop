@@ -119,7 +119,7 @@ Now exercise it end to end. Run an agent scenario that misses memory so the
 agents reason out a fix:
 
 ```bash
-make simulator SCENARIO=memory-miss   # needs a provider key
+make simulator SCENARIO=memory-miss   # needs an LLM provider API key
 ```
 
 When that fix clears the gate and is applied, an **Update** lands on
