@@ -362,7 +362,43 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 14 · Hands-on (E) -->
+      <!-- 14 · Pseudo-code (H) -->
+      <section id="retry-alerting-code" class="type-code">
+        <span class="kicker">React to a retry, keep succeeding</span>
+        <h2>Notice the retry, raise an alert</h2>
+        <div class="body">
+          <pre><code><span class="c"># an activity can see its own retry count — react when it climbs</span>
+attempt = <span class="hl">activity.info().attempt</span>
+if attempt &gt;= _RETRY_ALERT_THRESHOLD:
+    alerted.add(1, {…})            <span class="c"># climbing counter → dashboard / alert rule</span>
+if _rail_outage and attempt &lt; _RETRY_ALERT_THRESHOLD + 1:
+    <span class="hl">raise RuntimeError("transient rail outage")</span>   <span class="c"># plain → retryable, still succeeds</span></code></pre>
+        </div>
+        <div class="diagram-caption">
+          The mirror image of Step 05: there a malformed input raised
+          <code>ApplicationError(non_retryable=True)</code> to fail on attempt 1.
+          Here a <em>plain</em> exception is retryable by default, so the bounded
+          transient outage still completes within <code>maximum_attempts=3</code> —
+          and <code>activity.info().attempt</code> lets the activity emit an alert
+          metric before it recovers.
+        </div>
+        <aside class="notes">
+          This is the how, in a few lines, and it is the deliberate opposite of the
+          previous step. First, the activity reads its own retry count from
+          activity-dot-info-dot-attempt — it starts at one and the server bumps it on
+          every retry. Once that crosses the alert threshold, we add one to a climbing
+          counter, which is what feeds a dashboard or an alert rule. Then the key
+          contrast: where Step 05 raised an ApplicationError with non-retryable set to
+          true to fail permanently on attempt one, here we raise a plain
+          RuntimeError. A plain exception is retryable by default, so Temporal retries
+          it per the coordinator's policy. And because we bound the simulated outage
+          to the first couple of attempts, the correction still succeeds within
+          maximum-attempts of three — after the alert has already fired. So the
+          business outcome is unchanged; you simply get told that a rail is degrading.
+        </aside>
+      </section>
+
+      <!-- 15 · Hands-on (E) -->
       <section id="retry-handson" class="type-handson">
         <span class="kicker kicker--green">Step 06 · Hands-on</span>
         <h2>Watch it climb, alert, then succeed</h2>
@@ -386,7 +422,7 @@ flowchart LR
 
       <!-- ─────────────  STEP 07 · Long-running activities  ───────────── -->
 
-      <!-- 15 · Divider: Step 07 -->
+      <!-- 16 · Divider: Step 07 -->
       <section id="divider-07" class="section-divider">
         <span class="kicker">Step 07</span>
         <h1>Long-running activities &amp; heartbeats</h1>
@@ -400,7 +436,7 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 16 · Framing (C) -->
+      <!-- 17 · Framing (C) -->
       <section id="settle-framing" class="type-framing">
         <span class="kicker">Heartbeats</span>
         <h2>Progress, resumption, and cancellation</h2>
@@ -439,7 +475,7 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 17 · Pseudo-code (H) -->
+      <!-- 18 · Pseudo-code (H) -->
       <section id="settle-code" class="type-code">
         <span class="kicker">Heartbeat = progress + resume</span>
         <h2>Poll, checkpoint, resume where you stopped</h2>
@@ -470,7 +506,7 @@ while cycle &lt; _SETTLEMENT_POLL_CYCLES:
         </aside>
       </section>
 
-      <!-- 18 · Hands-on (E) -->
+      <!-- 19 · Hands-on (E) -->
       <section id="settle-handson" class="type-handson">
         <span class="kicker kicker--green">Step 07 · Hands-on</span>
         <h2>Watch the settlement heartbeat</h2>
@@ -491,7 +527,7 @@ while cycle &lt; _SETTLEMENT_POLL_CYCLES:
 
       <!-- ─────────────  STEP 08 · Search Attributes  ───────────── -->
 
-      <!-- 20 · Divider: Step 08 -->
+      <!-- 21 · Divider: Step 08 -->
       <section id="divider-08" class="section-divider">
         <span class="kicker">Step 08</span>
         <h1>Fleet-wide visibility</h1>
@@ -505,7 +541,7 @@ while cycle &lt; _SETTLEMENT_POLL_CYCLES:
         </aside>
       </section>
 
-      <!-- 21 · Diagram (D) — search attributes → visibility → filters -->
+      <!-- 22 · Diagram (D) — search attributes → visibility → filters -->
       <section id="search-attributes" class="type-diagram">
         <span class="kicker">Search Attributes</span>
         <h2>Tag once, query the whole fleet</h2>
@@ -547,7 +583,47 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 22 · Hands-on (E) -->
+      <!-- 23 · Pseudo-code (H) -->
+      <section id="search-attributes-code" class="type-code">
+        <span class="kicker">Tag from workflow code</span>
+        <h2>Upsert typed Search Attributes</h2>
+        <div class="body">
+          <pre><code><span class="c"># typed Search Attribute keys — filterable dimensions</span>
+_CORRIDOR_SA = SearchAttributeKey.for_keyword("corridor")
+_STATUS_SA   = SearchAttributeKey.for_keyword("status")
+
+<span class="c"># at the top of the coordinator's run — deterministic, workflow-safe</span>
+<span class="hl">workflow.upsert_search_attributes(</span>
+    [
+        _CORRIDOR_SA.value_set(anomaly.corridor),
+        _STATUS_SA.value_set("processing"),
+    ]
+<span class="hl">)</span></code></pre>
+        </div>
+        <div class="diagram-caption">
+          The upsert is deterministic and workflow-safe, so it lives in workflow
+          code — not an activity. The tagged fields land in the Visibility index and
+          become server-side queryable from the CLI and the Web UI, without touching
+          the app's own API or screens.
+        </div>
+        <aside class="notes">
+          This is the how, and it is two pieces. First, at module scope, we declare
+          typed Search Attribute keys — one for corridor, one for status — with
+          SearchAttributeKey-dot-for-keyword. These are the filterable dimensions.
+          Then, at the very top of the coordinator's run method, we call
+          workflow-dot-upsert-search-attributes, setting corridor from the anomaly and
+          status to processing; the real code also tags the anomaly type. The
+          important point: this call is deterministic and workflow-safe, so it belongs
+          in workflow code, not in an activity — unlike the side-effecting work we
+          pushed into activities earlier in the session. Those values land in
+          Temporal's Visibility index, which is what makes the whole fleet queryable
+          server-side, from the CLI and the Web UI search box. And notice what we did
+          not touch: the payments API and the app's screens are untouched — this is
+          purely operator-facing.
+        </aside>
+      </section>
+
+      <!-- 24 · Hands-on (E) -->
       <section id="sa-handson" class="type-handson">
         <span class="kicker kicker--green">Step 08 · Hands-on</span>
         <h2>Filter the fleet by any dimension</h2>
@@ -570,7 +646,7 @@ flowchart LR
 
       <!-- ─────────────  Wrap-up  ───────────── -->
 
-      <!-- 23 · Checkpoint (F) -->
+      <!-- 25 · Checkpoint (F) -->
       <section id="checkpoint" class="type-checkpoint">
         <span class="kicker kicker--green">Checkpoint</span>
         <h2>What we just saw</h2>
@@ -596,7 +672,7 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 24 · Bridge (G) -->
+      <!-- 26 · Bridge (G) -->
       <section id="bridge" class="type-bridge">
         <span class="kicker kicker--green">Next session</span>
         <h2>Production &amp; compliance&nbsp;<strong>&rarr;</strong></h2>
