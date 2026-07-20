@@ -107,18 +107,18 @@
         <div class="body">
         <div class="framing">
           <div class="problem">
-            <strong>Problem.</strong> A payment carries data you cannot leave in
+            <strong>Problem</strong> A payment carries data you cannot leave in
             plaintext in Event History — BICs, amounts, beneficiary details.
           </div>
           <div class="concept">
-            <strong>Temporal concept.</strong> A <span class="hl">PayloadCodec</span>
+            <strong>What Temporal brings</strong> A <span class="hl">PayloadCodec</span>
             sits at the edge of serialization: the SDK calls <code>encode</code> on
             the way out and <code>decode</code> on the way in, so payloads travel and
             rest as ciphertext — here with <span class="hl">Fernet</span>
             (AES-128-CBC + HMAC).
           </div>
           <div class="observe">
-            <strong>Observe.</strong> Event History now shows ciphertext — until the
+            <strong>Observe</strong> Event History now shows ciphertext — until the
             <span class="hl">codec server</span> decrypts it on demand for the
             Temporal Web UI.
           </div>
@@ -147,8 +147,9 @@
 flowchart LR
     App["Worker / API"] -->|"encode → ciphertext"| Hist[("Event History<br/>rests encrypted")]
     Hist -->|"decode → cleartext"| App
-    Hist -.->|"decrypt on demand"| Codec["codec server"]
-    Codec --> UI["Temporal Web UI<br/>cleartext"]
+    Hist -.->|"ciphertext"| UI["Temporal Web UI<br/>cleartext"]
+    UI -.->|"decode on demand"| Codec["codec server"]
+    Codec -.->|"cleartext"| UI
 
     classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
     classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
@@ -187,7 +188,7 @@ flowchart LR
         <span class="kicker">The change, in one place</span>
         <h2>Encrypt at the boundary, in one converter</h2>
         <div class="body">
-          <pre><code><span class="c"># REPLACE in both processes: the worker and the API</span>
+          <pre><code><span class="c"># same change in both processes: the worker and the API</span>
 key = load_key()
 if not key:
     raise RuntimeError("set CODEC_ENCRYPTION_KEY to enable encryption")
@@ -266,18 +267,18 @@ client = await Client.connect(
         <div class="body">
         <div class="framing">
           <div class="problem">
-            <strong>Problem.</strong> The baseline corridor memory is a plain
+            <strong>Problem</strong> The baseline corridor memory is a plain
             in-process dict — it loses everything on restart and keeps no audit trail.
           </div>
           <div class="concept">
-            <strong>Temporal concept.</strong> The <span class="hl">Entity Workflow</span>
+            <strong>What Temporal brings</strong> The <span class="hl">Entity Workflow</span>
             pattern turns that into one long-lived workflow. Reads are
             <span class="hl">Queries</span> (never recorded), writes are validated
             <span class="hl">Updates</span> (durably acknowledged), and
             <code>continue_as_new</code> keeps history bounded.
           </div>
           <div class="observe">
-            <strong>Observe.</strong> The HTTP contract at <code>/api/memory/v1</code>
+            <strong>Observe</strong> The HTTP contract at <code>/api/memory/v1</code>
             is unchanged — only the backend behind it moved into Temporal.
           </div>
         </div>
@@ -319,18 +320,18 @@ flowchart LR
           <span class="legend-item c-temporal">Entity Workflow</span>
         </div>
         <div class="diagram-caption">
-          A Query read adds no history event; an Update write is admitted only after
-          its <code>@remember.validator</code> passes — so the HTTP <code>204</code>
-          is a genuine acknowledgement. The service hosts its own embedded worker in
-          its own <code>memory</code> namespace.
+          A Query read adds no history event; an Update write is durably accepted
+          before it returns — so the HTTP <code>204</code> is a genuine
+          acknowledgement. The service hosts its own embedded worker in its own
+          <code>memory</code> namespace.
         </div>
         <aside class="notes">
           The singleton has a well-known id, corridor-memory, and everything flows
           through the same HTTP surface as before. A lookup becomes a Query — read
           only, never written to history — so reads are free of audit noise. A learned
-          pattern becomes an Update, which returns only after its validator passes and
-          the write is durably accepted, so the HTTP two-oh-four the caller gets back
-          is a real acknowledgement, not a hopeful fire-and-forget. And because one
+          pattern becomes an Update, which returns only after the write is durably
+          accepted, so the HTTP two-oh-four the caller gets back is a real
+          acknowledgement, not a hopeful fire-and-forget. And because one
           workflow accumulating updates forever would blow up its history, once it
           crosses a maximum it drains in-flight handlers and continues-as-new, keeping
           history bounded while carrying the accumulated patterns forward. One more
@@ -354,7 +355,7 @@ pattern = await <span class="hl">handle.query</span>(
 await <span class="hl">handle.execute_update</span>(MemoryWorkflow.remember, pattern)</code></pre>
         </div>
         <div class="diagram-caption">
-          Both handlers are a <code>REPLACE</code> in <code>memory/app.py</code>:
+          Both handlers change in <code>memory/app.py</code>:
           the baseline called <code>store.lookup</code> / <code>store.remember</code>;
           enabled, they call a Query and an Update. Same routes, same responses — the
           interface boundary from Session 1 is what makes the swap invisible.

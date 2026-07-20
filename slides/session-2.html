@@ -106,18 +106,18 @@
         <div class="body">
         <div class="framing">
           <div class="problem">
-            <strong>Problem.</strong> "Hold for a human" must not mean "hold
+            <strong>Problem</strong> "Hold for a human" must not mean "hold
             <em>forever</em>". A reviewer who never responds should not pin a
             correction Running indefinitely.
           </div>
           <div class="concept">
-            <strong>Temporal concept.</strong> A <span class="hl">durable timer</span>
+            <strong>What Temporal brings</strong> A <span class="hl">durable timer</span>
             is workflow state, not an in-process <code>sleep</code>. Passing
             <span class="hl">timeout=</span> to <code>wait_condition</code> arms one;
             it keeps counting across worker restarts and fires deterministically.
           </div>
           <div class="observe">
-            <strong>Observe.</strong> Left unanswered, the correction now
+            <strong>Observe</strong> Left unanswered, the correction now
             auto-rejects with the approval-window message — no background thread,
             no lost timer.
           </div>
@@ -248,7 +248,40 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 10 · Hands-on (E) -->
+      <!-- 10 · Pseudo-code (H) -->
+      <section id="classify-code" class="type-code">
+        <span class="kicker">Opt out of retries, explicitly</span>
+        <h2>Raise a non-retryable error</h2>
+        <div class="body">
+          <pre><code><span class="c"># pseudo-code: a malformed correction can never self-heal — fail it now</span>
+if not _is_valid_bic(proposal.proposed_value):
+    <span class="hl">raise ApplicationError(</span>
+        f"Malformed correction, refusing to apply: {proposal.proposed_value!r}",
+        <span class="hl">non_retryable=True</span>,          <span class="c"># skip the RetryPolicy's remaining attempts</span>
+    <span class="hl">)</span></code></pre>
+        </div>
+        <div class="diagram-caption">
+          A <em>plain</em> exception is retryable by default; the RetryPolicy will
+          keep re-running it. <code>ApplicationError(non_retryable=True)</code> is the
+          explicit opt-out — reach for it on validation failures that can never
+          succeed on a retry.
+        </div>
+        <aside class="notes">
+          This is the how, in a few lines. When the correction is malformed — a BIC
+          that fails validation — a retry can never fix it, so we fail it immediately
+          instead of burning the retry budget. We do that by raising an
+          ApplicationError with non-retryable set to true. That single flag tells
+          Temporal to fail the activity on attempt one and skip the RetryPolicy's
+          remaining attempts. Contrast that with a plain exception, which is
+          retryable by default and would climb through all three attempts. So the
+          rule is simple: a plain exception for transient failures you want retried,
+          an ApplicationError with non-retryable set to true for permanent ones that
+          can never self-heal. And this lives in the activity — apply-correction in
+          activities-dot-py — never in workflow code.
+        </aside>
+      </section>
+
+      <!-- 11 · Hands-on (E) -->
       <section id="classify-handson" class="type-handson">
         <span class="kicker kicker--green">Step 05 · Hands-on</span>
         <h2>Fail a malformed correction — once</h2>
@@ -272,7 +305,7 @@ flowchart LR
 
       <!-- ─────────────  STEP 06 · Reacting to retries  ───────────── -->
 
-      <!-- 11 · Divider: Step 06 -->
+      <!-- 12 · Divider: Step 06 -->
       <section id="divider-06" class="section-divider">
         <span class="kicker">Step 06</span>
         <h1>Reacting to retries</h1>
@@ -287,7 +320,7 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 12 · Diagram (D) — retry timeline -->
+      <!-- 13 · Diagram (D) — retry timeline -->
       <section id="retry-timeline" class="type-diagram">
         <span class="kicker">Retries as a signal</span>
         <h2>Alert while the correction still succeeds</h2>
@@ -329,7 +362,50 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 13 · Hands-on (E) -->
+      <!-- 14 · Pseudo-code (H) -->
+      <section id="retry-alerting-code" class="type-code">
+        <span class="kicker">React to a retry, keep succeeding</span>
+        <h2>Notice the retry, emit an alert</h2>
+        <div class="body">
+          <pre><code><span class="c"># an activity can see its own retry count — react when it climbs</span>
+attempt = <span class="hl">activity.info().attempt</span>
+if attempt &gt;= _RETRY_ALERT_THRESHOLD:
+    <span class="c"># a transient failure keeps retrying — surface it before it recovers</span>
+    alerted.add(1, {…})            <span class="c"># climbing counter → dashboard / alert rule</span></code></pre>
+        </div>
+        <div class="diagram-caption">
+          The transient failure is a <em>plain</em> exception, retryable by
+          default — so Temporal's RetryPolicy absorbs it and the correction still
+          succeeds within <code>maximum_attempts=3</code> (the mirror image of
+          Step 05's <code>ApplicationError(non_retryable=True)</code>, which fails
+          permanently on attempt 1). <code>activity.info().attempt</code> lets the
+          activity notice it is <em>being</em> retried and emit an alert metric
+          before it recovers — turning silent retries into an operational signal.
+        </div>
+        <aside class="notes">
+          This is the how, in a few lines, and it is the deliberate opposite of the
+          previous step. First, the activity reads its own retry count from
+          activity-dot-info-dot-attempt — it starts at one and the server bumps it on
+          every retry. Once that crosses the alert threshold, we add one to a climbing
+          counter, which is what feeds a dashboard or an alert rule. Then the key
+          contrast: where Step 05 raised an ApplicationError with non-retryable set to
+          true to fail permanently on attempt one, here the failure is a plain
+          exception, which is retryable by default — so Temporal's RetryPolicy simply
+          retries it and the correction still completes within maximum-attempts of
+          three, after the alert has already fired. So the business outcome is
+          unchanged; you simply get told that a rail is degrading.
+          One important caveat: in this workshop the failure is fabricated. A
+          hand-operated fault switch — the simulate-transient-rail-outage switch —
+          raises a plain error on the first attempts so you can watch the counter
+          climb and then see the correction recover. That switch is workshop
+          scaffolding, not part of the production pattern. In real code you would not
+          raise anything of your own here; you would just let a genuine downstream
+          failure propagate, and the same activity-dot-info-dot-attempt read would
+          turn those retries into an operational signal.
+        </aside>
+      </section>
+
+      <!-- 15 · Hands-on (E) -->
       <section id="retry-handson" class="type-handson">
         <span class="kicker kicker--green">Step 06 · Hands-on</span>
         <h2>Watch it climb, alert, then succeed</h2>
@@ -353,7 +429,7 @@ flowchart LR
 
       <!-- ─────────────  STEP 07 · Long-running activities  ───────────── -->
 
-      <!-- 14 · Divider: Step 07 -->
+      <!-- 16 · Divider: Step 07 -->
       <section id="divider-07" class="section-divider">
         <span class="kicker">Step 07</span>
         <h1>Long-running activities &amp; heartbeats</h1>
@@ -367,25 +443,25 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 15 · Framing (C) -->
+      <!-- 17 · Framing (C) -->
       <section id="settle-framing" class="type-framing">
         <span class="kicker">Heartbeats</span>
         <h2>Progress, resumption, and cancellation</h2>
         <div class="body">
         <div class="framing">
           <div class="problem">
-            <strong>Problem.</strong> Settlement is asynchronous and slow. The
+            <strong>Problem</strong> Settlement is asynchronous and slow. The
             workflow must wait for it — without losing progress on a crash, and
             without becoming impossible to cancel.
           </div>
           <div class="concept">
-            <strong>Temporal concept.</strong> <span class="hl">activity.heartbeat</span>
+            <strong>What Temporal brings</strong> <span class="hl">activity.heartbeat</span>
             does three jobs: it checkpoints progress, it lets a retry <em>resume</em>
             from the last checkpoint via <code>heartbeat_details</code>, and it is
             the channel through which <span class="hl">cancellation</span> is delivered.
           </div>
           <div class="observe">
-            <strong>Observe.</strong> From the workflow it is just another activity to
+            <strong>Observe</strong> From the workflow it is just another activity to
             <code>await</code> — determinism is preserved. A stalled poll is caught
             by <code>heartbeat_timeout</code>.
           </div>
@@ -406,7 +482,7 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 16 · Pseudo-code (H) -->
+      <!-- 18 · Pseudo-code (H) -->
       <section id="settle-code" class="type-code">
         <span class="kicker">Heartbeat = progress + resume</span>
         <h2>Poll, checkpoint, resume where you stopped</h2>
@@ -437,7 +513,7 @@ while cycle &lt; _SETTLEMENT_POLL_CYCLES:
         </aside>
       </section>
 
-      <!-- 17 · Hands-on (E) -->
+      <!-- 19 · Hands-on (E) -->
       <section id="settle-handson" class="type-handson">
         <span class="kicker kicker--green">Step 07 · Hands-on</span>
         <h2>Watch the settlement heartbeat</h2>
@@ -458,7 +534,7 @@ while cycle &lt; _SETTLEMENT_POLL_CYCLES:
 
       <!-- ─────────────  STEP 08 · Search Attributes  ───────────── -->
 
-      <!-- 19 · Divider: Step 08 -->
+      <!-- 21 · Divider: Step 08 -->
       <section id="divider-08" class="section-divider">
         <span class="kicker">Step 08</span>
         <h1>Fleet-wide visibility</h1>
@@ -472,7 +548,7 @@ while cycle &lt; _SETTLEMENT_POLL_CYCLES:
         </aside>
       </section>
 
-      <!-- 20 · Diagram (D) — search attributes → visibility → filters -->
+      <!-- 22 · Diagram (D) — search attributes → visibility → filters -->
       <section id="search-attributes" class="type-diagram">
         <span class="kicker">Search Attributes</span>
         <h2>Tag once, query the whole fleet</h2>
@@ -514,7 +590,47 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 21 · Hands-on (E) -->
+      <!-- 23 · Pseudo-code (H) -->
+      <section id="search-attributes-code" class="type-code">
+        <span class="kicker">Tag from workflow code</span>
+        <h2>Upsert typed Search Attributes</h2>
+        <div class="body">
+          <pre><code><span class="c"># typed Search Attribute keys — filterable dimensions</span>
+_CORRIDOR_SA = SearchAttributeKey.for_keyword("corridor")
+_STATUS_SA   = SearchAttributeKey.for_keyword("status")
+
+<span class="c"># at the top of the coordinator's run — deterministic, workflow-safe</span>
+<span class="hl">workflow.upsert_search_attributes(</span>
+    [
+        _CORRIDOR_SA.value_set(anomaly.corridor),
+        _STATUS_SA.value_set("processing"),
+    ]
+<span class="hl">)</span></code></pre>
+        </div>
+        <div class="diagram-caption">
+          The upsert is deterministic and workflow-safe, so it lives in workflow
+          code — not an activity. The tagged fields land in the Visibility index and
+          become server-side queryable from the CLI and the Web UI, without touching
+          the app's own API or screens.
+        </div>
+        <aside class="notes">
+          This is the how, and it is two pieces. First, at module scope, we declare
+          typed Search Attribute keys — one for corridor, one for status — with
+          SearchAttributeKey-dot-for-keyword. These are the filterable dimensions.
+          Then, at the very top of the coordinator's run method, we call
+          workflow-dot-upsert-search-attributes, setting corridor from the anomaly and
+          status to processing; the real code also tags the anomaly type. The
+          important point: this call is deterministic and workflow-safe, so it belongs
+          in workflow code, not in an activity — unlike the side-effecting work we
+          pushed into activities earlier in the session. Those values land in
+          Temporal's Visibility index, which is what makes the whole fleet queryable
+          server-side, from the CLI and the Web UI search box. And notice what we did
+          not touch: the payments API and the app's screens are untouched — this is
+          purely operator-facing.
+        </aside>
+      </section>
+
+      <!-- 24 · Hands-on (E) -->
       <section id="sa-handson" class="type-handson">
         <span class="kicker kicker--green">Step 08 · Hands-on</span>
         <h2>Filter the fleet by any dimension</h2>
@@ -537,7 +653,7 @@ flowchart LR
 
       <!-- ─────────────  Wrap-up  ───────────── -->
 
-      <!-- 22 · Checkpoint (F) -->
+      <!-- 25 · Checkpoint (F) -->
       <section id="checkpoint" class="type-checkpoint">
         <span class="kicker kicker--green">Checkpoint</span>
         <h2>What we just saw</h2>
@@ -563,7 +679,7 @@ flowchart LR
         </aside>
       </section>
 
-      <!-- 23 · Bridge (G) -->
+      <!-- 26 · Bridge (G) -->
       <section id="bridge" class="type-bridge">
         <span class="kicker kicker--green">Next session</span>
         <h2>Production &amp; compliance&nbsp;<strong>&rarr;</strong></h2>
