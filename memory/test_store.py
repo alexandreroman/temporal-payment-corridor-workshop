@@ -74,6 +74,7 @@ def test_remember_is_last_write_wins():
 
     stored = store.lookup(*key)
     assert stored == second
+    assert stored is not None
     assert stored.proposed_value == "EUR"
 
 

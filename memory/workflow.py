@@ -39,7 +39,7 @@ class MemoryWorkflow:
 
     WORKFLOW_ID = "corridor-memory"
     TASK_QUEUE = "memory"
-    MAX_UPDATES_BEFORE_CONTINUE = 100
+    MAX_UPDATES_BEFORE_CONTINUE: int = 100
 
     @workflow.init
     def __init__(self, initial: dict[str, CorridorPattern] | None = None) -> None:

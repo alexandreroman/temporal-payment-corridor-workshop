@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.durable_exec.temporal import TemporalAgent
 from temporalio.common import RetryPolicy
+from temporalio.workflow import ActivityConfig
 
 # Model is resolved at import time from the environment so attendees can
 # switch providers without touching code. Any Pydantic AI model string
@@ -113,7 +114,7 @@ compliance_agent = Agent(
 # sets that activity's timeout and RetryPolicy so slow/rate-limited model
 # calls are retried durably instead of failing the workflow.
 # Source: https://ai.pydantic.dev/durable_execution/temporal/#activity-configuration
-_MODEL_ACTIVITY_CONFIG = {
+_MODEL_ACTIVITY_CONFIG: ActivityConfig = {
     "start_to_close_timeout": timedelta(seconds=60),
     "retry_policy": RetryPolicy(maximum_attempts=5),
 }
