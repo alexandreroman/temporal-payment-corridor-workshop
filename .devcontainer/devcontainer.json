@@ -1,0 +1,92 @@
+// GitHub Codespaces / VS Code Dev Containers definition.
+//
+// Opening this repository in a Codespace gives a learner a ready-to-run
+// environment: every tool the guide's local prerequisites list would ask
+// them to install (uv, Docker, the Temporal CLI, jq, make) is provisioned
+// by .devcontainer/setup.sh on create, so the guide runs unchanged with
+// nothing installed on their own machine.
+//
+// Spec: https://containers.dev/implementors/json_reference/
+{
+  "name": "Temporal Payment Corridor Workshop",
+
+  // Plain Ubuntu base image. It ships neither make nor jq (setup.sh adds
+  // them) and no language toolchain — uv provisions Python 3.13 per
+  // .python-version, so no system Python is needed.
+  // Source: https://github.com/devcontainers/images/tree/main/src/base-ubuntu
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+
+  "features": {
+    // docker-in-docker gives the Codespace its own Docker daemon, which is
+    // what `make dev` needs: it runs the Temporal dev server, the codec, and
+    // the gateway via `docker compose`.
+    // Source: https://github.com/devcontainers/features/tree/main/src/docker-in-docker
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+
+  // onCreateCommand runs once, when the container is first built: install the
+  // toolchain and dependencies. postStartCommand runs on every start.
+  "onCreateCommand": "bash .devcontainer/setup.sh",
+
+  // NOTE: regenerate the codec overlay on EVERY start, not just on create.
+  // The overlay (compose.codespaces.yaml) rewrites Temporal's browser-facing
+  // --ui-codec-endpoint to this Codespace's forwarded 8080 URL, which is
+  // derived from $CODESPACE_NAME. That name is stable for a given Codespace
+  // but unknown at build time and absent from a plain checkout, so binding it
+  // at start keeps the generated URL correct without committing anything.
+  "postStartCommand": "make codespaces-init",
+
+  // Only 8080 is forwarded: the gateway is the single entry point. The app is
+  // served at `/` and the Temporal Web UI at `/temporal` behind it, so one
+  // forwarded port covers both surfaces (see gateway/Caddyfile). The Temporal
+  // gRPC port (7233) stays internal — workers and clients run inside the
+  // Codespace and reach it on localhost.
+  "forwardPorts": [8080],
+  "portsAttributes": {
+    "8080": {
+      "label": "Payment Corridor (app + Temporal Web UI)",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Put uv (~/.local/bin) and the Temporal CLI (~/.temporalio/bin) on PATH for
+  // non-interactive commands such as postStartCommand and VS Code tasks, which
+  // do not source the interactive shell profile the installers patch.
+  "remoteEnv": {
+    "PATH": "${containerEnv:HOME}/.local/bin:${containerEnv:HOME}/.temporalio/bin:${containerEnv:PATH}"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        // Folds the workshop's `# region FEATURE-ON:` blocks on open.
+        "zokugun.explicit-folding"
+      ],
+      // NOTE: these settings are duplicated from .vscode/settings.json on
+      // purpose. That file is gitignored, so it never reaches a Codespace;
+      // the devcontainer must carry the interpreter path and the FEATURE
+      // folding rules itself. Keep the two in sync.
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "[python]": {
+          "explicitFolding.autoFold": "none",
+          "explicitFolding.rules": [
+            {
+              "beginRegex": "#\\s*region\\s+FEATURE-ON:",
+              "endRegex": "#\\s*endregion\\s+FEATURE-ON:",
+              "autoFold": true
+            },
+            {
+              "beginRegex": "#\\s*region\\s+FEATURE-OFF:",
+              "endRegex": "#\\s*endregion\\s+FEATURE-OFF:",
+              "autoFold": false
+            }
+          ]
+        }
+      }
+    }
+  }
+}

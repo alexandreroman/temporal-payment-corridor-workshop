@@ -15,6 +15,17 @@
 
 ## Prerequisites
 
+> [!TIP]
+> **Using GitHub Codespaces?** This guide runs there unchanged. A Codespace
+> comes with uv, Docker, the Temporal CLI, and jq already installed, so you
+> can skip the local prerequisites below and the `git clone` / `uv sync`
+> steps in [Install](#install) — the Codespace provisions everything on
+> create. Open the forwarded **port-8080** URL that VS Code surfaces in its
+> **Ports** panel instead of `http://localhost:8080`; the app and the
+> Temporal Web UI are both reached there. To run scenarios that call an LLM,
+> add your provider key (e.g. `ANTHROPIC_API_KEY`) as a Codespaces secret or
+> in `.env`.
+
 - **Python 3.13+** and [uv](https://docs.astral.sh/uv/).
 - **Docker** (or a compatible engine) with Compose — it runs the Temporal
   dev server container.

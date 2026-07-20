@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/alexandreroman/temporal-payment-corridor-workshop/actions/workflows/ci.yml/badge.svg)](https://github.com/alexandreroman/temporal-payment-corridor-workshop/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/alexandreroman/temporal-payment-corridor-workshop)
 
 Repairs cross-border payments that arrive with an anomaly — a wrong
 BIC/SWIFT code, a missing intermediary bank, a currency mismatch — by
