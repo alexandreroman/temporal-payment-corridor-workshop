@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session 3 — Production &amp; compliance</title>
+
+  <!-- Reveal.js core -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+
+  <!-- Fonts: Inter (thin display titles) + JetBrains Mono (commands/labels).
+       For offline decks, vendor the .woff2 files and swap for @font-face. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+  <!-- Temporal theme -->
+  <link rel="stylesheet" href="assets/theme.css">
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- 1 · Session title -->
+      <section id="title" class="type-title" data-state="cover">
+        <img class="title-mark" src="assets/temporal-mark.png" alt="Temporal" />
+        <span class="kicker kicker--green">Workshop · Durable AI on Temporal</span>
+        <h1>Production &amp; <strong>compliance</strong></h1>
+        <p class="subtitle">End-to-end payload encryption, corridor memory as a
+          durable workflow, observability, and testing — taking the correction
+          workflow the last mile to production.</p>
+      </section>
+
+      <!-- 2 · Recap of Session 2 (B) -->
+      <section id="recap" class="type-content">
+        <span class="kicker kicker--green">Recap · Session 2</span>
+        <h2>Where we left the control flow</h2>
+        <div class="body">
+        <div class="cards">
+          <div class="card">
+            <span class="eyebrow">bounded control flow</span>
+            <p>A <strong>durable timer</strong> bounds the human wait; failure
+              classification decides when <em>not</em> to retry, and a transient
+              error can raise an alert.</p>
+          </div>
+          <div class="card">
+            <span class="eyebrow">long-running work</span>
+            <p>A <strong>heartbeating</strong> activity polls the settlement rail,
+              resumes from its last checkpoint after a crash, and cancels cleanly.</p>
+          </div>
+          <div class="card">
+            <span class="eyebrow">fleet visibility</span>
+            <p><strong>Search Attributes</strong> tag every correction, so operators
+              query thousands of executions server-side — no bespoke endpoint.</p>
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          A quick reset before the final session. Session 2 was about reliability
+          and control flow. Three things to hold onto. One: we bounded the human
+          wait with a durable timer, and we learned failure classification — when
+          not to retry — and that a transient error can itself raise an alert. Two:
+          settlement is a long-running, heartbeating activity that checkpoints its
+          progress, resumes from the last cycle after a crash, and cancels cleanly.
+          Three: Search Attributes made the whole fleet filterable server-side. Now
+          we take that same application the last mile — to production and compliance.
+        </aside>
+      </section>
+
+      <!-- 3 · Objectives (A) -->
+      <section id="objectives" class="type-objectives">
+        <span class="kicker kicker--green">Objectives</span>
+        <h2>By the end of this session, you'll be able to…</h2>
+        <div class="body">
+          <ul>
+            <li>Encrypt every payload at the Temporal boundary — and decode it for the UI through a <strong>codec server</strong>.</li>
+            <li>Promote corridor memory to a durable <strong>Entity Workflow</strong>, read by Query and written by Update.</li>
+            <li>Scrape <strong>one endpoint</strong> for both Temporal SDK and application metrics.</li>
+            <li>Prove workflow determinism with a <strong>replay test</strong>, and mock the model in agent tests.</li>
+            <li>Map it all onto a <strong>production-ready</strong> checklist — and Temporal Cloud.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─────────────  STEP 09 · Payload encryption  ───────────── -->
+
+      <!-- 4 · Divider: Step 09 -->
+      <section id="divider-09" class="section-divider">
+        <span class="kicker">Step 09</span>
+        <h1>Encrypting payloads</h1>
+        <p class="teaser">Keep bank identifiers and amounts out of plaintext: encrypt at the serialization edge, decrypt on demand.</p>
+        <aside class="notes">
+          We open the production session with the headline compliance concern. A
+          cross-border payment carries data you cannot leave sitting in plaintext in
+          Event History — bank identifiers, amounts, beneficiary details. This step
+          encrypts every payload at the edge of serialization, so it travels and
+          rests as ciphertext, and then uses a small codec server to decrypt it on
+          demand for the Temporal Web UI. Encryption on, readability preserved.
+        </aside>
+      </section>
+
+      <!-- 5 · Framing (C) -->
+      <section id="encrypt-framing" class="type-framing">
+        <span class="kicker">Payload codecs</span>
+        <h2>Ciphertext at rest, cleartext on demand</h2>
+        <div class="body">
+        <div class="framing">
+          <div class="problem">
+            <strong>Problem.</strong> A payment carries data you cannot leave in
+            plaintext in Event History — BICs, amounts, beneficiary details.
+          </div>
+          <div class="concept">
+            <strong>Temporal concept.</strong> A <span class="hl">PayloadCodec</span>
+            sits at the edge of serialization: the SDK calls <code>encode</code> on
+            the way out and <code>decode</code> on the way in, so payloads travel and
+            rest as ciphertext — here with <span class="hl">Fernet</span>
+            (AES-128-CBC + HMAC).
+          </div>
+          <div class="observe">
+            <strong>Observe.</strong> Event History now shows ciphertext — until the
+            <span class="hl">codec server</span> decrypts it on demand for the
+            Temporal Web UI.
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          Speak to this, do not read it. The problem: a payment carries data you
+          cannot leave in plaintext in Event History. The Temporal concept that fixes
+          it is the PayloadCodec. It sits at the very edge of serialization — the SDK
+          calls encode on the way out and decode on the way in — so payloads travel
+          the wire and rest in history as ciphertext. Here we use Fernet, which is
+          AES-128 in CBC mode with an HMAC. The trade-off is that Temporal now shows
+          ciphertext too, and that is where the codec server comes in: it reuses the
+          same key to decrypt payloads on demand, so the Web UI stays readable. Two
+          production-minded details in the code: encode tags its output so mixed
+          plaintext and ciphertext histories still decode gracefully, and the Fernet
+          crypto runs off the event loop with asyncio-to-thread.
+        </aside>
+      </section>
+
+      <!-- 6 · Diagram (D) — encode/decode boundary + codec server -->
+      <section id="encrypt-diagram" class="type-diagram">
+        <span class="kicker">The serialization edge</span>
+        <h2>Where encryption happens</h2>
+        <div class="mermaid">
+flowchart LR
+    App["Worker / API"] -->|"encode → ciphertext"| Hist[("Event History<br/>rests encrypted")]
+    Hist -->|"decode → cleartext"| App
+    Hist -.->|"decrypt on demand"| Codec["codec server"]
+    Codec --> UI["Temporal Web UI<br/>cleartext"]
+
+    classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
+    classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
+    classDef external fill:#2a1030,stroke:#d946ef,color:#f6d6ff,stroke-width:1.5px;
+    class App,UI client;
+    class Hist store;
+    class Codec external;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-client">Worker / API / UI</span>
+          <span class="legend-item c-store">Event History</span>
+          <span class="legend-item c-stream">Codec server</span>
+        </div>
+        <div class="diagram-caption">
+          The codec runs <em>inside</em> your process, so plaintext never leaves it.
+          The codec server reuses the same key to decrypt for display — which is why,
+          in production, it must be authenticated (mTLS or a bearer token) and
+          TLS-terminated, or it becomes an unauthenticated decryption oracle.
+        </div>
+        <aside class="notes">
+          Follow the payload. The worker and the API encode it before it leaves the
+          process, so it lands in Event History as ciphertext, and it is decoded back
+          the same way on the way in — that round trip is transparent to your code.
+          The one place ciphertext is a problem is human inspection, so the codec
+          server sits off to the side: Temporal and the CLI call it on demand to
+          display cleartext, using the same key. Say the caveat plainly: because that
+          server decrypts anything you send it, with the insecure dev defaults it is
+          effectively an unauthenticated decryption oracle. In production it must be
+          authenticated and TLS-terminated. The encryption itself, though, happens on
+          your side — even Temporal Cloud would only ever store the ciphertext.
+        </aside>
+      </section>
+
+      <!-- 7 · Pseudo-code (H) -->
+      <section id="encrypt-code" class="type-code">
+        <span class="kicker">The change, in one place</span>
+        <h2>Encrypt at the boundary, in one converter</h2>
+        <div class="body">
+          <pre><code><span class="c"># REPLACE in both processes: the worker and the API</span>
+key = load_key()
+if not key:
+    raise RuntimeError("set CODEC_ENCRYPTION_KEY to enable encryption")
+client = await Client.connect(
+    TEMPORAL_ADDRESS, namespace=PAYMENTS_TEMPORAL_NAMESPACE,
+    <span class="hl">data_converter=build_data_converter(EncryptionCodec(key))</span>,
+    plugins=[PydanticAIPlugin()],   <span class="c"># keep it — see the note</span>
+)</code></pre>
+        </div>
+        <div class="diagram-caption">
+          The same change wires both the worker and the API. The worker and API
+          <em>refuse to start</em> without a key rather than run unencrypted. Keep
+          <code>PydanticAIPlugin</code> alongside the explicit converter — it only
+          installs its own when you pass none, and dropping it breaks
+          <code>TemporalAgent</code> sandbox validation at start-up.
+        </div>
+        <aside class="notes">
+          Here is the whole change, in one place, and it is the same in both
+          processes — the payments worker and the payments API. We load the Fernet
+          key from the environment, and if it is missing we refuse to start rather
+          than silently run unencrypted — a deliberate fail-closed choice for a
+          compliance feature. Then the only real edit: we pass a data-converter built
+          around our EncryptionCodec to Client-dot-connect. Read the note about the
+          Pydantic-AI plugin: it only installs its own converter when you do not pass
+          one, so it stays alongside our explicit converter — dropping it breaks the
+          TemporalAgent sandbox validation when the worker starts. For the workshop
+          the env-example ships a working, public, insecure dev key, so the setup you
+          already did covers it.
+        </aside>
+      </section>
+
+      <!-- 8 · Hands-on (E) -->
+      <section id="encrypt-handson" class="type-handson">
+        <span class="kicker kicker--green">Step 09 · Hands-on</span>
+        <h2>Watch ciphertext become cleartext</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=payload-encryption<br><span class="prompt">$</span> make simulator<br># open the coordinator in Temporal: Event History payloads are ciphertext</div>
+        </div>
+        <p class="predict">Predict first: the dev server is already pointed at the codec.<br>
+          Before it decodes, what do the payloads in Event History look like?</p>
+        <aside class="notes">
+          Enable payload-encryption and fire a correction. Open the coordinator in
+          the Temporal Web UI and inspect Event History: the payloads now show as raw
+          ciphertext. That is the feature working. Now note that the dev server is
+          already pointed at the codec server, so the very same Event History renders
+          cleartext with no manual configuration — the UI decodes on demand. You can
+          do the same from the CLI by passing the codec endpoint to temporal workflow
+          show, but run the CLI from the host, since the localhost codec endpoint is
+          only reachable there. Set your own key and auth token in the environment
+          when you want to actually secure the setup.
+        </aside>
+      </section>
+
+      <!-- ─────────────  STEP 10 · Entity Workflow  ───────────── -->
+
+      <!-- 9 · Divider: Step 10 -->
+      <section id="divider-10" class="section-divider">
+        <span class="kicker">Step 10</span>
+        <h1>Durable state as an Entity Workflow</h1>
+        <p class="teaser">Swap the in-memory corridor store for a single long-lived workflow — durable state with no database behind it.</p>
+        <aside class="notes">
+          In the baseline, corridor memory is a plain in-process dictionary — fine
+          for a demo, but it loses everything on restart and keeps no audit trail.
+          This step promotes that state to the Entity Workflow pattern: one
+          long-lived workflow instance that holds the state itself. It also shows off
+          a service hosting its own embedded worker in its own namespace, and it lets
+          us contrast Update against Signal for writes. Watch how little the callers
+          notice.
+        </aside>
+      </section>
+
+      <!-- 10 · Framing (C) -->
+      <section id="memory-framing" class="type-framing">
+        <span class="kicker">Entity Workflow</span>
+        <h2>State that lives in the workflow</h2>
+        <div class="body">
+        <div class="framing">
+          <div class="problem">
+            <strong>Problem.</strong> The baseline corridor memory is a plain
+            in-process dict — it loses everything on restart and keeps no audit trail.
+          </div>
+          <div class="concept">
+            <strong>Temporal concept.</strong> The <span class="hl">Entity Workflow</span>
+            pattern turns that into one long-lived workflow. Reads are
+            <span class="hl">Queries</span> (never recorded), writes are validated
+            <span class="hl">Updates</span> (durably acknowledged), and
+            <code>continue_as_new</code> keeps history bounded.
+          </div>
+          <div class="observe">
+            <strong>Observe.</strong> The HTTP contract at <code>/api/memory/v1</code>
+            is unchanged — only the backend behind it moved into Temporal.
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          The problem: the baseline memory is an in-process dictionary, so it forgets
+          everything on restart and leaves no audit trail. The Temporal concept is
+          the Entity Workflow pattern — a single, long-lived workflow instance whose
+          state lives in the workflow itself, with no disk and no database behind it.
+          Reads are Temporal Queries, which are never recorded in history, so a lookup
+          adds no audit events. Writes are Temporal Updates, and crucially each Update
+          runs a validator before it is admitted to history, so an invalid write is
+          never durably recorded — that is the acknowledged-write advantage of Update
+          over Signal. And because a single workflow's history would grow without
+          bound, run drains its in-flight handlers and calls continue-as-new to keep
+          it bounded while carrying state forward. The payoff: the HTTP contract does
+          not change at all — only the backend behind it moved into Temporal.
+        </aside>
+      </section>
+
+      <!-- 11 · Diagram (D) — query / update / continue-as-new -->
+      <section id="memory-diagram" class="type-diagram">
+        <span class="kicker">Read, write, and stay bounded</span>
+        <h2>Query to read, Update to write</h2>
+        <div class="mermaid">
+flowchart LR
+    HTTP["/api/memory/v1"] -->|"lookup · Query"| WF(("corridor-memory<br/>singleton"))
+    HTTP -->|"remember · Update"| WF
+    WF -->|"max updates reached"| CAN["continue-as-new"]
+    CAN -.->|"carry state forward"| WF
+
+    classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    class HTTP client;
+    class WF,CAN temporal;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-client">HTTP caller</span>
+          <span class="legend-item c-temporal">Entity Workflow</span>
+        </div>
+        <div class="diagram-caption">
+          A Query read adds no history event; an Update write is admitted only after
+          its <code>@remember.validator</code> passes — so the HTTP <code>204</code>
+          is a genuine acknowledgement. The service hosts its own embedded worker in
+          its own <code>memory</code> namespace.
+        </div>
+        <aside class="notes">
+          The singleton has a well-known id, corridor-memory, and everything flows
+          through the same HTTP surface as before. A lookup becomes a Query — read
+          only, never written to history — so reads are free of audit noise. A learned
+          pattern becomes an Update, which returns only after its validator passes and
+          the write is durably accepted, so the HTTP two-oh-four the caller gets back
+          is a real acknowledgement, not a hopeful fire-and-forget. And because one
+          workflow accumulating updates forever would blow up its history, once it
+          crosses a maximum it drains in-flight handlers and continues-as-new, keeping
+          history bounded while carrying the accumulated patterns forward. One more
+          thing to point out: the memory service hosts its own embedded worker, in its
+          own memory namespace, and makes startup idempotent across reloads with a
+          use-existing conflict policy.
+        </aside>
+      </section>
+
+      <!-- 12 · Pseudo-code (H) -->
+      <section id="memory-code" class="type-code">
+        <span class="kicker">The change, in one place</span>
+        <h2>The backend moves; the callers don't</h2>
+        <div class="body">
+          <pre><code><span class="c"># lookup → a Query: read-only, never recorded in history</span>
+pattern = await <span class="hl">handle.query</span>(
+    MemoryWorkflow.lookup, args=[corridor, anomaly_type, bank_id]
+)
+
+<span class="c"># remember → an Update: returns only once validated + durably accepted</span>
+await <span class="hl">handle.execute_update</span>(MemoryWorkflow.remember, pattern)</code></pre>
+        </div>
+        <div class="diagram-caption">
+          Both handlers are a <code>REPLACE</code> in <code>memory/app.py</code>:
+          the baseline called <code>store.lookup</code> / <code>store.remember</code>;
+          enabled, they call a Query and an Update. Same routes, same responses — the
+          interface boundary from Session 1 is what makes the swap invisible.
+        </div>
+        <aside class="notes">
+          Here is the swap, and it is deliberately small. In the memory service's HTTP
+          handlers, the lookup that used to hit the in-process store now issues a
+          Temporal Query against the singleton, and the remember that used to mutate
+          the dict now issues an Update. Note execute-update: it blocks until the
+          write is validated and durably accepted, which is exactly why the caller can
+          trust the acknowledgement. Everything else — the routes, the request and
+          response shapes — is identical. This is the payoff of putting a clean
+          interface boundary around the memory in Session 1: we replaced the entire
+          backend with a durable workflow and no caller had to change.
+        </aside>
+      </section>
+
+      <!-- 13 · Hands-on (E) -->
+      <section id="memory-handson" class="type-handson">
+        <span class="kicker kicker--green">Step 10 · Hands-on</span>
+        <h2>Find the singleton, then feed it</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=memory-workflow<br><span class="prompt">$</span> make simulator SCENARIO=memory-miss&nbsp;&nbsp;&nbsp;# needs a provider key<br># Temporal → memory namespace → the running corridor-memory workflow</div>
+        </div>
+        <p class="predict">Predict first: a lookup is a Query, a learned pattern is an Update.<br>
+          After a memory-miss fix is applied, which one lands on <code>corridor-memory</code>?</p>
+        <aside class="notes">
+          Enable memory-workflow. In the Temporal Web UI, switch to the memory
+          namespace — not payments — and find the corridor-memory workflow: it is
+          Running, holding the seeded patterns as durable, in-workflow state, with no
+          database behind it. Now exercise it: run the memory-miss scenario, which
+          needs a provider key, so the agents reason out a fix instead of hitting a
+          seeded pattern. When that fix clears the gate and is applied, an Update
+          lands on corridor-memory — the write-back — and its state grows. Re-run the
+          same corridor and it now resolves from memory via a Query: no model call,
+          and no new history event for the read. If the proposal lands below the
+          confidence threshold it is held rather than applied, so no Update arrives
+          until someone approves it.
+        </aside>
+      </section>
+
+      <!-- ─────────────  STEP 11 · Observability  ───────────── -->
+
+      <!-- 14 · Divider: Step 11 -->
+      <section id="divider-11" class="section-divider">
+        <span class="kicker">Step 11</span>
+        <h1>Observability</h1>
+        <p class="teaser">Know where to look: one metrics endpoint for two families, plus the Web UI and Temporal Cloud.</p>
+        <aside class="notes">
+          This step is a reference rather than a feature toggle — it is about knowing
+          where to look. The app exposes a single metrics endpoint that serves both
+          Temporal's own SDK metrics and the application's business metrics, and we
+          have leaned on the Temporal Web UI throughout the workshop. I will also
+          point at what changes in production, where Temporal Cloud gives you a
+          server-side metrics endpoint without your running any monitoring stack.
+        </aside>
+      </section>
+
+      <!-- 15 · Diagram (D) — one endpoint, two families -->
+      <section id="metrics-diagram" class="type-diagram">
+        <span class="kicker">Metrics</span>
+        <h2>One endpoint, two families</h2>
+        <div class="mermaid">
+flowchart LR
+    RT["Temporal Runtime<br/>Prometheus exporter"] --> EP[("/metrics<br/>:9464")]
+    Act["activities<br/>metric_meter()"] --> EP
+    EP --> SDK["temporal_*<br/>SDK / worker"]
+    EP --> APP["corridor_*<br/>application"]
+
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    classDef activity fill:#2a2410,stroke:#f59e0b,color:#ffe9c2,stroke-width:1.5px;
+    classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
+    class RT,SDK temporal;
+    class Act,APP activity;
+    class EP store;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-temporal">Temporal runtime · SDK metrics</span>
+          <span class="legend-item c-activity">App activities · corridor_*</span>
+          <span class="legend-item c-store">One endpoint</span>
+        </div>
+        <div class="diagram-caption">
+          The <code>Runtime</code> is built <em>first</em>, so one endpoint serves
+          both families. In production, Temporal Cloud adds a server-side
+          <code>temporal_cloud_*</code> OpenMetrics endpoint and reference Grafana
+          dashboards — no Prometheus to run yourself.
+        </div>
+        <aside class="notes">
+          The key wiring detail: the Temporal Runtime, with its Prometheus exporter,
+          is built first, before any client or worker, and the same runtime also backs
+          the application metrics emitted from activities through metric-meter. So one
+          slash-metrics endpoint serves both families side by side: the temporal-star
+          series — task queue, activity, and workflow metrics from the SDK — and the
+          corridor-star series the app defines, like corridor-memory-lookups,
+          corridor-corrections-applied, and the retries-alerted counter from Session
+          2. In production this local scrape is complemented by Temporal Cloud
+          metrics: a Prometheus-compatible endpoint that exposes server-side
+          temporal-cloud-star series for every namespace, consumable by Datadog or
+          Grafana Cloud, with reference dashboards published to adapt. And one logging
+          discipline worth stating: logging goes through workflow-logger and
+          activity-logger, never print, because the workflow logger is replay-aware.
+        </aside>
+      </section>
+
+      <!-- 16 · Hands-on (E) -->
+      <section id="metrics-handson" class="type-handson">
+        <span class="kicker kicker--green">Step 11 · Hands-on</span>
+        <h2>Scrape both families at once</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make simulator<br><span class="prompt">$</span> curl -s http://localhost:9464/metrics | grep -E '^(temporal_|corridor_)'<br># the Web UI at localhost:8080/temporal is your window into durable execution</div>
+        </div>
+        <p class="predict">Predict first: the same runtime backs both metric families.<br>
+          Which prefixes come back — and which counter does <code>apply_correction</code> move?</p>
+        <aside class="notes">
+          Fire a correction, then scrape the metrics endpoint and grep for the two
+          prefixes. You will see them side by side: the temporal-star SDK metrics and
+          the app's corridor-star counters on the one endpoint. Ask the room which
+          series moved — corridor-corrections-applied should tick up. Then read
+          activities-dot-py and memory-dot-py to see exactly what each metric measures
+          and how each series is tagged. And spend a moment in the Web UI at
+          localhost-8080-slash-temporal — the primary window into durable execution we
+          have used all along: child workflows, Event History, timers, heartbeats,
+          Search Attribute filters, the memory namespace, and now decoded payloads.
+        </aside>
+      </section>
+
+      <!-- ─────────────  STEP 12 · Testing  ───────────── -->
+
+      <!-- 17 · Divider: Step 12 -->
+      <section id="divider-12" class="section-divider">
+        <span class="kicker">Step 12</span>
+        <h1>Testing durable code</h1>
+        <p class="teaser">What's distinctive: replay tests for determinism, and a mocked model so agent tests never touch the network.</p>
+        <aside class="notes">
+          The suite ships with the app and covers every package, so the exercise is to
+          run it and read what it asserts. But two things are distinctive about
+          testing durable code, and they are the focus here: the replay test, which
+          guards workflow determinism, and mocking the model so agent tests stay fast,
+          deterministic, and offline. Let us look at the replay test — it is the star.
+        </aside>
+      </section>
+
+      <!-- 18 · Diagram (D) — replay test -->
+      <section id="replay-diagram" class="type-diagram">
+        <span class="kicker">Replay tests</span>
+        <h2>Catch a determinism break at test time</h2>
+        <div class="mermaid">
+flowchart LR
+    Hist[("captured history<br/>coordinator-history.json")] --> Rep["Replayer"]
+    Code["current workflow code"] --> Rep
+    Rep -->|"decisions match"| Pass(["deterministic ✓"])
+    Rep -->|"decisions diverge"| Fail(["non-determinism<br/>caught at test time"])
+
+    classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
+    classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    classDef fail fill:#2a1114,stroke:#f87171,color:#ffd6d6,stroke-width:1.5px;
+    class Hist store;
+    class Code client;
+    class Rep,Pass temporal;
+    class Fail fail;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-store">Captured history</span>
+          <span class="legend-item c-temporal">Replayer · pass</span>
+          <span class="legend-item c-stream">Divergence caught</span>
+        </div>
+        <div class="diagram-caption">
+          The test never runs the workflow — it re-executes a recorded history against
+          today's code. Enabling a shape-changing feature <em>intentionally</em>
+          breaks it; in production you reach for versioning, not silent recapture.
+          Agent tests mock the model, so they stay fast, deterministic, and offline.
+        </div>
+        <aside class="notes">
+          Temporal recovers a running workflow by replaying its recorded event history
+          against the current code. If a change alters the sequence of decisions the
+          workflow makes — reordering awaited calls, adding one conditionally,
+          changing what a child is passed — replay diverges from history and the
+          instance gets stuck. The replay test catches that whole class of bug at test
+          time. It does not run the workflow: it feeds a previously captured history
+          to the Replayer, which re-executes it against whatever the coordinator looks
+          like now. You saw this in Session 2 — enabling a shape-changing feature
+          intentionally breaks the replay test, because the committed fixture was
+          captured with those features off. That failure is the lesson. In production
+          you would reach for versioning rather than silently recapturing the fixture.
+          Separately, agent tests must never call a real model, so the model is mocked;
+          note the gotcha that Agent-dot-override does not reach the offloaded model
+          activity — you register a TestModel under the real workflow name instead.
+        </aside>
+      </section>
+
+      <!-- 19 · Hands-on (E) -->
+      <section id="testing-handson" class="type-handson">
+        <span class="kicker kicker--green">Step 12 · Hands-on</span>
+        <h2>Run the suite, read the replay test</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make feature-reset&nbsp;&nbsp;&nbsp;# fixture matches the baseline shape<br><span class="prompt">$</span> make check&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# lint + tests<br># read payments/test_replay.py: captured history + current code → Replayer</div>
+        </div>
+        <p class="predict">Predict first: the committed fixture was captured with features off.<br>
+          What happens to the replay test once you enable a shape-changing feature?</p>
+        <aside class="notes">
+          Reset to a clean baseline first so the committed fixture matches the
+          coordinator's shape, then run make check — lint plus the full suite — and
+          confirm it is green. Open test-replay-dot-py and read its docstring; it
+          explains the whole idea, and you can see it feeds the captured history to the
+          Replayer rather than running the workflow. Then, if you want to see the
+          lesson land, enable a shape-changing feature like settlement-confirmation
+          and re-run: the replay test now fails by design, because the fixture predates
+          the shape change. That is the expected, teachable failure — not a bug in the
+          suite.
+        </aside>
+      </section>
+
+      <!-- ─────────────  Wrap-up (Step 13)  ───────────── -->
+
+      <!-- 20 · Checkpoint (F) -->
+      <section id="checkpoint" class="type-checkpoint">
+        <span class="kicker kicker--green">Checkpoint</span>
+        <h2>What we just saw</h2>
+        <div class="body">
+        <ul class="check">
+          <li>Payloads rest as ciphertext; a codec server decrypts them on demand.</li>
+          <li>Corridor memory is a durable Entity Workflow — Query to read, Update to write.</li>
+          <li>One endpoint exposes both <code>temporal_*</code> and <code>corridor_*</code> metrics.</li>
+          <li>A replay test guards determinism; agent tests mock the model.</li>
+        </ul>
+        <p class="tieback">The same core from Session 1 — now carrying the production
+          and compliance concerns a bank actually demands.</p>
+        </div>
+        <aside class="notes">
+          Let us consolidate the whole session. Four things. One: payloads rest as
+          ciphertext in Event History, and a codec server decrypts them on demand, so
+          you get compliance without losing readability. Two: corridor memory is now a
+          durable Entity Workflow — a Query to read, a validated Update to write, and
+          continue-as-new to stay bounded — with the HTTP contract unchanged. Three:
+          one metrics endpoint exposes both the Temporal SDK's metrics and the app's
+          own. Four: a replay test guards determinism, and agent tests mock the model
+          so they never hit the network. This is still the same durable core from
+          Session 1 — now carrying the production and compliance concerns a bank
+          actually demands.
+        </aside>
+      </section>
+
+      <!-- 21 · Content (B) — to production -->
+      <section id="to-production" class="type-content">
+        <span class="kicker kicker--green">To production</span>
+        <h2>Self-host, or point it at Temporal Cloud</h2>
+        <div class="body">
+        <div class="cards">
+          <div class="card">
+            <span class="eyebrow">no Service to run</span>
+            <p>Point the same workers and clients at <strong>Temporal Cloud</strong> —
+              only the address and credentials change. No cluster, datastore, or
+              Visibility store to size, patch, or keep alive.</p>
+          </div>
+          <div class="card">
+            <span class="eyebrow">compliance stays yours</span>
+            <p>The <strong>PayloadCodec</strong> encrypts <em>before</em> payloads
+              leave your process, so Cloud only ever stores ciphertext; the codec
+              server that decrypts for the UI runs on your side.</p>
+          </div>
+          <div class="card">
+            <span class="eyebrow">managed namespaces &amp; HA</span>
+            <p><code>payments</code> and <code>memory</code> provisioned per-namespace
+              with <strong>mTLS / API-key</strong> auth; HA namespaces add
+              cross-region failover, no capacity planning.</p>
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          Throughout the workshop the Temporal Service ran as a dev server in a
+          container. In production you either self-host it — running and scaling the
+          datastore, the front-end, history and matching services, the Visibility
+          store, upgrades and backups yourself — or you point the same workers and
+          clients at Temporal Cloud and operate none of it. For an app like this one,
+          Cloud carries real weight, and three points matter most. First, there is no
+          Service to run: everything connects exactly as it does now, only the address
+          and credentials change. Second, compliance stays yours — the PayloadCodec
+          encrypts before payloads ever leave your process, so even Cloud only stores
+          ciphertext, and the codec server that decrypts for the UI runs on your side,
+          not theirs. Third, the two namespaces this app uses are each managed and
+          isolated, authenticated with mTLS or API keys, and HA namespaces add
+          cross-region failover for the strictest continuity needs — with no capacity
+          planning on your side. You also get the Cloud metrics endpoint and reference
+          dashboards without running Prometheus yourself.
+        </aside>
+      </section>
+
+      <!-- 22 · Closing (cover) -->
+      <section id="closing" class="type-title" data-state="cover">
+        <img class="title-mark" src="assets/temporal-mark.png" alt="Temporal" />
+        <span class="kicker kicker--green">That's a wrap</span>
+        <h1>Durable AI, <strong>in production</strong></h1>
+        <p class="subtitle">Combine the features, turn the insecure codec defaults
+          into real ones, and take the same application to Temporal Cloud. Thank you
+          for working through the corridor.</p>
+        <aside class="notes">
+          That is the workshop. Starting from a running baseline, you enabled and
+          studied one durable-execution concept at a time — durable agents, signals
+          and queries, timers, failure classification, retries and metrics, heartbeats
+          and cancellation, search attributes, payload encryption, and the Entity
+          Workflow pattern — and you learned to read Event History, scrape one endpoint
+          for two metric families, and test durable code. Where to go next: combine
+          features — search-attributes together with human-approval-signal is a good
+          one; turn the insecure codec defaults into real ones; practise versioning on
+          a shape-changing feature instead of recapturing history; and swap the model
+          provider and re-run the agent scenarios. The README and the Temporal best
+          practices are your reference index. Thank you for working through the
+          corridor.
+        </aside>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script src="assets/deck.js"></script>
+  <script>
+    TemporalDeck.init();
+  </script>
+</body>
+</html>

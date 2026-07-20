@@ -41,7 +41,7 @@
 - [Run the temporal CLI from the host, never a container](references/feedback_temporal_cli_from_host.md) — CLI is always host-side; localhost:<port>/codec reaches the gateway only from the host, not a container's loopback.
 - [Gateway (Caddy) healthcheck reports unhealthy by design](references/reference_gateway_healthcheck_unhealthy.md) — the gateway probe hits the unavailable Caddy admin API; ignore its Health column, Caddy still serves the Web UI and /codec.
 - [Enforced format is ruff defaults (88 cols)](references/feedback_ruff_line_length.md) — no ruff config, so line length is 88 (not CLAUDE.md's 120); a pre-commit hook lints the whole tree, so every commit needs the entire repo clean.
-- [Workshop slides live in slides/, reveal.js + Temporal theme](references/project_workshop_slides.md) — reveal.js deck, custom Temporal theme, A–G grammar + type-code; Sessions 1 & 2 built, 3 pending.
+- [Workshop slides live in slides/, reveal.js + Temporal theme](references/project_workshop_slides.md) — reveal.js deck, custom Temporal theme, A–G grammar + type-code; all three sessions built, only slides/README.md pending.
 - [Mermaid rendering uses render(), not run()](references/reference_slides_mermaid_render.md) — deck.js renders inline Mermaid via render() + fonts.ready; avoids hidden-slide, clipping, entity gotchas.
 - [Slide layout & style conventions](references/feedback_slides_style_conventions.md) — title-top layout, list spacing, kickers, terminal blocks, type-code, bridge/deck-next/title/logo rules; apply verbatim to Sessions 2 & 3.
 - [Versioning is out of workshop scope](references/feedback_versioning_out_of_scope.md) — no workflow.patched/versioning in the slides; replay stays only as a light observation deferred to the Session 3 testing step.

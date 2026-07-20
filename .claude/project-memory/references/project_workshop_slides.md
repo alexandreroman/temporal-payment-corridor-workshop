@@ -37,7 +37,7 @@ Three-session split (4/5/5): S1 "Durable agents: the core" (steps 00–03 +
 crash&resume demo); S2 "Reliability & control flow" (04–08); S3 "Production
 & compliance" (09–13).
 
-Status: **Sessions 1 and 2 built and validated.** Session 1
+Status: **All three sessions built and validated.** Session 1
 (`slides/session-1.html`, 22 slides) covers steps 00–03 and now includes two
 `type-code` pseudo-code slides (the `asyncio.gather` fan-out after the fan-out
 diagram; the `@workflow.signal`/`@workflow.query`/`wait_condition`
@@ -51,9 +51,21 @@ visibility index) and two dedicated **pseudo-code** slides (`type-code`, see
 [[feedback_slides_style_conventions]]). Versioning/patching AND the
 replay-test/Event-History-change theme are deliberately absent from the slides
 — see [[feedback_versioning_out_of_scope]] (the only Event-History mention left
-is observing a durable Timer in Step 04). `index.html` links both. Session 3 (steps 09–13) and `slides/README.md` are still to build
-— copy `session-2.html` as the richest template. All content is English and
-timeless. Before building Session 3, read
+is observing a durable Timer in Step 04). Session 3
+(`slides/session-3.html`, 22 slides) covers steps 09–13: title → recap (B,
+3-card `type-content`) → objectives, then a `section-divider` + hands-on per
+step, four role-coloured diagrams (the encrypt/decode boundary + codec server,
+the Entity-Workflow query/update/continue-as-new, the one-endpoint/two-families
+metrics fan, the Replayer determinism split) and two `type-code` slides (the
+encrypting `data_converter` on `Client.connect`; the memory `handle.query` +
+`handle.execute_update` swap). It closes with a checkpoint, a 3-card
+"to production" slide (Cloud vs self-host), and a cover-style closing (no
+`type-bridge`, since there is no next session). The replay-test theme lives here
+(Step 12), the one place it is allowed per [[feedback_versioning_out_of_scope]];
+versioning is only a one-line pointer, never taught. `index.html` links all
+three (Session 3 card un-pended), and Session 2's bridge carries the
+`deck-next` pill to `session-3.html`. Only `slides/README.md` is still to build.
+All content is English and timeless. When editing the decks, read
 [[feedback_slides_style_conventions]] (layout/style rules incl. `type-code`),
 [[reference_slides_authoring_workflow]] (serve + preview), and
 [[reference_slides_mermaid_render]] (diagram rendering).
