@@ -195,10 +195,10 @@ sequenceDiagram
         <h2>Bring it up, correct your first payment</h2>
         <div class="body">
           <div class="cmd"><span class="prompt">$</span> make dev<br><span class="out">The stack is up.<br>Open:<br>  Web UI            http://localhost:8080<br>  Temporal Web UI   http://localhost:8080/temporal</span><br><span class="prompt">$</span> make simulator<br><span class="out">scenario: memory-hit<br>payment : pmt-3f9a2c1d<br>workflow: correction-pmt-3f9a2c1d<br>accepted: submitted to http://localhost:8080/api/payments/v1/anomalies</span></div>
-          <p class="predict">Predict first: the default scenario is a seeded <code>US-&gt;IN</code>
-            wrong-BIC anomaly.<br>Will either agent call the model — and what will the
-            correction's <code>source</code> be?</p>
         </div>
+        <p class="predict">Predict first: the default scenario is a seeded <code>US-&gt;IN</code>
+          wrong-BIC anomaly.<br>Will either agent call the model — and what will the
+          correction's <code>source</code> be?</p>
       </section>
 
       <!-- Divider: Step 02 -->
@@ -404,9 +404,9 @@ flowchart LR
         <h2>Crash it. Watch it resume.</h2>
         <div class="body">
           <div class="cmd"><span class="prompt">$</span> make simulator SCENARIO=memory-miss<br># … then Ctrl-C the terminal running `make dev`<br><span class="prompt">$</span> make dev</div>
-          <p class="predict">Predict first: when the worker dies mid-model-call, what happens
-            to the running correction — does it restart, fail, or wait?</p>
         </div>
+        <p class="predict">Predict first: when the worker dies mid-model-call, what happens
+          to the running correction — does it restart, fail, or wait?</p>
         <aside class="notes">
           This is the most compelling moment of the session, so slow down. Start a
           correction that calls the model with the memory-miss scenario — that leaves us
@@ -545,10 +545,10 @@ await workflow.<span class="hl">wait_condition</span>(lambda: self._decision is 
         <h2>Approve it — from the app, or the CLI</h2>
         <div class="body">
           <div class="cmd"><span class="prompt">$</span> make simulator SCENARIO=needs-approval<br># approve in the app — or send the raw Signal:<br><span class="prompt">$</span> temporal workflow signal \<br>&nbsp;&nbsp;--workflow-id correction-&lt;id&gt; --namespace payments \<br>&nbsp;&nbsp;--name approve_correction \<br>&nbsp;&nbsp;--input '{"approved": true, "approver": "ops@bank.example"}'</div>
-          <p class="predict">Predict first: before you approve, what will the
-            <code>awaiting_approval</code> Query return —<br>and what happens to the
-            workflow the instant the Signal lands?</p>
         </div>
+        <p class="predict">Predict first: before you approve, what will the
+          <code>awaiting_approval</code> Query return —<br>and what happens to the
+          workflow the instant the Signal lands?</p>
       </section>
 
       <!-- 17 · Checkpoint (F) -->

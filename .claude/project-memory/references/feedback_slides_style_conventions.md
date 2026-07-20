@@ -48,7 +48,10 @@ runs the `memory-hit` scenario and prints `scenario/payment/workflow
 (correction-<id>)/accepted`.
 
 **Predict-then-observe prompts** break at sentence boundaries (`<br>`) so a
-long prompt never wraps mid-sentence.
+long prompt never wraps mid-sentence. The `.predict` note is a **bottom-pinned
+sibling of `.body`** (NOT inside it) — exactly like the code/diagram caption —
+so `.body` (flex:1, `justify-content:center`) centres the `.cmd` terminal in
+the space above it. Same layout family as `type-code` and `type-diagram`.
 
 **Session title** is session-specific (`Durable agents: the core`), white
 title with a green keyword, the Temporal mark on it; NO "Session X of 3"

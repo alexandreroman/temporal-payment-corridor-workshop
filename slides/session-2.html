@@ -173,9 +173,9 @@ except <span class="hl">asyncio.TimeoutError</span>:
         <h2>Trigger a hold — then do nothing</h2>
         <div class="body">
           <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make feature-enable NAME=approval-timeout<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval<br># … then wait, and watch the coordinator in the Temporal Web UI</div>
-          <p class="predict">Predict first: a <strong>Timer</strong> event appears in the Event History.<br>
-            If you never approve, what state does the correction reach — and when?</p>
         </div>
+        <p class="predict">Predict first: a <strong>Timer</strong> event appears in the Event History.<br>
+          If you never approve, what state does the correction reach — and when?</p>
         <aside class="notes">
           Enable the approval signal first — it provides the wait — then the
           approval-timeout, which bounds it. Fire a needs-approval correction and
@@ -254,9 +254,9 @@ flowchart LR
         <h2>Fail a malformed correction — once</h2>
         <div class="body">
           <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=non-retryable-validation<br># flip the fault switch: _SIMULATE_INVALID_CORRECTION = True<br><span class="prompt">$</span> make simulator</div>
-          <p class="predict">Predict first: the coordinator's policy allows <strong>three</strong> attempts.<br>
-            How many times will <code>apply_correction</code> actually run?</p>
         </div>
+        <p class="predict">Predict first: the coordinator's policy allows <strong>three</strong> attempts.<br>
+          How many times will <code>apply_correction</code> actually run?</p>
         <aside class="notes">
           Enable the feature, then flip the hand-operated fault switch in
           activities-dot-py — hot reload picks it up. Fire the seeded correction; it
@@ -335,9 +335,9 @@ flowchart LR
         <h2>Watch it climb, alert, then succeed</h2>
         <div class="body">
           <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=retry-alerting<br># flip the fault switch: _SIMULATE_TRANSIENT_RAIL_OUTAGE = True<br><span class="prompt">$</span> make simulator<br><span class="prompt">$</span> curl -s http://localhost:9464/metrics | grep corridor_correction_retries_alerted</div>
-          <p class="predict">Predict first: the default threshold is <code>2</code>.<br>
-            Will the correction end up <em>applied</em> or <em>failed</em> — and will the alert counter move?</p>
         </div>
+        <p class="predict">Predict first: the default threshold is <code>2</code>.<br>
+          Will the correction end up <em>applied</em> or <em>failed</em> — and will the alert counter move?</p>
         <aside class="notes">
           Enable retry-alerting and flip the transient-outage switch. The default
           threshold is two, tunable through an environment variable. Fire the
@@ -443,9 +443,9 @@ while cycle &lt; _SETTLEMENT_POLL_CYCLES:
         <h2>Watch the settlement heartbeat</h2>
         <div class="body">
           <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=settlement-confirmation<br><span class="prompt">$</span> make simulator<br># open the coordinator: confirm_settlement heartbeats across cycles</div>
-          <p class="predict">Predict first: after <code>apply_correction</code>, what new activity appears —<br>
-            and how does it report progress while it polls the rail?</p>
         </div>
+        <p class="predict">Predict first: after <code>apply_correction</code>, what new activity appears —<br>
+          and how does it report progress while it polls the rail?</p>
         <aside class="notes">
           Enable settlement-confirmation and fire the simulator. In Temporal, open
           the coordinator: after apply-correction there is now a confirm-settlement
@@ -520,9 +520,9 @@ flowchart LR
         <h2>Filter the fleet by any dimension</h2>
         <div class="body">
           <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=search-attributes<br><span class="prompt">$</span> temporal workflow list --namespace payments \<br>&nbsp;&nbsp;--query "corridor = 'US-&gt;IN'"<br><span class="prompt">$</span> temporal workflow list --namespace payments \<br>&nbsp;&nbsp;--query "status = 'awaiting-approval'"</div>
-          <p class="predict">Predict first: the attributes are pre-registered by the dev server.<br>
-            Without Search Attributes, how would you answer the same question?</p>
         </div>
+        <p class="predict">Predict first: the attributes are pre-registered by the dev server.<br>
+          Without Search Attributes, how would you answer the same question?</p>
         <aside class="notes">
           Enable search-attributes. Note there is no manual registration step: the
           three custom attributes are pre-registered by the dev server on startup, so
