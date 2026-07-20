@@ -320,18 +320,18 @@ flowchart LR
           <span class="legend-item c-temporal">Entity Workflow</span>
         </div>
         <div class="diagram-caption">
-          A Query read adds no history event; an Update write is admitted only after
-          its <code>@remember.validator</code> passes — so the HTTP <code>204</code>
-          is a genuine acknowledgement. The service hosts its own embedded worker in
-          its own <code>memory</code> namespace.
+          A Query read adds no history event; an Update write is durably accepted
+          before it returns — so the HTTP <code>204</code> is a genuine
+          acknowledgement. The service hosts its own embedded worker in its own
+          <code>memory</code> namespace.
         </div>
         <aside class="notes">
           The singleton has a well-known id, corridor-memory, and everything flows
           through the same HTTP surface as before. A lookup becomes a Query — read
           only, never written to history — so reads are free of audit noise. A learned
-          pattern becomes an Update, which returns only after its validator passes and
-          the write is durably accepted, so the HTTP two-oh-four the caller gets back
-          is a real acknowledgement, not a hopeful fire-and-forget. And because one
+          pattern becomes an Update, which returns only after the write is durably
+          accepted, so the HTTP two-oh-four the caller gets back is a real
+          acknowledgement, not a hopeful fire-and-forget. And because one
           workflow accumulating updates forever would blow up its history, once it
           crosses a maximum it drains in-flight handlers and continues-as-new, keeping
           history bounded while carrying the accumulated patterns forward. One more
