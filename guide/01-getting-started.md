@@ -16,15 +16,9 @@
 ## Prerequisites
 
 > [!TIP]
-> **Using GitHub Codespaces?** This guide runs there unchanged. A Codespace
-> comes with uv, Docker, the Temporal CLI, and jq already installed, so you
-> can skip the local prerequisites below and the `git clone` / `uv sync`
-> steps in [Install](#install) — the Codespace provisions everything on
-> create. Open the forwarded **port-8080** URL that VS Code surfaces in its
-> **Ports** panel instead of `http://localhost:8080`; the app and the
-> Temporal Web UI are both reached there. To run scenarios that call an LLM,
-> add your provider key (e.g. `ANTHROPIC_API_KEY`) as a Codespaces secret or
-> in `.env`.
+> **Prefer zero setup?** Skip these prerequisites and run the workshop in
+> GitHub Codespaces instead — see the one-click option under
+> [Install](#install).
 
 - **Python 3.13+** and [uv](https://docs.astral.sh/uv/).
 - **Docker** (or a compatible engine) with Compose — it runs the Temporal
@@ -44,6 +38,24 @@
 No Kubernetes and no cloud account are required.
 
 ## Install
+
+You have two ways to get a working environment.
+
+### Option A — GitHub Codespaces (one click, nothing to install)
+
+The fastest way to start is in the browser: open the workshop in a
+ready-to-run dev container. uv, Docker, the Temporal CLI, and jq come
+preinstalled, and dependencies are provisioned on create — so you can
+skip the prerequisites above and the local install below.
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/alexandreroman/temporal-payment-corridor-workshop)
+
+Open the forwarded **port-8080** URL from the VS Code **Ports** panel
+instead of `http://localhost:8080`; the app and the Temporal Web UI are
+both reached there. To run scenarios that call an LLM, add your provider
+key (e.g. `ANTHROPIC_API_KEY`) as a Codespaces secret or in `.env`.
+
+### Option B — Local install
 
 ```bash
 git clone <repository-url>
