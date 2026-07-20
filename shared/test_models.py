@@ -19,7 +19,7 @@ def test_beneficiary_bank_id_defaults_to_none():
 
 def test_payment_anomaly_requires_a_beneficiary():
     with pytest.raises(ValidationError):
-        PaymentAnomaly(
+        PaymentAnomaly(  # pyright: ignore[reportCallIssue]
             payment_id="pmt-1",
             corridor="US->IN",
             amount=500.0,

@@ -375,6 +375,9 @@ class PaymentCorrectionCoordinator:
                 message=message,
             )
 
+        # NOTE: NO_PROPOSAL already returned above, so proposal is set from here on.
+        assert proposal is not None
+
         # Human oversight when the gate withholds automatic apply: a compliance
         # violation, a missing verdict (fail-closed), or low confidence.
         if decision is GateDecision.REVIEW:

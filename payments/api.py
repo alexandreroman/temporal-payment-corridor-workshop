@@ -324,7 +324,7 @@ async def list_anomalies(awaiting_approval: bool = False) -> list[AnomalySummary
                         source=_outcome_source(outcome),
                     )
                 )
-            elif desc.status in _CLOSED_NON_COMPLETED:
+            elif desc.status is not None and desc.status in _CLOSED_NON_COMPLETED:
                 # Closed rows are never awaiting a human either; same filter as
                 # above.
                 if awaiting_approval:
@@ -409,7 +409,7 @@ async def get_anomaly(payment_id: str) -> AnomalyDetail:
     # NOTE: A closed-but-not-completed run (failed, terminated, canceled, timed
     # out, continued as new) produced no CorrectionOutcome, and result() raises
     # on it — so report the execution status verbatim and leave outcome empty.
-    if desc.status in _CLOSED_NON_COMPLETED:
+    if desc.status is not None and desc.status in _CLOSED_NON_COMPLETED:
         return AnomalyDetail(
             payment_id=payment_id,
             workflow_id=workflow_id,

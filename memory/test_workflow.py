@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import asyncio
 
-from temporalio.client import Client, WorkflowUpdateFailedError
+from temporalio.client import Client, WorkflowHandle, WorkflowUpdateFailedError
 from temporalio.contrib.pydantic import pydantic_data_converter
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
@@ -64,7 +64,7 @@ def _worker(client: Client) -> Worker:
     )
 
 
-async def _start_seeded(client: Client) -> object:
+async def _start_seeded(client: Client) -> WorkflowHandle:
     """Start the singleton MemoryWorkflow seeded from the shared ``store.seed()``.
 
     Seeding happens in ``MemoryWorkflow.__init__`` (``@workflow.init``), which is
