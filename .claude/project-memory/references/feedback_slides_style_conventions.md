@@ -56,7 +56,12 @@ line and NO separate general workshop cover slide (both were removed).
 
 **Bridge (`type-bridge`)** = white session name + a green `→` at the end of
 the title, no "Next:" prefix (the kicker already says "Next session"); teaser
-centred and width-constrained (`max-width` ~60%).
+centred and width-constrained (`max-width` ~60%). The bridge (last slide of a
+session) carries a **`.deck-next` pill link** to the next session's deck
+(`<a class="deck-next" href="session-N.html">Open Session N</a>` — mono,
+bordered pill, no arrow, greens on hover). Only add it when the target deck
+exists (no dead links): Session 1 links to Session 2; Session 2's link to
+`session-3.html` is added once Session 3 is built.
 
 **Backdrop.** The cosmic aurora gradient lives on `.reveal` (not
 `.reveal-viewport`, which `.reveal` paints over and would hide it).

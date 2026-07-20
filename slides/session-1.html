@@ -288,6 +288,35 @@ flowchart LR
         </aside>
       </section>
 
+      <!-- Pseudo-code (H): the fan-out in code -->
+      <section id="fanout-code" class="type-code">
+        <span class="kicker">Concurrent child workflows</span>
+        <h2>Fan out, then gate on both</h2>
+        <div class="body">
+          <pre><code><span class="c"># both agents run concurrently, each as its own child workflow</span>
+results = await <span class="hl">asyncio.gather</span>(
+    workflow.execute_child_workflow(InstructionAgent.run, anomaly),
+    workflow.execute_child_workflow(ComplianceAgent.run, anomaly),
+    <span class="hl">return_exceptions=True</span>,   <span class="c"># one agent failing ≠ total failure</span>
+)
+proposal, verdict = results   <span class="c"># gather preserves order</span></code></pre>
+        </div>
+        <div class="diagram-caption">
+          The coordinator awaits both agent child workflows at once.
+          <code>return_exceptions=True</code> keeps one agent's failure from taking
+          down the whole correction — the gate then decides on whatever came back.
+        </div>
+        <aside class="notes">
+          This is the fan-out in one place. asyncio.gather runs both agent child
+          workflows concurrently. The argument that matters is return-exceptions
+          equals true: if one agent raises, gather returns that exception in place
+          instead of cancelling the other, so a single agent failing degrades
+          gracefully rather than failing the whole correction. And gather preserves
+          order — results zero is always the instruction proposal, results one the
+          compliance verdict — which is exactly what the gate weighs next.
+        </aside>
+      </section>
+
       <!-- 10 · Memory-first gate (D) -->
       <section id="memory-first" class="type-diagram">
         <span class="kicker">Memory-first</span>
@@ -477,6 +506,39 @@ flowchart LR
         </aside>
       </section>
 
+      <!-- Pseudo-code (H): human-in-the-loop in code -->
+      <section id="approval-code" class="type-code">
+        <span class="kicker">Human-in-the-loop, in code</span>
+        <h2>One signal, one query, one wait</h2>
+        <div class="body">
+          <pre><code><span class="hl">@workflow.signal</span>
+async def approve_correction(self, decision) -&gt; None:
+    self._decision = decision      <span class="c"># a Signal WRITES, wakes the wait</span>
+
+<span class="hl">@workflow.query</span>
+def awaiting_approval(self) -&gt; bool:
+    return self._awaiting          <span class="c"># a Query READS, no side effect</span>
+
+<span class="c"># in run(): block until a human decides</span>
+await workflow.<span class="hl">wait_condition</span>(lambda: self._decision is not None)</code></pre>
+        </div>
+        <div class="diagram-caption">
+          A <strong>Signal</strong> writes state and wakes the workflow; a
+          <strong>Query</strong> reads state with no side effects;
+          <code>wait_condition</code> is where the coordinator durably parks until
+          the decision lands — deliverable from the app or the CLI.
+        </div>
+        <aside class="notes">
+          Here is human-in-the-loop as code. The signal handler, approve-correction,
+          is how a decision gets in from outside — it just writes to self-dot-decision.
+          A Signal writes and wakes the workflow. The query, awaiting-approval, reads
+          whether we are blocked, with no side effects — that is what the app's approval
+          panel polls. And the wait itself: wait-condition blocks the run method until
+          the decision arrives. Three decorators, one mental model — Signals write,
+          Queries read, and wait-condition is where the workflow durably parks.
+        </aside>
+      </section>
+
       <!-- 16 · Approve — hands-on (E) -->
       <section id="approve" class="type-handson">
         <span class="kicker kicker--green">Step 03 · Hands-on</span>
@@ -519,6 +581,7 @@ flowchart LR
         <h2>Reliability &amp; control flow&nbsp;<strong>&rarr;</strong></h2>
         <p class="teaser">Durable timers, retryable vs non-retryable errors, heartbeats
           with cancellation, and fleet-wide visibility with search attributes.</p>
+        <a class="deck-next" href="session-2.html">Open Session 2</a>
         <aside class="notes">
           That is the core. In the next session we harden it: bounded waiting with
           durable timers, classifying errors as retryable or non-retryable, heartbeats

@@ -38,7 +38,11 @@ crash&resume demo); S2 "Reliability & control flow" (04–08); S3 "Production
 & compliance" (09–13).
 
 Status: **Sessions 1 and 2 built and validated.** Session 1
-(`slides/session-1.html`, 20 slides) covers steps 00–03. Session 2
+(`slides/session-1.html`, 22 slides) covers steps 00–03 and now includes two
+`type-code` pseudo-code slides (the `asyncio.gather` fan-out after the fan-out
+diagram; the `@workflow.signal`/`@workflow.query`/`wait_condition`
+human-in-the-loop trio in Step 03), matching Session 2's use of the element.
+Session 2
 (`slides/session-2.html`, 23 slides) covers steps 04–08: title → recap (B,
 built as a `type-content` slide with 3 cards) → objectives, then a
 `section-divider` + hands-on per step, four role-coloured diagrams (a

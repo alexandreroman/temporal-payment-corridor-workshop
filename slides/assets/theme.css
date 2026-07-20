@@ -575,6 +575,23 @@
   max-width: 60%;
   margin: 0;
 }
+/* Pill link to the next session's deck, echoing the landing-page cards. */
+.reveal .type-bridge .deck-next {
+  margin-top: 2.2rem;
+  display: inline-block;
+  padding: 12px 26px;
+  border: 1px solid var(--t-border);
+  border-radius: 999px;
+  color: var(--t-green);
+  font-family: var(--t-font-mono);
+  font-size: 1.05rem;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.reveal .type-bridge .deck-next:hover {
+  border-color: var(--t-green);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
 
 /* ══════════════════════════════════════════════════════════════════════
  * Landing page (index.html) — reuses the theme outside a reveal deck.
