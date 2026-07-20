@@ -111,7 +111,7 @@
             plaintext in Event History — BICs, amounts, beneficiary details.
           </div>
           <div class="concept">
-            <strong>Temporal concept</strong> A <span class="hl">PayloadCodec</span>
+            <strong>What Temporal brings</strong> A <span class="hl">PayloadCodec</span>
             sits at the edge of serialization: the SDK calls <code>encode</code> on
             the way out and <code>decode</code> on the way in, so payloads travel and
             rest as ciphertext — here with <span class="hl">Fernet</span>
@@ -270,7 +270,7 @@ client = await Client.connect(
             in-process dict — it loses everything on restart and keeps no audit trail.
           </div>
           <div class="concept">
-            <strong>Temporal concept</strong> The <span class="hl">Entity Workflow</span>
+            <strong>What Temporal brings</strong> The <span class="hl">Entity Workflow</span>
             pattern turns that into one long-lived workflow. Reads are
             <span class="hl">Queries</span> (never recorded), writes are validated
             <span class="hl">Updates</span> (durably acknowledged), and

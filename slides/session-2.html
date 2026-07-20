@@ -111,7 +111,7 @@
             correction Running indefinitely.
           </div>
           <div class="concept">
-            <strong>Temporal concept</strong> A <span class="hl">durable timer</span>
+            <strong>What Temporal brings</strong> A <span class="hl">durable timer</span>
             is workflow state, not an in-process <code>sleep</code>. Passing
             <span class="hl">timeout=</span> to <code>wait_condition</code> arms one;
             it keeps counting across worker restarts and fires deterministically.
@@ -455,7 +455,7 @@ if attempt &gt;= _RETRY_ALERT_THRESHOLD:
             without becoming impossible to cancel.
           </div>
           <div class="concept">
-            <strong>Temporal concept</strong> <span class="hl">activity.heartbeat</span>
+            <strong>What Temporal brings</strong> <span class="hl">activity.heartbeat</span>
             does three jobs: it checkpoints progress, it lets a retry <em>resume</em>
             from the last checkpoint via <code>heartbeat_details</code>, and it is
             the channel through which <span class="hl">cancellation</span> is delivered.
