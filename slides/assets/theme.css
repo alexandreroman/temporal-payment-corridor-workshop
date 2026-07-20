@@ -360,7 +360,7 @@
   counter-increment: framing;
   flex: 1 1 0;
   min-width: 0;
-  padding: 1.5em 1.3em 1em;
+  padding: 2.2em 1.3em 1em;
   background: var(--t-bg-2);
   border: 1px solid var(--t-border);
   border-radius: 12px;
@@ -381,8 +381,9 @@
   font-size: 4.4rem;
   font-weight: 800;
   line-height: 1;
-  color: var(--t-green);
-  opacity: 0.15;
+  color: var(--t-muted);
+  opacity: 0.28;
+  font-style: normal;
   pointer-events: none;
 }
 .reveal .framing .problem {
@@ -401,6 +402,8 @@
 .reveal .framing > div strong {
   display: block;
   margin-bottom: 0.4em;
+  color: var(--t-text);
+  font-style: normal;
 }
 
 /* (D) Diagram — kicker, underlined title, centered mermaid, caption/legend. */
