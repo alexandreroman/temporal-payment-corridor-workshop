@@ -360,13 +360,13 @@
   counter-increment: framing;
   flex: 1 1 0;
   min-width: 0;
-  padding: 2.2em 1.3em 1em;
+  padding: 3.6em 1.3em 1em;
   background: var(--t-bg-2);
   border: 1px solid var(--t-border);
   border-radius: 12px;
   overflow: hidden;
-  font-size: 1.25rem;
-  line-height: 1.5;
+  font-size: 1.35rem;
+  line-height: 1.55;
 }
 /* Block number as a faint watermark, anchored top-left. Sits above the
    card background but behind the text (negative z-index under a positioned
@@ -374,11 +374,11 @@
 .reveal .framing > div::before {
   content: counter(framing);
   position: absolute;
-  top: -0.1em;
-  left: 0.12em;
+  top: 0.28em;
+  left: 0.38em;
   z-index: -1;
   font-family: var(--t-font-sans);
-  font-size: 4.4rem;
+  font-size: 3.2rem;
   font-weight: 800;
   line-height: 1;
   color: var(--t-muted);
@@ -387,7 +387,7 @@
   pointer-events: none;
 }
 .reveal .framing .problem {
-  color: var(--t-text);
+  color: var(--t-muted);
 }
 .reveal .framing .concept {
   color: var(--t-muted);
@@ -397,11 +397,10 @@
 }
 .reveal .framing .observe {
   color: var(--t-muted);
-  font-style: italic;
 }
 .reveal .framing > div strong {
   display: block;
-  margin-bottom: 0.4em;
+  margin-bottom: 0.9em;
   font-family: var(--t-font-mono);
   font-size: 1.1rem;
   font-weight: 400;

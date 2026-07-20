@@ -106,18 +106,18 @@
         <div class="body">
         <div class="framing">
           <div class="problem">
-            <strong>Problem.</strong> "Hold for a human" must not mean "hold
+            <strong>Problem</strong> "Hold for a human" must not mean "hold
             <em>forever</em>". A reviewer who never responds should not pin a
             correction Running indefinitely.
           </div>
           <div class="concept">
-            <strong>Temporal concept.</strong> A <span class="hl">durable timer</span>
+            <strong>Temporal concept</strong> A <span class="hl">durable timer</span>
             is workflow state, not an in-process <code>sleep</code>. Passing
             <span class="hl">timeout=</span> to <code>wait_condition</code> arms one;
             it keeps counting across worker restarts and fires deterministically.
           </div>
           <div class="observe">
-            <strong>Observe.</strong> Left unanswered, the correction now
+            <strong>Observe</strong> Left unanswered, the correction now
             auto-rejects with the approval-window message — no background thread,
             no lost timer.
           </div>
@@ -450,18 +450,18 @@ if attempt &gt;= _RETRY_ALERT_THRESHOLD:
         <div class="body">
         <div class="framing">
           <div class="problem">
-            <strong>Problem.</strong> Settlement is asynchronous and slow. The
+            <strong>Problem</strong> Settlement is asynchronous and slow. The
             workflow must wait for it — without losing progress on a crash, and
             without becoming impossible to cancel.
           </div>
           <div class="concept">
-            <strong>Temporal concept.</strong> <span class="hl">activity.heartbeat</span>
+            <strong>Temporal concept</strong> <span class="hl">activity.heartbeat</span>
             does three jobs: it checkpoints progress, it lets a retry <em>resume</em>
             from the last checkpoint via <code>heartbeat_details</code>, and it is
             the channel through which <span class="hl">cancellation</span> is delivered.
           </div>
           <div class="observe">
-            <strong>Observe.</strong> From the workflow it is just another activity to
+            <strong>Observe</strong> From the workflow it is just another activity to
             <code>await</code> — determinism is preserved. A stalled poll is caught
             by <code>heartbeat_timeout</code>.
           </div>

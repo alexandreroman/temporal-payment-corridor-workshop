@@ -107,18 +107,18 @@
         <div class="body">
         <div class="framing">
           <div class="problem">
-            <strong>Problem.</strong> A payment carries data you cannot leave in
+            <strong>Problem</strong> A payment carries data you cannot leave in
             plaintext in Event History — BICs, amounts, beneficiary details.
           </div>
           <div class="concept">
-            <strong>Temporal concept.</strong> A <span class="hl">PayloadCodec</span>
+            <strong>Temporal concept</strong> A <span class="hl">PayloadCodec</span>
             sits at the edge of serialization: the SDK calls <code>encode</code> on
             the way out and <code>decode</code> on the way in, so payloads travel and
             rest as ciphertext — here with <span class="hl">Fernet</span>
             (AES-128-CBC + HMAC).
           </div>
           <div class="observe">
-            <strong>Observe.</strong> Event History now shows ciphertext — until the
+            <strong>Observe</strong> Event History now shows ciphertext — until the
             <span class="hl">codec server</span> decrypts it on demand for the
             Temporal Web UI.
           </div>
@@ -266,18 +266,18 @@ client = await Client.connect(
         <div class="body">
         <div class="framing">
           <div class="problem">
-            <strong>Problem.</strong> The baseline corridor memory is a plain
+            <strong>Problem</strong> The baseline corridor memory is a plain
             in-process dict — it loses everything on restart and keeps no audit trail.
           </div>
           <div class="concept">
-            <strong>Temporal concept.</strong> The <span class="hl">Entity Workflow</span>
+            <strong>Temporal concept</strong> The <span class="hl">Entity Workflow</span>
             pattern turns that into one long-lived workflow. Reads are
             <span class="hl">Queries</span> (never recorded), writes are validated
             <span class="hl">Updates</span> (durably acknowledged), and
             <code>continue_as_new</code> keeps history bounded.
           </div>
           <div class="observe">
-            <strong>Observe.</strong> The HTTP contract at <code>/api/memory/v1</code>
+            <strong>Observe</strong> The HTTP contract at <code>/api/memory/v1</code>
             is unchanged — only the backend behind it moved into Temporal.
           </div>
         </div>
