@@ -39,6 +39,9 @@ TEMPORAL_GRPC_PORT    := $(shell sed -nE 's/.*"([0-9]+):7233".*/\1/p' compose.ov
 PAYMENTS_METRICS_PORT := $(shell echo $$(($(GATEWAY_PORT) + 2)))
 MEMORY_PORT           := $(shell echo $$(($(GATEWAY_PORT) + 4)))
 PAYMENTS_API_PORT     := $(shell echo $$(($(GATEWAY_PORT) + 5)))
+# The slides preview server (make slides) is likewise a host process; give it
+# the free +3 offset so parallel worktrees never fight over its port.
+SLIDES_PORT           := $(shell echo $$(($(GATEWAY_PORT) + 3)))
 # Point the host-side dev flow (uv run payments/payments-api) at the remapped
 # ports. Assign unconditionally (:=, not ?=): the override file is the source
 # of truth for published ports, so these must beat the .env baseline exported
@@ -47,7 +50,7 @@ TEMPORAL_ADDRESS      := localhost:$(TEMPORAL_GRPC_PORT)
 PAYMENTS_METRICS_HOST := 0.0.0.0
 # The simulator reaches the payments API through the gateway.
 GATEWAY_HOST          := localhost
-export TEMPORAL_ADDRESS PAYMENTS_METRICS_HOST PAYMENTS_METRICS_PORT MEMORY_PORT PAYMENTS_API_PORT GATEWAY_HOST GATEWAY_PORT
+export TEMPORAL_ADDRESS PAYMENTS_METRICS_HOST PAYMENTS_METRICS_PORT MEMORY_PORT PAYMENTS_API_PORT SLIDES_PORT GATEWAY_HOST GATEWAY_PORT
 else
 # Without an override the published ports equal the conventional defaults.
 # Use ?= for ports that have a matching app env var so a value set in .env
@@ -57,8 +60,9 @@ GATEWAY_PORT          := 8080
 PAYMENTS_METRICS_PORT ?= 9464
 MEMORY_PORT           ?= 8010
 PAYMENTS_API_PORT     ?= 8020
+SLIDES_PORT           ?= 8000
 GATEWAY_HOST          := localhost
-export PAYMENTS_API_PORT GATEWAY_HOST GATEWAY_PORT
+export PAYMENTS_API_PORT SLIDES_PORT GATEWAY_HOST GATEWAY_PORT
 endif
 
 # Banner listing where to reach the running components. Only the two
@@ -168,7 +172,8 @@ worktree-init: ## Initialise a worktree: install deps and remap host ports off C
 # Metrics, the payments API, and memory are no longer published container
 # ports; their host-side dev-process ports are instead derived
 # arithmetically from GATEWAY_PORT (offsets +2/+4/+5, see the ifneq block
-# above). Offset +3 is unused.
+# above). Offset +3 is the slides preview server's host port (make slides),
+# derived the same way so parallel worktrees don't collide there either.
 .PHONY: worktree-ports
 worktree-ports: ## Remap host ports off CASPER_PORT so parallel worktrees don't collide
 	@if [ -n "$$CASPER_PORT" ]; then \
@@ -238,7 +243,7 @@ capture-history: ## Capture coordinator-history.json from a completed memory-hit
 ##@ Slides
 
 .PHONY: slides
-slides: ## Serve the reveal.js decks (no-cache) at http://127.0.0.1:8000 (PORT=<n> to override)
+slides: ## Serve the reveal.js decks (no-cache); port 8000, or CASPER_PORT+3 in a worktree (PORT=<n> to override)
 	uv run python -m tools.slides $(if $(PORT),--port $(PORT),)
 
 ##@ Helpers

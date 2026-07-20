@@ -13,12 +13,16 @@ Workflow used to build and review the reveal.js decks under `slides/`. See
 **Serve over HTTP with no caching.** The deck must be served (not opened via
 `file://`) so relative assets + fonts load. The Casper/webview caches assets
 aggressively — a plain `python3 -m http.server` will keep serving stale
-CSS/JS. Use `make slides` (PORT=<n> to override, default 8000), which runs
+CSS/JS. Use `make slides` (PORT=<n> to override), which runs
 `tools/slides.py` — a stdlib no-cache server that sends
 `Cache-Control: no-store` on every response and prints a banner of the
 landing + per-session URLs. `python -m tools.slides --open` opens the
-landing page in a browser; `--port`/`SLIDES_PORT` set the port. Symptom of a
-stale view: your CSS/JS edit "does nothing" until you cache-bust.
+landing page in a browser; `--port`/`SLIDES_PORT` set the port. The port
+defaults to 8000, but in a Casper worktree the Makefile derives it from
+`GATEWAY_PORT` (= `CASPER_PORT`) at offset +3 and exports `SLIDES_PORT`, so
+parallel worktrees never collide (see [[Casper worktree port remap]]).
+Symptom of a stale view: your CSS/JS edit "does nothing" until you
+cache-bust.
 
 **Preview + verify with the Casper browser.** `casper browser open
 http://127.0.0.1:<port>/session-N.html#/<i>` jumps to a slide by reveal hash;

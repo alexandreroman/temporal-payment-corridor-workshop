@@ -12,7 +12,8 @@ In a Casper worktree `CASPER_PORT` is set, and the Casper `setup` hook
 +0; the container-side port stays `8080`) and Temporal gRPC
 (`CASPER_PORT+1`). The Makefile derives
 the remaining host-dev ports from `GATEWAY_PORT` with shell arithmetic —
-payments metrics at +2, memory at +4, payments API at +5 (+3 is unused)
+payments metrics at +2, memory at +4, payments API at +5, and the
+`make slides` preview server at +3
 — and exports the full set (`TEMPORAL_ADDRESS`, `PAYMENTS_METRICS_HOST`,
 `PAYMENTS_METRICS_PORT`, `MEMORY_PORT`, `PAYMENTS_API_PORT`,
 `GATEWAY_HOST`, `GATEWAY_PORT`) to the host-side `uv run` processes, so
