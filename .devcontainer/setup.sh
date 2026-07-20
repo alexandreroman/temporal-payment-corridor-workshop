@@ -40,3 +40,17 @@ make setup
 # Every value in .env.example has a working dev default, so the stack runs
 # out of the box; a learner only adds a provider key for LLM scenarios.
 cp -n .env.example .env
+
+# Workshop folder paths are long, so a default single-line prompt pushes the
+# typed command far to the right and wraps awkwardly. Put the current directory
+# name on its own line and drop to a bare `$ ` prompt beneath it, keeping
+# commands easy to read. The PCW_PROMPT marker keeps this idempotent: `grep -qs`
+# tolerates a missing ~/.bashrc (never aborts under `set -e`) and skips the
+# append on re-runs so the block is never added twice.
+if ! grep -qs 'PCW_PROMPT' "$HOME/.bashrc"; then
+	cat >>"$HOME/.bashrc" <<'EOF'
+
+# PCW_PROMPT: current directory name on its own line, bare `$ ` prompt beneath (long workshop paths).
+PS1='\[\e[1;34m\]\W\[\e[0m\]\n\$ '
+EOF
+fi
