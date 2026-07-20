@@ -814,20 +814,36 @@ body.landing .session-card h2 {
   margin-top: auto;
 }
 
-/* Card slides (motivation, overview): anchor the card row just under the
- * title rather than floating it in the vertical middle. */
+/* Card slides (motivation, overview, recap): centre the card row in the space
+ * beneath the title so the whitespace is balanced above and below it, instead
+ * of the row hugging the top with a large void underneath. */
 .reveal .type-content > .body {
-  justify-content: flex-start;
-  padding-top: 0.6em;
+  justify-content: center;
 }
 
-/* Cards breathe more and fill the width on centred content slides. */
+/* Augmented card layout: the card row grows to fill the space beneath the
+ * title, and each card carries a larger heading and body text so it reads as a
+ * substantial block rather than a small label floating in a big void. */
 .reveal .type-content .cards {
-  margin-top: 24px;
-  gap: 24px;
+  flex: 1;                 /* fill the vertical space beneath the title */
+  align-content: stretch;  /* stretch the single grid row to full height */
+  margin-top: 28px;
+  gap: 28px;
 }
 .reveal .type-content .card {
-  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;  /* content sits at the top of the card */
+  padding: 40px 36px;
+}
+.reveal .type-content .card .eyebrow {
+  font-size: 1.2rem;       /* larger card title */
+  text-align: center;      /* centred heading, anchored at the top */
+  margin-bottom: 0.8em;
+}
+.reveal .type-content .card p {
+  font-size: 1.35rem;      /* larger card body */
+  line-height: 1.55;
 }
 
 /* Diagram slides: the title stays at the top, the diagram grows to fill,

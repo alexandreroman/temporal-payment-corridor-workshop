@@ -25,9 +25,16 @@ decks read as one system. See [[project_workshop_slides]] and
 **Spacing.** Lists (`type-objectives`, `type-checkpoint`) use a **fixed
 comfortable gap (~1.6rem)** anchored under the title — NOT `space-evenly`
 (too airy for short bullets; the user rejected it). Framing's 3 sentences
-DO use `space-evenly`. Card slides anchor the card row just under the title
-(`padding-top`, not vertical-centre). Checkpoint's tie-back is pinned to the
-bottom (`margin-top:auto`).
+DO use `space-evenly`. **Card slides (3-card `type-content`: motivation,
+baseline, recap) use an augmented card layout**: the card row grows to fill the
+space beneath the title (`.cards { flex:1; align-content:stretch }`), each card
+anchors its content at the top (`justify-content:flex-start`) with generous
+padding (~40px); the card heading (`.eyebrow`, ~1.2rem) is **centred and
+top-aligned** while the body (~1.35rem) stays left-aligned beneath it. This
+**supersedes** both the original "anchor under title" rule and the interim
+"centre the row" tweak. The slide title (`h2`) stays at its normal size —
+"the title never jumps" — so a bigger *card* heading never means a bigger *h2*.
+Checkpoint's tie-back is pinned to the bottom (`margin-top:auto`).
 
 **Every step gets a `section-divider`** (Steps 00–03 each have one). Divider
 kicker is just `Step NN` — no feature-toggle name.
