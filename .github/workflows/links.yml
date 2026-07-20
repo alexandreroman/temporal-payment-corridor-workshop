@@ -7,10 +7,23 @@
 name: Links
 
 on:
+  # Only re-run on push/PR when the docs (or this checker) actually change;
+  # the weekly schedule below still catches external link rot on unchanged
+  # docs. paths: cannot be applied to the cron trigger, so it stays broad.
   push:
     branches: [main]
+    paths:
+      - README.md
+      - guide/**
+      - slides/**
+      - .github/workflows/links.yml
   pull_request:
     branches: [main]
+    paths:
+      - README.md
+      - guide/**
+      - slides/**
+      - .github/workflows/links.yml
   schedule:
     # Weekly sweep so external link rot surfaces even when nothing is pushed
     # (Mondays 06:00 UTC).
@@ -51,8 +64,8 @@ jobs:
             --max-retries 3
             --accept 200,206,429
             README.md
-            production-ready-checklist.md
             "guide/**/*.md"
+            "slides/**/*.html"
           # Do not fail the job on a broken link: external link rot must never
           # turn this run red. Broken links are surfaced as a warning annotation
           # (see the next step) instead, keeping the job green while staying
