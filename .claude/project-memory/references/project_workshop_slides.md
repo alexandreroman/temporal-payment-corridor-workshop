@@ -43,13 +43,15 @@ Status: **Sessions 1 and 2 built and validated.** Session 1
 diagram; the `@workflow.signal`/`@workflow.query`/`wait_condition`
 human-in-the-loop trio in Step 03), matching Session 2's use of the element.
 Session 2
-(`slides/session-2.html`, 23 slides) covers steps 04–08: title → recap (B,
+(`slides/session-2.html`, 22 slides) covers steps 04–08: title → recap (B,
 built as a `type-content` slide with 3 cards) → objectives, then a
-`section-divider` + hands-on per step, four role-coloured diagrams (a
-retryable/non-retryable decision tree, a retry timeline, a replay/versioning
-fork, a Search-Attributes visibility index) and two dedicated **pseudo-code**
-slides (`type-code`, see [[feedback_slides_style_conventions]]). `index.html`
-links both. Session 3 (steps 09–13) and `slides/README.md` are still to build
+`section-divider` + hands-on per step, three role-coloured diagrams (a
+retryable/non-retryable decision tree, a retry timeline, a Search-Attributes
+visibility index) and two dedicated **pseudo-code** slides (`type-code`, see
+[[feedback_slides_style_conventions]]). Versioning/patching AND the
+replay-test/Event-History-change theme are deliberately absent from the slides
+— see [[feedback_versioning_out_of_scope]] (the only Event-History mention left
+is observing a durable Timer in Step 04). `index.html` links both. Session 3 (steps 09–13) and `slides/README.md` are still to build
 — copy `session-2.html` as the richest template. All content is English and
 timeless. Before building Session 3, read
 [[feedback_slides_style_conventions]] (layout/style rules incl. `type-code`),

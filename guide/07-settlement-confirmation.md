@@ -2,9 +2,9 @@
 
 > [!NOTE]
 > **Goal of this step.** Add a step that waits for the downstream rail to
-> actually *settle*. Along the way, meet the three ideas that make
-> long-running work safe: **heartbeats**, **cancellation**, and — because
-> this changes the coordinator's shape — **replay & versioning**.
+> actually *settle*. Along the way, meet the two ideas that make
+> long-running work safe — **heartbeats** and **cancellation** — and see why
+> enabling it makes the committed **replay** test fail.
 
 ## At a glance
 
@@ -15,10 +15,9 @@
   [`shared/models.py`](../shared/models.py),
   [`payments/test_workflows.py`](../payments/test_workflows.py)
 - **Temporal concepts:** Long-running activities, `activity.heartbeat`,
-  `heartbeat_timeout`, cancellation, replay & versioning
+  `heartbeat_timeout`, cancellation, replay
 - **Docs:** [Detecting activity failures](https://docs.temporal.io/encyclopedia/detecting-activity-failures#activity-heartbeat)
-  · [Cancellation](https://docs.temporal.io/develop/python/cancellation) ·
-  [Versioning](https://docs.temporal.io/develop/python/versioning)
+  · [Cancellation](https://docs.temporal.io/develop/python/cancellation)
 - **Builds on:** step [02](02-durable-agents.md)
 
 > [!IMPORTANT]
@@ -105,7 +104,7 @@ settlement = await workflow.execute_activity(
 > heartbeat arrives within this window, the attempt fails and is retried
 > per the policy, resuming from the last reported cycle.
 
-## Step 4 — The replay lesson (do not skip this)
+## Step 4 — A note on replay
 
 Enabling this feature adds a workflow step, which **changes the
 coordinator's Event History**. That has a deliberate consequence:
@@ -118,16 +117,7 @@ The replay test `payments/test_replay.py` **fails now — by design.** It
 replays a committed history fixture
 (`payments/testdata/coordinator-history.json`) that was captured with the
 feature *disabled*. The new code path diverges from that recorded history,
-so replay diverges. Read the `NOTE:` at the settlement block in
-`workflows.py`:
-
-> [!NOTE]
-> In production, the safe way to add a step to *already-running* workflows
-> is **versioning/patching** (`workflow.patched(...)`), so old and new
-> executions each follow the code path their history expects. The workshop
-> deliberately does *not* regenerate the baseline fixture for the enabled
-> state — the failing replay test is the lesson.
-> Docs: [Versioning](https://docs.temporal.io/develop/python/versioning).
+so replay diverges — this is expected, not a regression.
 
 If you want a passing replay test *while the feature stays enabled*,
 regenerate the fixture from a real run. The dev stack is already up, so no
@@ -140,7 +130,7 @@ make simulator                                        # prints the workflow id
 make capture-history WORKFLOW_ID=correction-pmt-XXXX  # capture the new state
 ```
 
-This is covered further in step [12](12-testing.md).
+Replay testing is covered further in step [12](12-testing.md).
 
 ## Step 5 — Run and observe
 
@@ -164,8 +154,8 @@ heartbeat and unwinds cleanly.
 
 - [ ] `confirm_settlement` heartbeats and the outcome carries a settlement.
 - [ ] You can explain how a retry *resumes* from the last heartbeat.
-- [ ] You can explain why the replay test now fails — and how versioning
-      solves the same problem in production.
+- [ ] You can explain why the replay test now fails — and how to regenerate
+      the committed fixture (step [12](12-testing.md)).
 
 ## Revert
 

@@ -78,7 +78,6 @@
             <li>Classify a failure as <strong>retryable</strong> or <strong>non-retryable</strong> — and know why it matters.</li>
             <li>React to a degrading rail by emitting a <strong>metric</strong> from inside retries.</li>
             <li>Confirm settlement with a long-running, <strong>heartbeating</strong>, cancellable activity.</li>
-            <li>Explain why adding a step breaks <strong>replay</strong> — and how <strong>versioning</strong> fixes it.</li>
             <li>Make the whole fleet filterable with <strong>Search Attributes</strong>.</li>
           </ul>
         </div>
@@ -358,14 +357,13 @@ flowchart LR
       <section id="divider-07" class="section-divider">
         <span class="kicker">Step 07</span>
         <h1>Long-running activities &amp; heartbeats</h1>
-        <p class="teaser">Wait for the rail to settle — and meet heartbeats, cancellation, and the replay lesson.</p>
+        <p class="teaser">Wait for the rail to settle — and meet heartbeats and cancellation for long-running work.</p>
         <aside class="notes">
           Applying a correction is not the end of the story: the money still has to
           settle on the downstream rail, which is asynchronous and can take a while.
           The right shape is a long-running, heartbeating activity that polls the
-          rail. This one step packs three ideas: heartbeats, cancellation, and —
-          because it changes the coordinator's shape — a lesson about replay and
-          versioning. Slow down here; this is the conceptual peak of the session.
+          rail. This one step brings together heartbeats and cancellation. Slow
+          down here; this is the conceptual peak of the session.
         </aside>
       </section>
 
@@ -439,55 +437,14 @@ while cycle &lt; _SETTLEMENT_POLL_CYCLES:
         </aside>
       </section>
 
-      <!-- 17 · Diagram (D) — replay & versioning fork -->
-      <section id="versioning" class="type-diagram">
-        <span class="kicker">Replay &amp; versioning</span>
-        <h2>Adding a step changes the history</h2>
-        <div class="mermaid">
-flowchart LR
-    Hist[("recorded history<br/>feature OFF")] --> Replay{"replay with<br/>new code"}
-    Replay -->|"no guard"| Diverge["non-determinism<br/>replay FAILS"]
-    Replay -->|"workflow.patched(…)"| Fork["old runs → old path<br/>new runs → new path"]
-
-    classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
-    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
-    classDef fail fill:#2a1114,stroke:#f87171,color:#ffd6d6,stroke-width:1.5px;
-    class Hist store;
-    class Replay,Fork temporal;
-    class Diverge fail;
-        </div>
-        <div class="legend">
-          <span class="legend-item c-store">Committed history</span>
-          <span class="legend-item c-temporal">Replay / patched</span>
-          <span class="legend-item c-stream">Divergence</span>
-        </div>
-        <div class="diagram-caption">
-          The committed replay fixture was captured with the feature <em>off</em>.
-          Adding the settlement step diverges from it — so <code>make test</code>'s
-          replay test fails <strong>by design</strong>. In production,
-          <code>workflow.patched(...)</code> forks old and new executions safely.
-        </div>
-        <aside class="notes">
-          Here is the lesson that is easy to skip and must not be. Enabling this
-          feature adds a workflow step, which changes the coordinator's Event
-          History. Our replay test replays a committed fixture that was captured with
-          the feature off, so the new code path diverges from the recorded history
-          and replay fails. That failing test is not a regression — it is the lesson,
-          on purpose. In production, the safe way to add a step to already-running
-          workflows is versioning: workflow-dot-patched lets old executions keep
-          their old path while new ones take the new path, so neither diverges from
-          its own history. We will come back to this in the testing step.
-        </aside>
-      </section>
-
-      <!-- 18 · Hands-on (E) -->
+      <!-- 17 · Hands-on (E) -->
       <section id="settle-handson" class="type-handson">
         <span class="kicker kicker--green">Step 07 · Hands-on</span>
-        <h2>See the heartbeat — and the failing replay</h2>
+        <h2>Watch the settlement heartbeat</h2>
         <div class="body">
-          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=settlement-confirmation<br><span class="prompt">$</span> make simulator<br># open the coordinator: confirm_settlement heartbeats across cycles<br><span class="prompt">$</span> make test<br><span class="out">FAILED payments/test_replay.py  ← by design</span></div>
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=settlement-confirmation<br><span class="prompt">$</span> make simulator<br># open the coordinator: confirm_settlement heartbeats across cycles</div>
           <p class="predict">Predict first: after <code>apply_correction</code>, what new activity appears —<br>
-            and why does <code>make test</code> now report a replay failure?</p>
+            and how does it report progress while it polls the rail?</p>
         </div>
         <aside class="notes">
           Enable settlement-confirmation and fire the simulator. In Temporal, open
@@ -495,11 +452,7 @@ flowchart LR
           activity that heartbeats across several cycles before completing, and the
           outcome carries a settlement object. To watch cancellation, cancel the
           coordinator mid-poll and see the activity unwind cleanly through its next
-          heartbeat. Then run make test: the replay test fails, exactly as the
-          diagram predicted, because the fixture was captured before this step
-          existed. If you want it green while the feature stays on, regenerate the
-          fixture from a real run with capture-history — but leave it failing for now;
-          the failure is the teaching.
+          heartbeat — the heartbeat call is how the cancellation reaches it.
         </aside>
       </section>
 
@@ -578,8 +531,7 @@ flowchart LR
           dimension — corridor, anomaly-type, status — and try the same queries in the
           Web UI search box. The point to internalise: without Search Attributes you
           could only list every execution and sift by hand; now the Visibility store
-          answers the question in one server-side query. Like step seven, this changes
-          the history, so the replay test failing is again expected.
+          answers the question in one server-side query.
         </aside>
       </section>
 
@@ -594,20 +546,18 @@ flowchart LR
           <li>A durable timer bounds the human wait — unanswered means auto-reject.</li>
           <li>Non-retryable fails once; a transient error retries and can raise an alert.</li>
           <li>A heartbeating activity polls the rail, resumes after a crash, and cancels cleanly.</li>
-          <li>Adding a step breaks replay — versioning is how production adds steps safely.</li>
           <li>Search Attributes make the whole fleet filterable server-side.</li>
         </ul>
         <p class="tieback">All of it is the same core from Session 1, with more of
           Temporal's control-flow surface turned on.</p>
         </div>
         <aside class="notes">
-          Let's consolidate. Five things, one core. A durable timer bounds the human
+          Let's consolidate. Four things, one core. A durable timer bounds the human
           wait, so an unanswered correction auto-rejects instead of hanging. Failure
           classification: non-retryable fails once, transient retries — and retries
           are themselves a signal we can alert on. A heartbeating activity polls the
           settlement rail, resumes from its last checkpoint after a crash, and cancels
-          cleanly. Adding that step broke replay, which taught us why versioning
-          exists. And Search Attributes made the whole fleet filterable server-side.
+          cleanly. And Search Attributes made the whole fleet filterable server-side.
           None of this is new machinery — it is the same durable core from Session 1,
           with more of Temporal's control-flow surface turned on.
         </aside>
@@ -623,8 +573,7 @@ flowchart LR
           That is reliability and control flow. In the final session we take it to
           production: encrypting payloads end to end for banking compliance, promoting
           corridor memory to a durable workflow, wiring up observability, and testing
-          the whole thing — including that replay test we deliberately left failing.
-          Same application, the last mile. See you there.
+          the whole thing. Same application, the last mile. See you there.
         </aside>
       </section>
 
