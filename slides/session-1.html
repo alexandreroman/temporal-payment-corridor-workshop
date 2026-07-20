@@ -98,6 +98,7 @@
         <span class="kicker">Architecture</span>
         <h2>One gateway, two namespaces</h2>
         <div class="mermaid">
+%%{init: {'flowchart': {'padding': 30}}}%%
 flowchart LR
     Sim[simulator] --> GW
     User[operator browser] --> GW
@@ -178,8 +179,9 @@ sequenceDiagram
     Coord-->>API: correction outcome
         </div>
         <div class="diagram-caption">
-          The coordinator fans out to both agents at once. Each checks memory before the
-          model. The gate then applies the fix or holds it for a human.
+          The happy path, start to finish. The coordinator fans out to both agents at
+          once. Each checks memory before the model. The gate then applies the fix or
+          holds it for a human.
         </div>
         <aside class="notes">
           Here is the happy path as a sequence. The coordinator starts and fans out to
