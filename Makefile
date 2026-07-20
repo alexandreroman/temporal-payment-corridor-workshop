@@ -89,9 +89,11 @@ setup: ## Enable the local ruff pre-commit hook (run once after cloning)
 # Dev-mode compose file set. compose.dev.yaml points the containerised gateway
 # at the HOST payments API (host.docker.internal) for the hot-reload flow; it is
 # NOT auto-merged (only compose.override.yaml is), so it must be passed
-# explicitly. The per-worktree compose.override.yaml (remapped ports) is
-# included only when present — a plain checkout has none.
-COMPOSE_DEV_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml,) -f compose.dev.yaml
+# explicitly. Two per-environment overlays are folded in only when present, so a
+# plain checkout has neither: compose.override.yaml (per-worktree remapped
+# ports, see worktree-ports) and compose.codespaces.yaml (the Codespaces codec
+# endpoint, see codespaces-init).
+COMPOSE_DEV_FILES := -f compose.yaml $(if $(wildcard compose.override.yaml),-f compose.override.yaml,) $(if $(wildcard compose.codespaces.yaml),-f compose.codespaces.yaml,) -f compose.dev.yaml
 
 .PHONY: infra-up
 infra-up: ## Bring up temporal + codec + gateway (gateway is the Web UI entry point)
@@ -104,6 +106,26 @@ infra-down: ## Stop the Temporal dev server (keeps container around)
 .PHONY: infra-logs
 infra-logs: ## Follow logs from the Temporal dev server
 	docker compose logs -f temporal
+
+# NOTE: like worktree-ports, this overlay replaces temporal's `command` so
+# --ui-codec-endpoint stops pointing at compose.yaml's hard-coded
+# http://localhost:8080/codec. That endpoint is browser-facing: the Temporal
+# Web UI (the learner's browser), not the server, calls it to decrypt payloads
+# (guide steps 09/11). In a browser-based Codespace `localhost:8080` is the
+# learner's OWN machine, not the Codespace, so decoding would break unless the
+# endpoint targets the forwarded domain instead
+# (https://<CODESPACE_NAME>-8080.<domain>/codec). Ports are NOT remapped —
+# Codespaces forwards the container's own 8080/7233. Keep this command in sync
+# with compose.yaml's temporal command (same reminder worktree-ports carries).
+.PHONY: codespaces-init
+codespaces-init: ## Regenerate compose.codespaces.yaml so the Web UI codec endpoint targets the forwarded Codespaces domain
+	@if [ -n "$$CODESPACE_NAME" ]; then \
+		domain="$${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"; \
+		codec="https://$${CODESPACE_NAME}-8080.$${domain}/codec"; \
+		printf 'services:\n  temporal:\n    command: !override\n      - server\n      - start-dev\n      - --ip\n      - 0.0.0.0\n      - --ui-codec-endpoint\n      - %s\n      - --ui-public-path\n      - /temporal\n      - --namespace\n      - payments\n      - --namespace\n      - memory\n      - --search-attribute\n      - corridor=Keyword\n      - --search-attribute\n      - anomalyType=Keyword\n      - --search-attribute\n      - status=Keyword\n' \
+			"$$codec" > compose.codespaces.yaml; \
+		echo "Wrote compose.codespaces.yaml (codec endpoint: $$codec)"; \
+	fi
 
 ##@ App (host, hot reload)
 
