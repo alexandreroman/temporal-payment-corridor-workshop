@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session 2 — Reliability &amp; control flow</title>
+
+  <!-- Reveal.js core -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+
+  <!-- Fonts: Inter (thin display titles) + JetBrains Mono (commands/labels).
+       For offline decks, vendor the .woff2 files and swap for @font-face. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+  <!-- Temporal theme -->
+  <link rel="stylesheet" href="assets/theme.css">
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- 1 · Session title -->
+      <section id="title" class="type-title" data-state="cover">
+        <img class="title-mark" src="assets/temporal-mark.png" alt="Temporal" />
+        <span class="kicker kicker--green">Workshop · Durable AI on Temporal</span>
+        <h1>Reliability &amp; <strong>control flow</strong></h1>
+        <p class="subtitle">Bounded waits, failure classification, heartbeats,
+          and fleet-wide visibility — the durable control-flow surface around
+          the correction workflow.</p>
+      </section>
+
+      <!-- 2 · Recap of Session 1 (B) -->
+      <section id="recap" class="type-content">
+        <span class="kicker kicker--green">Recap · Session 1</span>
+        <h2>Where we left the core</h2>
+        <div class="body">
+        <div class="cards">
+          <div class="card">
+            <span class="eyebrow">durable execution</span>
+            <p>State lives in Temporal, not the worker. An in-flight correction
+              survived a worker crash and resumed on its own.</p>
+          </div>
+          <div class="card">
+            <span class="eyebrow">coordinator + agents</span>
+            <p>A coordinator fans out to two agent child workflows, checks
+              corridor memory first, then gates the fix <em>fail-closed</em>.</p>
+          </div>
+          <div class="card">
+            <span class="eyebrow">human-in-the-loop</span>
+            <p>A held correction waits durably; a <strong>Signal</strong> resumes
+              it, a <strong>Query</strong> reads its state — but it waits forever.</p>
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          A quick reset before we go further, in case some time has passed since
+          Session 1. Three things to hold onto. One: durable execution means the
+          state lives in Temporal, not in the worker — we crashed a worker and the
+          correction resumed on its own. Two: the shape is a coordinator that fans
+          out to two agent child workflows, checks corridor memory before the
+          model, and gates the fix fail-closed. Three: a held correction waits for
+          a human, using a Signal to deliver the decision and a Query to read the
+          waiting state. Note the gap we are about to close — that wait is
+          currently unbounded. It waits forever.
+        </aside>
+      </section>
+
+      <!-- 3 · Objectives (A) -->
+      <section id="objectives" class="type-objectives">
+        <span class="kicker kicker--green">Objectives</span>
+        <h2>By the end of this session, you'll be able to…</h2>
+        <div class="body">
+          <ul>
+            <li>Bound a human wait with a <strong>durable timer</strong> instead of waiting forever.</li>
+            <li>Classify a failure as <strong>retryable</strong> or <strong>non-retryable</strong> — and know why it matters.</li>
+            <li>React to a degrading rail by emitting a <strong>metric</strong> from inside retries.</li>
+            <li>Confirm settlement with a long-running, <strong>heartbeating</strong>, cancellable activity.</li>
+            <li>Explain why adding a step breaks <strong>replay</strong> — and how <strong>versioning</strong> fixes it.</li>
+            <li>Make the whole fleet filterable with <strong>Search Attributes</strong>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ─────────────  STEP 04 · Durable timers  ───────────── -->
+
+      <!-- 4 · Divider: Step 04 -->
+      <section id="divider-04" class="section-divider">
+        <span class="kicker">Step 04</span>
+        <h1>Bounded waiting with durable timers</h1>
+        <p class="teaser">Stop waiting forever for a human: give the approval wait a deadline that survives restarts.</p>
+        <aside class="notes">
+          We start where Session 1 stopped. The human approval wait is correct but
+          unbounded — a reviewer who never answers leaves a correction Running
+          forever. That is an operational risk. This step puts a deadline on the
+          wait using a durable timer, so an unanswered correction auto-rejects
+          instead of blocking indefinitely.
+        </aside>
+      </section>
+
+      <!-- 5 · Framing (C) -->
+      <section id="timer-framing" class="type-framing">
+        <span class="kicker">Durable timers</span>
+        <h2>A wait that can end on its own</h2>
+        <div class="body">
+        <div class="framing">
+          <div class="problem">
+            <strong>Problem.</strong> "Hold for a human" must not mean "hold
+            <em>forever</em>". A reviewer who never responds should not pin a
+            correction Running indefinitely.
+          </div>
+          <div class="concept">
+            <strong>Temporal concept.</strong> A <span class="hl">durable timer</span>
+            is workflow state, not an in-process <code>sleep</code>. Passing
+            <span class="hl">timeout=</span> to <code>wait_condition</code> arms one;
+            it keeps counting across worker restarts and fires deterministically.
+          </div>
+          <div class="observe">
+            <strong>Observe.</strong> Left unanswered, the correction now
+            auto-rejects with the approval-window message — no background thread,
+            no lost timer.
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          Speak to this, do not read it. The problem: holding for a human must not
+          mean holding forever. The Temporal concept that fixes it is the durable
+          timer. This is not an in-process sleep that a restart would lose — it is
+          workflow state, just like everything else. We arm it simply by passing a
+          timeout to the wait-condition we already had from Session 1. It counts
+          down across worker restarts and fires deterministically on replay. What
+          to watch for in the demo: leave the correction unanswered and it
+          auto-rejects on its own, with a clear message, once the window elapses.
+        </aside>
+      </section>
+
+      <!-- 6 · Pseudo-code (H) -->
+      <section id="timer-code" class="type-code">
+        <span class="kicker">The change, in one place</span>
+        <h2>Arm the timer, catch the deadline</h2>
+        <div class="body">
+          <pre><code><span class="c"># _APPROVAL_TIMEOUT: None ⇒ wait forever (baseline)</span>
+try:
+    await workflow.wait_condition(
+        lambda: self._decision is not None,
+        <span class="hl">timeout=_APPROVAL_TIMEOUT</span>,   <span class="c"># arms a durable timer</span>
+    )
+except <span class="hl">asyncio.TimeoutError</span>:
+    <span class="c"># deadline elapsed → auto-reject, survived any restart</span>
+    return CorrectionOutcome(applied=False, message=…)</code></pre>
+        </div>
+        <div class="diagram-caption">
+          This feature only swaps the timeout constant the Session 1 wait already
+          used — from <code>None</code> to <code>timedelta(minutes=1)</code>. The
+          <code>REVIEW</code> branch turns a <code>TimeoutError</code> into an
+          auto-reject outcome.
+        </div>
+        <aside class="notes">
+          Here is the entire change, in one place. The wait-condition is the same
+          one we wrote in Session 1 to block on a human decision. All we add is a
+          timeout argument. When the deadline elapses, wait-condition raises
+          asyncio-dot-TimeoutError, and the REVIEW branch turns that into an
+          auto-reject outcome. That is it — the feature literally just swaps the
+          timeout constant from None, meaning wait forever, to one minute. Because
+          the timer is workflow state, a worker restart mid-wait does not reset it.
+        </aside>
+      </section>
+
+      <!-- 7 · Hands-on (E) -->
+      <section id="timer-handson" class="type-handson">
+        <span class="kicker kicker--green">Step 04 · Hands-on</span>
+        <h2>Trigger a hold — then do nothing</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make feature-enable NAME=approval-timeout<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval<br># … then wait, and watch the coordinator in the Temporal Web UI</div>
+          <p class="predict">Predict first: a <strong>Timer</strong> event appears in the Event History.<br>
+            If you never approve, what state does the correction reach — and when?</p>
+        </div>
+        <aside class="notes">
+          Enable the approval signal first — it provides the wait — then the
+          approval-timeout, which bounds it. Fire a needs-approval correction and
+          then, deliberately, do nothing. Open the coordinator in the Temporal Web
+          UI: its Event History now carries a Timer event, started when it entered
+          the REVIEW branch. For a live demo you can shorten the window to twenty
+          seconds in the enabled block; hot reload picks it up. Let the window
+          elapse and the coordinator fires the timer, catches the TimeoutError, and
+          completes as auto-rejected. Then run one more and approve it in the app in
+          time — the timer is cancelled and the fix applies.
+        </aside>
+      </section>
+
+      <!-- ─────────────  STEP 05 · Failure classification  ───────────── -->
+
+      <!-- 8 · Divider: Step 05 -->
+      <section id="divider-05" class="section-divider">
+        <span class="kicker">Step 05</span>
+        <h1>Classifying failures</h1>
+        <p class="teaser">Learn when <em>not</em> to retry: fail a malformed correction immediately, permanently.</p>
+        <aside class="notes">
+          Temporal retries failed activities by default, and that is exactly right
+          for transient failures. But some failures are permanent: a malformed BIC
+          will still be malformed on attempt three. Retrying it wastes time and the
+          retry budget, and delays surfacing the real problem. This step is about
+          telling Temporal the difference.
+        </aside>
+      </section>
+
+      <!-- 9 · Diagram (D) — decision tree -->
+      <section id="classify" class="type-diagram">
+        <span class="kicker">Retryable vs non-retryable</span>
+        <h2>Can a retry ever succeed?</h2>
+        <div class="mermaid">
+flowchart LR
+    Fail["activity raises"] --> Q{"can a retry<br/>ever succeed?"}
+    Q -->|"no · bad input"| NR["ApplicationError<br/>non_retryable=True"]
+    Q -->|"yes · transient"| R["plain exception<br/>(the default)"]
+    NR --> Stop["fail on attempt 1<br/>skip remaining"]
+    R --> Retry["retry per RetryPolicy<br/>maximum_attempts=3"]
+
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    classDef activity fill:#2a2410,stroke:#f59e0b,color:#ffe9c2,stroke-width:1.5px;
+    classDef fail fill:#2a1114,stroke:#f87171,color:#ffd6d6,stroke-width:1.5px;
+    class Q temporal;
+    class Fail,R,Retry activity;
+    class NR,Stop fail;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-temporal">Decision</span>
+          <span class="legend-item c-activity">Retryable path</span>
+          <span class="legend-item c-stream">Non-retryable · fail now</span>
+        </div>
+        <div class="diagram-caption">
+          A <em>plain</em> exception is retryable by default. Only
+          <code>ApplicationError(non_retryable=True)</code> — or exhausting the
+          policy — stops the retries. Reach for it on validation failures that can
+          never self-heal.
+        </div>
+        <aside class="notes">
+          One question decides everything: can a retry ever succeed? If the failure
+          is a bad input — a malformed BIC — the answer is no, and retrying is
+          pointless. That is where you raise an ApplicationError with non-retryable
+          set to true: Temporal fails the activity on attempt one and skips the rest
+          of the policy. If the failure is transient — a network blip, a rate limit
+          — the answer is yes, and you want the default: a plain exception, which is
+          retryable, climbs through the RetryPolicy's three attempts. The key fact
+          to remember: plain exceptions are retryable by default; you opt out
+          explicitly.
+        </aside>
+      </section>
+
+      <!-- 10 · Hands-on (E) -->
+      <section id="classify-handson" class="type-handson">
+        <span class="kicker kicker--green">Step 05 · Hands-on</span>
+        <h2>Fail a malformed correction — once</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=non-retryable-validation<br># flip the fault switch: _SIMULATE_INVALID_CORRECTION = True<br><span class="prompt">$</span> make simulator</div>
+          <p class="predict">Predict first: the coordinator's policy allows <strong>three</strong> attempts.<br>
+            How many times will <code>apply_correction</code> actually run?</p>
+        </div>
+        <aside class="notes">
+          Enable the feature, then flip the hand-operated fault switch in
+          activities-dot-py — hot reload picks it up. Fire the seeded correction; it
+          reaches the apply step. In Temporal, open the apply-correction activity:
+          it fails on attempt one and does not retry, even though the coordinator's
+          policy allows three, because the error is marked non-retryable. In the app
+          the correction lands as failed — the honest outcome of a fix that could
+          never apply, with no partial state left behind. Set the switch back to
+          False when you are done. Hold this image next to the next step, where a
+          retryable failure does climb the attempts.
+        </aside>
+      </section>
+
+      <!-- ─────────────  STEP 06 · Reacting to retries  ───────────── -->
+
+      <!-- 11 · Divider: Step 06 -->
+      <section id="divider-06" class="section-divider">
+        <span class="kicker">Step 06</span>
+        <h1>Reacting to retries</h1>
+        <p class="teaser">The other side of failure: a transient error Temporal retries — and how to be told it happened.</p>
+        <aside class="notes">
+          This is the deliberate counterpart to the previous step. There the error
+          was permanent and retries were wrong. Here the error is transient and
+          retries are right — the correction still succeeds. The problem is that
+          silent retries also hide a rail that is quietly degrading. So we make the
+          activity notice it is being retried and raise an operational alert, while
+          still letting the correction complete.
+        </aside>
+      </section>
+
+      <!-- 12 · Diagram (D) — retry timeline -->
+      <section id="retry-timeline" class="type-diagram">
+        <span class="kicker">Retries as a signal</span>
+        <h2>Alert while the correction still succeeds</h2>
+        <div class="mermaid">
+flowchart LR
+    A1["attempt 1<br/>fail · transient"] --> A2["attempt 2<br/>fail · transient"]
+    A2 --> Alert{{"attempt ≥ threshold<br/>emit metric"}}
+    Alert --> A3["attempt 3<br/>succeeds"]
+    A3 --> Done(["correction applied"])
+
+    classDef activity fill:#2a2410,stroke:#f59e0b,color:#ffe9c2,stroke-width:1.5px;
+    classDef alert fill:#2a1114,stroke:#f87171,color:#ffd6d6,stroke-width:1.5px;
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    class A1,A2,A3 activity;
+    class Alert alert;
+    class Done temporal;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-activity">Retry attempt</span>
+          <span class="legend-item c-stream">Alert metric fires</span>
+          <span class="legend-item c-temporal">Outcome</span>
+        </div>
+        <div class="diagram-caption">
+          <code>activity.info().attempt</code> starts at 1 and the server increments
+          it per retry. Cross the threshold and the activity emits
+          <code>corridor_correction_retries_alerted</code> — a climbing counter that
+          can drive a dashboard or an alert rule.
+        </div>
+        <aside class="notes">
+          An activity can see its own retry count: activity-dot-info-dot-attempt
+          starts at one and the server bumps it on every retry. Once it crosses a
+          threshold, we emit a custom metric — a counter named
+          corridor-correction-retries-alerted — on the same Prometheus endpoint that
+          already serves the app's metrics. Crucially, the simulated outage is
+          bounded so the correction still succeeds within three attempts, after the
+          alert has fired. So the business outcome is unaffected; you simply get told
+          that a rail is degrading. This is observability driving operations: a
+          climbing counter feeds a dashboard or an alert rule.
+        </aside>
+      </section>
+
+      <!-- 13 · Hands-on (E) -->
+      <section id="retry-handson" class="type-handson">
+        <span class="kicker kicker--green">Step 06 · Hands-on</span>
+        <h2>Watch it climb, alert, then succeed</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=retry-alerting<br># flip the fault switch: _SIMULATE_TRANSIENT_RAIL_OUTAGE = True<br><span class="prompt">$</span> make simulator<br><span class="prompt">$</span> curl -s http://localhost:9464/metrics | grep corridor_correction_retries_alerted</div>
+          <p class="predict">Predict first: the default threshold is <code>2</code>.<br>
+            Will the correction end up <em>applied</em> or <em>failed</em> — and will the alert counter move?</p>
+        </div>
+        <aside class="notes">
+          Enable retry-alerting and flip the transient-outage switch. The default
+          threshold is two, tunable through an environment variable. Fire the
+          correction: in Temporal, apply-correction fails on the first attempts, then
+          succeeds — the correction completes. Now scrape the metrics endpoint and
+          grep for the alert counter: it has incremented. You will also see the
+          Temporal SDK's own temporal-star retry metrics right alongside the app's
+          corridor-star family — one endpoint, both. Set the switch back to False.
+          Then be ready to answer why this error is retryable while the previous
+          step's was not.
+        </aside>
+      </section>
+
+      <!-- ─────────────  STEP 07 · Long-running activities  ───────────── -->
+
+      <!-- 14 · Divider: Step 07 -->
+      <section id="divider-07" class="section-divider">
+        <span class="kicker">Step 07</span>
+        <h1>Long-running activities &amp; heartbeats</h1>
+        <p class="teaser">Wait for the rail to settle — and meet heartbeats, cancellation, and the replay lesson.</p>
+        <aside class="notes">
+          Applying a correction is not the end of the story: the money still has to
+          settle on the downstream rail, which is asynchronous and can take a while.
+          The right shape is a long-running, heartbeating activity that polls the
+          rail. This one step packs three ideas: heartbeats, cancellation, and —
+          because it changes the coordinator's shape — a lesson about replay and
+          versioning. Slow down here; this is the conceptual peak of the session.
+        </aside>
+      </section>
+
+      <!-- 15 · Framing (C) -->
+      <section id="settle-framing" class="type-framing">
+        <span class="kicker">Heartbeats</span>
+        <h2>Progress, resumption, and cancellation</h2>
+        <div class="body">
+        <div class="framing">
+          <div class="problem">
+            <strong>Problem.</strong> Settlement is asynchronous and slow. The
+            workflow must wait for it — without losing progress on a crash, and
+            without becoming impossible to cancel.
+          </div>
+          <div class="concept">
+            <strong>Temporal concept.</strong> <span class="hl">activity.heartbeat</span>
+            does three jobs: it checkpoints progress, it lets a retry <em>resume</em>
+            from the last checkpoint via <code>heartbeat_details</code>, and it is
+            the channel through which <span class="hl">cancellation</span> is delivered.
+          </div>
+          <div class="observe">
+            <strong>Observe.</strong> From the workflow it is just another activity to
+            <code>await</code> — determinism is preserved. A stalled poll is caught
+            by <code>heartbeat_timeout</code>.
+          </div>
+        </div>
+        </div>
+        <aside class="notes">
+          The problem: settlement is asynchronous and slow, so the workflow must
+          wait for it, but a naive wait would lose progress on a crash and be
+          impossible to cancel. The Temporal concept that solves all of this is the
+          heartbeat, and it wears three hats. First, it checkpoints progress.
+          Second, on a retry, the previous attempt's last heartbeat comes back in
+          heartbeat-details, so the activity resumes from the last cycle instead of
+          restarting from zero. Third, it is how cancellation reaches a running
+          activity: the heartbeat call raises CancelledError. And from the workflow's
+          point of view, none of this leaks — it is just another activity to await,
+          so determinism holds. A heartbeat-timeout catches a poll that silently
+          stalls.
+        </aside>
+      </section>
+
+      <!-- 16 · Pseudo-code (H) -->
+      <section id="settle-code" class="type-code">
+        <span class="kicker">Heartbeat = progress + resume</span>
+        <h2>Poll, checkpoint, resume where you stopped</h2>
+        <div class="body">
+          <pre><code><span class="c"># pseudo-code: resume from the last reported cycle after a retry</span>
+cycle = <span class="hl">activity.info().heartbeat_details</span> or 0
+while cycle &lt; _SETTLEMENT_POLL_CYCLES:
+    await asyncio.sleep(_POLL_INTERVAL)   <span class="c"># poll the rail</span>
+    cycle += 1
+    <span class="hl">activity.heartbeat(cycle)</span>            <span class="c"># checkpoint + cancel channel</span></code></pre>
+        </div>
+        <div class="diagram-caption">
+          Reading config and sleeping on wall-clock time are side effects — they
+          live in the <em>activity</em>, never in workflow code. On a retry,
+          <code>heartbeat_details</code> carries the last cycle forward, so the
+          poll resumes instead of restarting.
+        </div>
+        <aside class="notes">
+          This is pseudo-code, but it captures the whole shape. The loop polls the
+          rail a fixed number of cycles, sleeping between polls, and heartbeats each
+          completed cycle. Two lines matter. The first reads heartbeat-details from
+          activity-info: on a fresh run it is empty, so we start at zero; on a retry
+          it carries the last cycle we reported, so we resume there. The last line
+          is the heartbeat itself — it checkpoints progress and doubles as the
+          cancellation channel. And notice: reading config and sleeping on
+          wall-clock time are side effects, so they live in the activity, never in
+          the workflow. The workflow just awaits the result.
+        </aside>
+      </section>
+
+      <!-- 17 · Diagram (D) — replay & versioning fork -->
+      <section id="versioning" class="type-diagram">
+        <span class="kicker">Replay &amp; versioning</span>
+        <h2>Adding a step changes the history</h2>
+        <div class="mermaid">
+flowchart LR
+    Hist[("recorded history<br/>feature OFF")] --> Replay{"replay with<br/>new code"}
+    Replay -->|"no guard"| Diverge["non-determinism<br/>replay FAILS"]
+    Replay -->|"workflow.patched(…)"| Fork["old runs → old path<br/>new runs → new path"]
+
+    classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    classDef fail fill:#2a1114,stroke:#f87171,color:#ffd6d6,stroke-width:1.5px;
+    class Hist store;
+    class Replay,Fork temporal;
+    class Diverge fail;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-store">Committed history</span>
+          <span class="legend-item c-temporal">Replay / patched</span>
+          <span class="legend-item c-stream">Divergence</span>
+        </div>
+        <div class="diagram-caption">
+          The committed replay fixture was captured with the feature <em>off</em>.
+          Adding the settlement step diverges from it — so <code>make test</code>'s
+          replay test fails <strong>by design</strong>. In production,
+          <code>workflow.patched(...)</code> forks old and new executions safely.
+        </div>
+        <aside class="notes">
+          Here is the lesson that is easy to skip and must not be. Enabling this
+          feature adds a workflow step, which changes the coordinator's Event
+          History. Our replay test replays a committed fixture that was captured with
+          the feature off, so the new code path diverges from the recorded history
+          and replay fails. That failing test is not a regression — it is the lesson,
+          on purpose. In production, the safe way to add a step to already-running
+          workflows is versioning: workflow-dot-patched lets old executions keep
+          their old path while new ones take the new path, so neither diverges from
+          its own history. We will come back to this in the testing step.
+        </aside>
+      </section>
+
+      <!-- 18 · Hands-on (E) -->
+      <section id="settle-handson" class="type-handson">
+        <span class="kicker kicker--green">Step 07 · Hands-on</span>
+        <h2>See the heartbeat — and the failing replay</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=settlement-confirmation<br><span class="prompt">$</span> make simulator<br># open the coordinator: confirm_settlement heartbeats across cycles<br><span class="prompt">$</span> make test<br><span class="out">FAILED payments/test_replay.py  ← by design</span></div>
+          <p class="predict">Predict first: after <code>apply_correction</code>, what new activity appears —<br>
+            and why does <code>make test</code> now report a replay failure?</p>
+        </div>
+        <aside class="notes">
+          Enable settlement-confirmation and fire the simulator. In Temporal, open
+          the coordinator: after apply-correction there is now a confirm-settlement
+          activity that heartbeats across several cycles before completing, and the
+          outcome carries a settlement object. To watch cancellation, cancel the
+          coordinator mid-poll and see the activity unwind cleanly through its next
+          heartbeat. Then run make test: the replay test fails, exactly as the
+          diagram predicted, because the fixture was captured before this step
+          existed. If you want it green while the feature stays on, regenerate the
+          fixture from a real run with capture-history — but leave it failing for now;
+          the failure is the teaching.
+        </aside>
+      </section>
+
+      <!-- ─────────────  STEP 08 · Search Attributes  ───────────── -->
+
+      <!-- 19 · Divider: Step 08 -->
+      <section id="divider-08" class="section-divider">
+        <span class="kicker">Step 08</span>
+        <h1>Fleet-wide visibility</h1>
+        <p class="teaser">Tag every correction with its business dimensions, and query thousands of executions server-side.</p>
+        <aside class="notes">
+          Once you run more than a handful of corrections, "show me everything on the
+          US-to-IN corridor" or "show me everything awaiting approval" becomes a real
+          operational need. Temporal answers it without any bespoke query endpoint.
+          This is one of the workshop's headline production concerns: operators get a
+          searchable view of thousands of executions, for free.
+        </aside>
+      </section>
+
+      <!-- 20 · Diagram (D) — search attributes → visibility → filters -->
+      <section id="search-attributes" class="type-diagram">
+        <span class="kicker">Search Attributes</span>
+        <h2>Tag once, query the whole fleet</h2>
+        <div class="mermaid">
+flowchart LR
+    WF(("Coordinator")) -->|"upsert_search_attributes"| Vis[("Visibility index")]
+    Vis --> CLI["temporal workflow list<br/>--query …"]
+    Vis --> UI["Temporal Web UI<br/>search box"]
+    CLI --> F1["corridor = 'US→IN'"]
+    UI --> F2["status = 'awaiting-approval'"]
+
+    classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
+    classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
+    classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
+    class WF temporal;
+    class Vis store;
+    class CLI,UI,F1,F2 client;
+        </div>
+        <div class="legend">
+          <span class="legend-item c-temporal">Workflow</span>
+          <span class="legend-item c-store">Visibility index</span>
+          <span class="legend-item c-client">Operator query</span>
+        </div>
+        <div class="diagram-caption">
+          <code>corridor</code>, <code>anomalyType</code> and <code>status</code>
+          are upserted from workflow code and land in the Visibility index —
+          queryable from the CLI and the Web UI. The app's own API and screens are
+          left untouched; this is purely operator-facing.
+        </div>
+        <aside class="notes">
+          The coordinator upserts three typed Search Attributes at the top of its
+          run: corridor, anomaly-type, and a status that carries the lifecycle from
+          processing to awaiting-approval. The call is deterministic and workflow-safe,
+          so it belongs in workflow code. Those fields land in Temporal's Visibility
+          index, and now the whole fleet is filterable server-side — from the CLI and
+          from the Web UI search box — with no bespoke endpoint. One scoping note:
+          this feature only tags the workflows. It deliberately does not touch the
+          payments API or the app, so nothing on the app's screens depends on it.
+        </aside>
+      </section>
+
+      <!-- 21 · Hands-on (E) -->
+      <section id="sa-handson" class="type-handson">
+        <span class="kicker kicker--green">Step 08 · Hands-on</span>
+        <h2>Filter the fleet by any dimension</h2>
+        <div class="body">
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=search-attributes<br><span class="prompt">$</span> temporal workflow list --namespace payments \<br>&nbsp;&nbsp;--query "corridor = 'US-&gt;IN'"<br><span class="prompt">$</span> temporal workflow list --namespace payments \<br>&nbsp;&nbsp;--query "status = 'awaiting-approval'"</div>
+          <p class="predict">Predict first: the attributes are pre-registered by the dev server.<br>
+            Without Search Attributes, how would you answer the same question?</p>
+        </div>
+        <aside class="notes">
+          Enable search-attributes. Note there is no manual registration step: the
+          three custom attributes are pre-registered by the dev server on startup, so
+          you do not run the operator create command. Start a few corrections, mixing
+          scenarios so some are awaiting approval, then filter from the CLI by any
+          dimension — corridor, anomaly-type, status — and try the same queries in the
+          Web UI search box. The point to internalise: without Search Attributes you
+          could only list every execution and sift by hand; now the Visibility store
+          answers the question in one server-side query. Like step seven, this changes
+          the history, so the replay test failing is again expected.
+        </aside>
+      </section>
+
+      <!-- ─────────────  Wrap-up  ───────────── -->
+
+      <!-- 22 · Checkpoint (F) -->
+      <section id="checkpoint" class="type-checkpoint">
+        <span class="kicker kicker--green">Checkpoint</span>
+        <h2>What we just saw</h2>
+        <div class="body">
+        <ul class="check">
+          <li>A durable timer bounds the human wait — unanswered means auto-reject.</li>
+          <li>Non-retryable fails once; a transient error retries and can raise an alert.</li>
+          <li>A heartbeating activity polls the rail, resumes after a crash, and cancels cleanly.</li>
+          <li>Adding a step breaks replay — versioning is how production adds steps safely.</li>
+          <li>Search Attributes make the whole fleet filterable server-side.</li>
+        </ul>
+        <p class="tieback">All of it is the same core from Session 1, with more of
+          Temporal's control-flow surface turned on.</p>
+        </div>
+        <aside class="notes">
+          Let's consolidate. Five things, one core. A durable timer bounds the human
+          wait, so an unanswered correction auto-rejects instead of hanging. Failure
+          classification: non-retryable fails once, transient retries — and retries
+          are themselves a signal we can alert on. A heartbeating activity polls the
+          settlement rail, resumes from its last checkpoint after a crash, and cancels
+          cleanly. Adding that step broke replay, which taught us why versioning
+          exists. And Search Attributes made the whole fleet filterable server-side.
+          None of this is new machinery — it is the same durable core from Session 1,
+          with more of Temporal's control-flow surface turned on.
+        </aside>
+      </section>
+
+      <!-- 23 · Bridge (G) -->
+      <section id="bridge" class="type-bridge">
+        <span class="kicker kicker--green">Next session</span>
+        <h2>Production &amp; compliance&nbsp;<strong>&rarr;</strong></h2>
+        <p class="teaser">End-to-end payload encryption, corridor memory as a durable
+          workflow, observability, and testing the whole thing.</p>
+        <aside class="notes">
+          That is reliability and control flow. In the final session we take it to
+          production: encrypting payloads end to end for banking compliance, promoting
+          corridor memory to a durable workflow, wiring up observability, and testing
+          the whole thing — including that replay test we deliberately left failing.
+          Same application, the last mile. See you there.
+        </aside>
+      </section>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script src="assets/deck.js"></script>
+  <script>
+    TemporalDeck.init();
+  </script>
+</body>
+</html>

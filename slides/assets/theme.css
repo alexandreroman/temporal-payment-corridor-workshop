@@ -472,6 +472,62 @@
   margin: 0;
 }
 
+/* (H) Code — a dedicated pseudo-code slide: title anchored top, a single
+ * short snippet centred beneath it, optional caption below. This is the ONE
+ * place the decks show code; it is deliberately styled as a NEUTRAL bordered
+ * panel (not the green-glow terminal `.cmd`) so "code you read in the guide"
+ * never looks like "commands you type". The signature API call is wrapped in
+ * `.hl` (mint green) to draw the eye to the one line that matters. */
+.reveal .type-code {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+}
+.reveal .type-code .kicker {
+  color: var(--t-green);
+}
+.reveal .type-code h2 {
+  font-size: 2rem;
+  margin-bottom: 0.15em;
+}
+/* The snippet centres in the space above a bottom-pinned caption — mirroring
+ * the diagram slides, where the caption is a direct child of the section (not
+ * inside .body) so it sits at the bottom while the .body grows to fill. */
+.reveal .type-code > .body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+}
+.reveal .type-code pre {
+  margin: 0;
+  width: auto;
+  max-width: 100%;
+}
+.reveal .type-code pre code {
+  display: block;
+  font-size: 1.15rem;
+  line-height: 1.6;
+  padding: 22px 30px;
+  border-radius: 12px;
+}
+/* The one signature line stands out in mint green. */
+.reveal .type-code pre code .hl {
+  color: var(--t-green);
+  font-weight: 500;
+}
+/* A dimmed inline comment inside a snippet. */
+.reveal .type-code pre code .c {
+  color: var(--t-muted);
+}
+/* Caption reuses the diagram caption card, pinned to the bottom of the slide. */
+.reveal .type-code .diagram-caption {
+  margin-top: 12px;
+}
+
 /* (F) Checkpoint — "what we just saw" checklist + tie-back line. */
 .reveal .type-checkpoint .check {
   list-style: none;
@@ -821,6 +877,7 @@ body.landing .session-card .soon {
 .reveal .slides section.type-checkpoint,
 .reveal .slides section.type-bridge,
 .reveal .slides section.type-content,
+.reveal .slides section.type-code,
 .reveal .slides section.type-diagram {
   display: flex !important;
   flex-direction: column;

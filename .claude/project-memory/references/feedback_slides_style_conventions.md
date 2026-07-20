@@ -65,8 +65,24 @@ centred and width-constrained (`max-width` ~60%).
 bottom-left furniture, 64px on the title slide; the corner furniture is
 hidden on cover-style slides via `data-state="cover"`.
 
-**Why:** every one of these is a user correction from the Session 1 review;
-re-deriving them wastes time and risks an inconsistent deck.
+**Pseudo-code slides (`type-code`, added in Session 2).** The decks show
+code in exactly ONE place: a dedicated `type-code` slide (kicker + title
+anchored top, snippet centred beneath). When a `.diagram-caption` note is
+present it is a **direct child of the section** (a sibling of `.body`, NOT
+inside it) so it pins to the bottom while the `.body` grows and vertically
+centres the `<pre>` in the space above — same pattern as the diagram slides'
+caption.
+It is a **neutral bordered panel** (`--t-border`), deliberately NOT the
+green-glow terminal `.cmd`, so "code you read in the guide" never looks like
+"commands you type". Keep it to **1–2 signature snippets per session**
+(6–9 lines each); the full code stays in the guide. Wrap the one signature
+API line in `<span class="hl">` (mint green) and inline comments in
+`<span class="c">` (muted). Escape `<`/`&` as entities. `type-code` is in the
+`display:flex !important` activation list in `theme.css`.
+
+**Why:** every one of these is a user correction from the Session 1 review or
+a Session 2 design decision; re-deriving them wastes time and risks an
+inconsistent deck.
 
 **How to apply:** copy `session-1.html` as the template for Session 2/3,
 reuse `assets/theme.css` + `assets/deck.js` unchanged, and keep the same
