@@ -429,12 +429,10 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   text-align: center;
   min-height: 0;
-  padding-top: 1.2em;
-  gap: 1.6rem; /* even spacing between the command card and the predict prompt */
 }
 .reveal .cmd {
   background: var(--t-bg-2);
@@ -470,6 +468,69 @@
   font-style: italic;
   font-size: 1.2rem;
   margin: 0;
+}
+/* Predict prompt is a bottom-pinned note (a direct child of the slide, a
+ * sibling of .body) — exactly like the code/diagram caption. The .body above
+ * it (flex:1) centres the terminal block in the space above the note. */
+.reveal .type-handson > .predict {
+  text-align: center;
+  margin-top: 12px;
+}
+
+/* (H) Code — a dedicated pseudo-code slide: title anchored top, a single
+ * short snippet centred beneath it, optional caption below. This is the ONE
+ * place the decks show code; it is deliberately styled as a NEUTRAL bordered
+ * panel (not the green-glow terminal `.cmd`) so "code you read in the guide"
+ * never looks like "commands you type". The signature API call is wrapped in
+ * `.hl` (mint green) to draw the eye to the one line that matters. */
+.reveal .type-code {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+}
+.reveal .type-code .kicker {
+  color: var(--t-green);
+}
+.reveal .type-code h2 {
+  font-size: 2rem;
+  margin-bottom: 0.15em;
+}
+/* The snippet centres in the space above a bottom-pinned caption — mirroring
+ * the diagram slides, where the caption is a direct child of the section (not
+ * inside .body) so it sits at the bottom while the .body grows to fill. */
+.reveal .type-code > .body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+}
+.reveal .type-code pre {
+  margin: 0;
+  width: auto;
+  max-width: 100%;
+}
+.reveal .type-code pre code {
+  display: block;
+  font-size: 1.15rem;
+  line-height: 1.6;
+  padding: 22px 30px;
+  border-radius: 12px;
+}
+/* The one signature line stands out in mint green. */
+.reveal .type-code pre code .hl {
+  color: var(--t-green);
+  font-weight: 500;
+}
+/* A dimmed inline comment inside a snippet. */
+.reveal .type-code pre code .c {
+  color: var(--t-muted);
+}
+/* Caption reuses the diagram caption card, pinned to the bottom of the slide. */
+.reveal .type-code .diagram-caption {
+  margin-top: 12px;
 }
 
 /* (F) Checkpoint — "what we just saw" checklist + tie-back line. */
@@ -518,6 +579,23 @@
   text-align: center;
   max-width: 60%;
   margin: 0;
+}
+/* Pill link to the next session's deck, echoing the landing-page cards. */
+.reveal .type-bridge .deck-next {
+  margin-top: 2.2rem;
+  display: inline-block;
+  padding: 12px 26px;
+  border: 1px solid var(--t-border);
+  border-radius: 999px;
+  color: var(--t-green);
+  font-family: var(--t-font-mono);
+  font-size: 1.05rem;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.reveal .type-bridge .deck-next:hover {
+  border-color: var(--t-green);
+  transform: translateY(-2px);
+  text-decoration: none;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -736,20 +814,36 @@ body.landing .session-card h2 {
   margin-top: auto;
 }
 
-/* Card slides (motivation, overview): anchor the card row just under the
- * title rather than floating it in the vertical middle. */
+/* Card slides (motivation, overview, recap): centre the card row in the space
+ * beneath the title so the whitespace is balanced above and below it, instead
+ * of the row hugging the top with a large void underneath. */
 .reveal .type-content > .body {
-  justify-content: flex-start;
-  padding-top: 0.6em;
+  justify-content: center;
 }
 
-/* Cards breathe more and fill the width on centred content slides. */
+/* Augmented card layout: the card row grows to fill the space beneath the
+ * title, and each card carries a larger heading and body text so it reads as a
+ * substantial block rather than a small label floating in a big void. */
 .reveal .type-content .cards {
-  margin-top: 24px;
-  gap: 24px;
+  flex: 1;                 /* fill the vertical space beneath the title */
+  align-content: stretch;  /* stretch the single grid row to full height */
+  margin-top: 28px;
+  gap: 28px;
 }
 .reveal .type-content .card {
-  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;  /* content sits at the top of the card */
+  padding: 40px 36px;
+}
+.reveal .type-content .card .eyebrow {
+  font-size: 1.2rem;       /* larger card title */
+  text-align: center;      /* centred heading, anchored at the top */
+  margin-bottom: 0.8em;
+}
+.reveal .type-content .card p {
+  font-size: 1.35rem;      /* larger card body */
+  line-height: 1.55;
 }
 
 /* Diagram slides: the title stays at the top, the diagram grows to fill,
@@ -821,6 +915,7 @@ body.landing .session-card .soon {
 .reveal .slides section.type-checkpoint,
 .reveal .slides section.type-bridge,
 .reveal .slides section.type-content,
+.reveal .slides section.type-code,
 .reveal .slides section.type-diagram {
   display: flex !important;
   flex-direction: column;

@@ -37,12 +37,23 @@ Three-session split (4/5/5): S1 "Durable agents: the core" (steps 00–03 +
 crash&resume demo); S2 "Reliability & control flow" (04–08); S3 "Production
 & compliance" (09–13).
 
-Status: **Session 1 built and validated** (`slides/session-1.html`, 20
-slides incl. a Step divider before each of steps 00–03). Each step has a
-`section-divider`; hands-on command blocks are full-width terminal panels
-with a green `$` prompt. Sessions 2 & 3 and `slides/README.md` are still to
-build — copy `session-1.html` as the template. All content is English and
-timeless. Before building Sessions 2 & 3, read
-[[feedback_slides_style_conventions]] (layout/style rules to keep),
+Status: **Sessions 1 and 2 built and validated.** Session 1
+(`slides/session-1.html`, 22 slides) covers steps 00–03 and now includes two
+`type-code` pseudo-code slides (the `asyncio.gather` fan-out after the fan-out
+diagram; the `@workflow.signal`/`@workflow.query`/`wait_condition`
+human-in-the-loop trio in Step 03), matching Session 2's use of the element.
+Session 2
+(`slides/session-2.html`, 22 slides) covers steps 04–08: title → recap (B,
+built as a `type-content` slide with 3 cards) → objectives, then a
+`section-divider` + hands-on per step, three role-coloured diagrams (a
+retryable/non-retryable decision tree, a retry timeline, a Search-Attributes
+visibility index) and two dedicated **pseudo-code** slides (`type-code`, see
+[[feedback_slides_style_conventions]]). Versioning/patching AND the
+replay-test/Event-History-change theme are deliberately absent from the slides
+— see [[feedback_versioning_out_of_scope]] (the only Event-History mention left
+is observing a durable Timer in Step 04). `index.html` links both. Session 3 (steps 09–13) and `slides/README.md` are still to build
+— copy `session-2.html` as the richest template. All content is English and
+timeless. Before building Session 3, read
+[[feedback_slides_style_conventions]] (layout/style rules incl. `type-code`),
 [[reference_slides_authoring_workflow]] (serve + preview), and
 [[reference_slides_mermaid_render]] (diagram rendering).

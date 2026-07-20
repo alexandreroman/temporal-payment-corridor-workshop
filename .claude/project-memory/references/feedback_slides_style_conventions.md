@@ -25,9 +25,16 @@ decks read as one system. See [[project_workshop_slides]] and
 **Spacing.** Lists (`type-objectives`, `type-checkpoint`) use a **fixed
 comfortable gap (~1.6rem)** anchored under the title — NOT `space-evenly`
 (too airy for short bullets; the user rejected it). Framing's 3 sentences
-DO use `space-evenly`. Card slides anchor the card row just under the title
-(`padding-top`, not vertical-centre). Checkpoint's tie-back is pinned to the
-bottom (`margin-top:auto`).
+DO use `space-evenly`. **Card slides (3-card `type-content`: motivation,
+baseline, recap) use an augmented card layout**: the card row grows to fill the
+space beneath the title (`.cards { flex:1; align-content:stretch }`), each card
+anchors its content at the top (`justify-content:flex-start`) with generous
+padding (~40px); the card heading (`.eyebrow`, ~1.2rem) is **centred and
+top-aligned** while the body (~1.35rem) stays left-aligned beneath it. This
+**supersedes** both the original "anchor under title" rule and the interim
+"centre the row" tweak. The slide title (`h2`) stays at its normal size —
+"the title never jumps" — so a bigger *card* heading never means a bigger *h2*.
+Checkpoint's tie-back is pinned to the bottom (`margin-top:auto`).
 
 **Every step gets a `section-divider`** (Steps 00–03 each have one). Divider
 kicker is just `Step NN` — no feature-toggle name.
@@ -48,7 +55,10 @@ runs the `memory-hit` scenario and prints `scenario/payment/workflow
 (correction-<id>)/accepted`.
 
 **Predict-then-observe prompts** break at sentence boundaries (`<br>`) so a
-long prompt never wraps mid-sentence.
+long prompt never wraps mid-sentence. The `.predict` note is a **bottom-pinned
+sibling of `.body`** (NOT inside it) — exactly like the code/diagram caption —
+so `.body` (flex:1, `justify-content:center`) centres the `.cmd` terminal in
+the space above it. Same layout family as `type-code` and `type-diagram`.
 
 **Session title** is session-specific (`Durable agents: the core`), white
 title with a green keyword, the Temporal mark on it; NO "Session X of 3"
@@ -56,7 +66,12 @@ line and NO separate general workshop cover slide (both were removed).
 
 **Bridge (`type-bridge`)** = white session name + a green `→` at the end of
 the title, no "Next:" prefix (the kicker already says "Next session"); teaser
-centred and width-constrained (`max-width` ~60%).
+centred and width-constrained (`max-width` ~60%). The bridge (last slide of a
+session) carries a **`.deck-next` pill link** to the next session's deck
+(`<a class="deck-next" href="session-N.html">Open Session N</a>` — mono,
+bordered pill, no arrow, greens on hover). Only add it when the target deck
+exists (no dead links): Session 1 links to Session 2; Session 2's link to
+`session-3.html` is added once Session 3 is built.
 
 **Backdrop.** The cosmic aurora gradient lives on `.reveal` (not
 `.reveal-viewport`, which `.reveal` paints over and would hide it).
@@ -65,8 +80,24 @@ centred and width-constrained (`max-width` ~60%).
 bottom-left furniture, 64px on the title slide; the corner furniture is
 hidden on cover-style slides via `data-state="cover"`.
 
-**Why:** every one of these is a user correction from the Session 1 review;
-re-deriving them wastes time and risks an inconsistent deck.
+**Pseudo-code slides (`type-code`, added in Session 2).** The decks show
+code in exactly ONE place: a dedicated `type-code` slide (kicker + title
+anchored top, snippet centred beneath). When a `.diagram-caption` note is
+present it is a **direct child of the section** (a sibling of `.body`, NOT
+inside it) so it pins to the bottom while the `.body` grows and vertically
+centres the `<pre>` in the space above — same pattern as the diagram slides'
+caption.
+It is a **neutral bordered panel** (`--t-border`), deliberately NOT the
+green-glow terminal `.cmd`, so "code you read in the guide" never looks like
+"commands you type". Keep it to **1–2 signature snippets per session**
+(6–9 lines each); the full code stays in the guide. Wrap the one signature
+API line in `<span class="hl">` (mint green) and inline comments in
+`<span class="c">` (muted). Escape `<`/`&` as entities. `type-code` is in the
+`display:flex !important` activation list in `theme.css`.
+
+**Why:** every one of these is a user correction from the Session 1 review or
+a Session 2 design decision; re-deriving them wastes time and risks an
+inconsistent deck.
 
 **How to apply:** copy `session-1.html` as the template for Session 2/3,
 reuse `assets/theme.css` + `assets/deck.js` unchanged, and keep the same
