@@ -55,7 +55,8 @@ service — with hot reload:
 make dev
 ```
 
-`make dev` prints a banner with the two URLs you need:
+`make dev` prints a banner with the two URLs you need — the app (the banner
+labels it `Web UI`) and the Temporal Web UI:
 
 | URL                              | What            |
 | -------------------------------- | --------------- |

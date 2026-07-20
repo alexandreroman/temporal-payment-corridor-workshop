@@ -172,7 +172,11 @@ sequenceDiagram
 ```
 
 Keep this diagram in mind: every feature you enable in this workshop adds
-to, hardens, or observes one edge of it.
+to, hardens, or observes one edge of it. One edge is drawn ahead of the
+baseline on purpose: the `await decision (signal)` wait for a human is the
+`human-approval-signal` feature (step
+[03](03-human-approval-signal.md)). Until you enable it, a held correction
+returns immediately as not applied rather than waiting for a reviewer.
 
 ## Why durable execution here
 

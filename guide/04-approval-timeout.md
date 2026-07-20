@@ -13,7 +13,8 @@
   `asyncio.TimeoutError`
 - **Docs:** [Timers](https://docs.temporal.io/develop/python/timers)
 - **Requires:** `human-approval-signal` (step [03](03-human-approval-signal.md))
-  enabled
+  enabled, plus a provider API key — `needs-approval` reaches the agents (see
+  [`.env.example`](../.env.example) and step [01](01-getting-started.md))
 
 > [!IMPORTANT]
 > **Start from a clean baseline.** Each page stands on its own. If you
@@ -98,10 +99,13 @@ baseline cleanly.
 
 ## Step 4 — Run and observe
 
-Trigger a held correction and then *do nothing*:
+Trigger a held correction and then *do nothing*. The `needs-approval`
+scenario reaches the agents, so it needs a provider API key (see step
+[01](01-getting-started.md)); without one the correction can't reach the
+`REVIEW` branch and no timer is armed:
 
 ```bash
-make simulator SCENARIO=needs-approval
+make simulator SCENARIO=needs-approval   # needs a provider key
 ```
 
 In the **Temporal Web UI**, open the coordinator. Its Event History now

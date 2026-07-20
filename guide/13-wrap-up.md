@@ -91,7 +91,7 @@ like this one, Cloud carries real weight:
   Visibility store to size, patch, or keep alive — Temporal runs it, with an
   availability SLA and prioritized support.
 - **Managed, isolated namespaces.** The two namespaces this app uses —
-  `payments` and `memory` — are each provisioned in a click (up to 100 per
+  `payments` and `memory` — are each provisioned in a click (many per
   account), with their own retention and access, instead of being configured
   on a cluster you operate.
 - **High availability when it matters.** Standard namespaces run

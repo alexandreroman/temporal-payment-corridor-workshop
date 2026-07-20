@@ -90,18 +90,22 @@ The target shells out to the `temporal` CLI and `jq` (both must be on your
 
 ## Testing agents without the network
 
-Agent tests must never call a real model. See
-[`payments/test_agents.py`](../payments/test_agents.py) and
-[`payments/test_workflows.py`](../payments/test_workflows.py): the model is
-mocked so tests are fast, deterministic, and offline — matching the
-checklist item "the model/LLM is mocked in agent tests: no network calls."
+Agent tests must never call a real model. Two files show the pattern.
+[`payments/test_agents.py`](../payments/test_agents.py) asserts the agents'
+output-type contracts (e.g. `instruction_agent.output_type is
+AgentCorrection`) — pure structural checks that need no model at all.
+[`payments/test_workflows.py`](../payments/test_workflows.py) exercises the
+coordinator against a `TestModel` stand-in, so the model is mocked and the
+tests stay fast, deterministic, and offline — matching the checklist item
+"the model/LLM is mocked in agent tests: no network calls."
 
 > [!NOTE]
 > **A gotcha worth knowing.** When testing `TemporalAgent`-based workflows
 > under a local test environment, `Agent.override(model=...)` does *not*
 > reach the model activity that Pydantic AI offloads to. Register a
 > `TestModel` stand-in under the real workflow name instead, and remember
-> that Fernet needs `imports_passed_through()` too. The test files show the
+> that Fernet needs `imports_passed_through()` too.
+> [`payments/test_workflows.py`](../payments/test_workflows.py) shows the
 > working pattern.
 
 ## What good coverage looks like here

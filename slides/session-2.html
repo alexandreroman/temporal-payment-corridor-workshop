@@ -172,7 +172,7 @@ except <span class="hl">asyncio.TimeoutError</span>:
         <span class="kicker kicker--green">Step 04 · Hands-on</span>
         <h2>Trigger a hold — then do nothing</h2>
         <div class="body">
-          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make feature-enable NAME=approval-timeout<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval<br># … then wait, and watch the coordinator in the Temporal Web UI</div>
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make feature-enable NAME=approval-timeout<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval   # needs a provider key<br># … then wait, and watch the coordinator in the Temporal Web UI</div>
         </div>
         <p class="predict">Predict first: a <strong>Timer</strong> event appears in the Event History.<br>
           If you never approve, what state does the correction reach — and when?</p>
@@ -414,7 +414,7 @@ flowchart LR
           <pre><code><span class="c"># pseudo-code: resume from the last reported cycle after a retry</span>
 cycle = <span class="hl">activity.info().heartbeat_details</span> or 0
 while cycle &lt; _SETTLEMENT_POLL_CYCLES:
-    await asyncio.sleep(_POLL_INTERVAL)   <span class="c"># poll the rail</span>
+    await asyncio.sleep(_SETTLEMENT_POLL_INTERVAL_SECONDS)   <span class="c"># poll the rail</span>
     cycle += 1
     <span class="hl">activity.heartbeat(cycle)</span>            <span class="c"># checkpoint + cancel channel</span></code></pre>
         </div>
@@ -481,7 +481,7 @@ flowchart LR
     WF(("Coordinator")) -->|"upsert_search_attributes"| Vis[("Visibility index")]
     Vis --> CLI["temporal workflow list<br/>--query …"]
     Vis --> UI["Temporal Web UI<br/>search box"]
-    CLI --> F1["corridor = 'US→IN'"]
+    CLI --> F1["corridor = 'US-&gt;IN'"]
     UI --> F2["status = 'awaiting-approval'"]
 
     classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;

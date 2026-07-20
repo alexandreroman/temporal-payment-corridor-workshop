@@ -164,9 +164,9 @@ temporal workflow show \
 Once `search-attributes` is enabled (`make feature-enable
 NAME=search-attributes`) the coordinator tags each workflow execution with a
 `corridor`, an `anomalyType`, and a `status` Search Attribute — the last
-carrying the correction lifecycle (`processing` → `awaiting-approval`) so
-operators can filter corrections fleet-wide from the CLI and the Temporal
-Web UI. All three custom
+carrying the correction lifecycle (`processing` → `awaiting-approval` →
+`applied`/`held`) so operators can filter corrections fleet-wide from the
+CLI and the Temporal Web UI. All three custom
 attributes are pre-registered by the dev server on startup (`make dev` /
 `make app-up`), so there is no manual registration step — filter executions
 in the Temporal Web UI or with
@@ -296,7 +296,7 @@ sequenceDiagram
         end
     end
     Coord-->>API: CorrectionOutcome
-    Note over Sim,API: simulator fetches the outcome later via<br/>GET /api/payments/v1/anomalies/{payment_id}
+    Note over Sim,API: simulator returns at 202; the app (or any client)<br/>reads the outcome via GET /api/payments/v1/anomalies/{payment_id}
 ```
 
 | Component     | Role                                                                                                                     |
