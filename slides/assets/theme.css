@@ -67,6 +67,28 @@
   line-height: 1.5;
 }
 
+/* ── Line breaking: no typographic widows/orphans ────────────────────────
+   A lone word left on the last line reads badly. Short display blocks
+   (titles, kickers, teasers, subtitles, captions) balance their lines so the
+   words spread evenly and none is stranded; longer prose uses `pretty`, which
+   only tidies the final line or two. Reveal renders at a fixed virtual width,
+   so the outcome is deterministic across presenters' screens. */
+.reveal h1,
+.reveal h2,
+.reveal .type-title .subtitle,
+.reveal .section-divider .teaser,
+.reveal .type-bridge .teaser {
+  text-wrap: balance;
+}
+.reveal p,
+.reveal li,
+.reveal .diagram-caption,
+.reveal .card p,
+.reveal .tieback,
+.reveal .predict {
+  text-wrap: pretty;
+}
+
 /* ── Headings ────────────────────────────────────────────────────────── */
 .reveal h1,
 .reveal h2,

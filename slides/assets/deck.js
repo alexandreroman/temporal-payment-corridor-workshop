@@ -96,12 +96,61 @@
     });
 
     injectFurniture();
+    hardenHyphens();
 
     // Render diagrams once the deck is ready and the web font has loaded —
     // Mermaid measures node boxes with the final font, avoiding clipped labels.
     Reveal.on("ready", function () {
       renderDiagrams();
     });
+  }
+
+  /*
+   * Keep hyphenated compounds ("long-lived", "in-memory", "cross-border") from
+   * breaking across two lines. The Unicode line-breaking algorithm treats a
+   * hyphen-minus (U+002D) as a break opportunity (class BA), and no CSS
+   * property suppresses that for an *existing* hyphen — so we swap every
+   * intra-word hyphen for a NON-BREAKING HYPHEN (U+2011), which shares the same
+   * glyph but is not a break opportunity. Doing it here keeps the HTML source
+   * editable with ordinary hyphens.
+   * Sources: https://www.unicode.org/reports/tr14/ (BA) ·
+   * https://developer.mozilla.org/docs/Web/CSS/hyphens
+   *
+   * We skip <code>, <pre>, the .cmd terminal blocks and .mermaid diagrams: their
+   * hyphens are real ASCII the reader may copy (e.g.
+   * `make feature-enable NAME=payload-encryption`) or that Mermaid must parse,
+   * so they stay U+002D.
+   */
+  function hardenHyphens() {
+    var root = document.querySelector(".reveal .slides");
+    if (!root || typeof document.createTreeWalker !== "function") {
+      return;
+    }
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (node) {
+        if (node.nodeValue.indexOf("-") === -1) {
+          return NodeFilter.FILTER_REJECT; // nothing to harden
+        }
+        for (var el = node.parentElement; el && el !== root; el = el.parentElement) {
+          if (
+            el.tagName === "CODE" ||
+            el.tagName === "PRE" ||
+            el.classList.contains("cmd") ||
+            el.classList.contains("mermaid")
+          ) {
+            return NodeFilter.FILTER_REJECT;
+          }
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    var node;
+    while ((node = walker.nextNode())) {
+      // Only a hyphen flanked by word characters — the lookbehind/lookahead
+      // consume nothing, so chains like "human-in-the-loop" convert fully, and
+      // spaced dashes / em-dashes (" — ") are left untouched.
+      node.nodeValue = node.nodeValue.replace(/(?<=\w)-(?=\w)/g, "‑");
+    }
   }
 
   /* Decode the HTML entities the browser adds when serializing innerHTML,
