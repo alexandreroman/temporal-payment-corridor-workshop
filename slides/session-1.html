@@ -106,7 +106,7 @@ flowchart LR
     GW --> TUI[Temporal Web UI]
     API -->|start · list · approve| Coord(("Coordinator<br/>+ agent children"))
     Worker[Payments worker] --> Coord
-    Worker -->|HTTP · never Temporal| Mem[(Corridor memory)]
+    Worker -->|HTTP| Mem[(Corridor memory)]
 
     classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
     classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
@@ -126,15 +126,16 @@ flowchart LR
         <div class="diagram-caption">
           External callers only ever speak HTTP to the gateway. Payments runs in its own
           Temporal namespace; corridor memory is a separate service in its own namespace,
-          reached over HTTP — never over Temporal.
+          reached over HTTP.
         </div>
         <aside class="notes">
           Two things to internalise here. One entry point: the simulator and the browser
           only ever talk HTTP to the gateway — they never open a Temporal client of their
           own. Two namespaces, cleanly separated: the payments workflows live in the
           payments namespace, and the corridor-memory service lives in its own namespace.
-          The worker reaches memory over an HTTP call, not over Temporal. Two bounded
-          contexts, no shared Temporal between them.
+          The worker talks to the memory service over HTTP: the transport between them is
+          an HTTP call, not a shared Temporal client. Two bounded contexts, each with its
+          own namespace.
         </aside>
       </section>
 
