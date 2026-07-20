@@ -135,13 +135,13 @@ flowchart LR
                 Worker[Payments worker] --> Coord(("Coordinator<br/>+ agent children"))
             end
             subgraph MNS[memory namespace]
-                Mem[(Corridor memory)]
+                MemSvc[Memory service] --> Mem[(Corridor memory)]
             end
         end
     end
 
     API -->|start · list · approve| T
-    Coord -->|HTTP| Mem
+    Coord -->|HTTP| MemSvc
 
     classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
     classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
@@ -151,7 +151,7 @@ flowchart LR
     classDef tgroup fill:none,stroke:#2dd4bf,stroke-width:1.5px,color:#2dd4bf;
     classDef invis fill:none,stroke:none,color:none;
     class Sim,User,GW,WEB,API client;
-    class Coord,Worker temporal;
+    class Coord,Worker,MemSvc temporal;
     class Mem store;
     class TUI external;
     class PNS,MNS ns;
