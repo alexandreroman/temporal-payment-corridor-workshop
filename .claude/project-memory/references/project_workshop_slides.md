@@ -41,5 +41,8 @@ Status: **Session 1 built and validated** (`slides/session-1.html`, 20
 slides incl. a Step divider before each of steps 00–03). Each step has a
 `section-divider`; hands-on command blocks are full-width terminal panels
 with a green `$` prompt. Sessions 2 & 3 and `slides/README.md` are still to
-build. All content is English and timeless. See
-[[reference_slides_mermaid_render]].
+build — copy `session-1.html` as the template. All content is English and
+timeless. Before building Sessions 2 & 3, read
+[[feedback_slides_style_conventions]] (layout/style rules to keep),
+[[reference_slides_authoring_workflow]] (serve + preview), and
+[[reference_slides_mermaid_render]] (diagram rendering).
