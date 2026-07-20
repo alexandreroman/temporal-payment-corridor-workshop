@@ -172,7 +172,7 @@ except <span class="hl">asyncio.TimeoutError</span>:
         <span class="kicker kicker--green">Step 04 · Hands-on</span>
         <h2>Trigger a hold — then do nothing</h2>
         <div class="body">
-          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make feature-enable NAME=approval-timeout<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval   # needs a provider key<br># … then wait, and watch the coordinator in the Temporal Web UI</div>
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make feature-enable NAME=approval-timeout<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval   # needs an LLM provider API key<br># … then wait, and watch the coordinator in the Temporal Web UI</div>
         </div>
         <p class="predict">Predict first: a <strong>Timer</strong> event appears in the Event History.<br>
           If you never approve, what state does the correction reach — and when?</p>

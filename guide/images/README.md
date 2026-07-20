@@ -9,6 +9,7 @@ resolve. Expected files, by step:
 
 | File                              | Step                                    | What to capture                                                            |
 | --------------------------------- | --------------------------------------- | -------------------------------------------------------------------------- |
+| `00-app-homepage.png`             | [00](../00-application-overview.md)     | The app homepage: an anomalous payment repaired from memory and applied    |
 | `01-app-homepage.png`             | [01](../01-getting-started.md)          | The app homepage: the first payment corrected from memory (applied)        |
 | `01-webui-workflow-tree.png`      | [01](../01-getting-started.md)          | Coordinator + two agent child workflows in the Temporal Web UI             |
 | `02-event-history-memory-hit.png` | [02](../02-durable-agents.md)           | A memory-hit coordinator's Event History (compact)                         |

@@ -105,7 +105,7 @@ scenario reaches the agents, so it needs a provider API key (see step
 `REVIEW` branch and no timer is armed:
 
 ```bash
-make simulator SCENARIO=needs-approval   # needs a provider key
+make simulator SCENARIO=needs-approval   # needs an LLM provider API key
 ```
 
 In the **Temporal Web UI**, open the coordinator. Its Event History now

@@ -8,7 +8,7 @@
 > before updating. **Do NOT take any action** —
 > no tool calls, no file writes — until confirmed.
 
-- [Dev workflow: hot reload and HTML preview](references/feedback_dev_workflow.md) — use `make dev` for the hot-reload stack; preview HTML via Casper Browser when available.
+- [Dev workflow: hot reload and HTML preview](references/feedback_dev_workflow.md) — bring the stack up via `make dev` only (it blocks—background it; never bare `uv run`; free stale ports); preview rendered pages in a browser (serve slides via `make slides`, never a bare http.server).
 - [Casper worktree port remap](references/project_casper_port_remap.md) — gateway + temporal gRPC honor CASPER_PORT via compose.override.yaml; run the simulator through make (bare uv run uses localhost:7233 and fails).
 - [Gateway payments-API upstream is mode-specific](references/project_gateway_payments_upstream.md) — container mode uses in-network payments-api:8020; dev mode uses host.docker.internal via dev-only compose.dev.yaml, never the auto-merged override.
 - [Docker images run modules from source](references/project_docker_build.md) — images install deps only and run `python -m payments.main_worker`/`memory.main`/`codec.main`; never build the wheel (readme field breaks the build).
@@ -43,6 +43,7 @@
 - [Enforced format is ruff defaults (88 cols)](references/feedback_ruff_line_length.md) — no ruff config, so line length is 88 (not CLAUDE.md's 120); a pre-commit hook lints the whole tree, so every commit needs the entire repo clean.
 - [Workshop slides live in slides/, reveal.js + Temporal theme](references/project_workshop_slides.md) — reveal.js deck, custom Temporal theme, A–G grammar + type-code; all three sessions built, only slides/README.md pending.
 - [Mermaid rendering uses render(), not run()](references/reference_slides_mermaid_render.md) — deck.js renders inline Mermaid via render() + fonts.ready; avoids hidden-slide, clipping, entity gotchas.
+- [Mermaid nested-subgraph layout control](references/reference_slides_mermaid_layout.md) — fixed outer-title band; invisible-inner-subgraph spacer; subgraph direction; tune by measuring SVG geometry, not eyeballing.
 - [Slide layout & style conventions](references/feedback_slides_style_conventions.md) — title-top layout, list spacing, kickers, terminal blocks, type-code, bridge/deck-next/title/logo rules; apply verbatim to Sessions 2 & 3.
 - [Versioning is out of workshop scope](references/feedback_versioning_out_of_scope.md) — no workflow.patched/versioning in the slides; replay stays only as a light observation deferred to the Session 3 testing step.
 - [How to author & preview the slides](references/reference_slides_authoring_workflow.md) — no-cache server, Casper preview + 16:9 crop, reveal timing, repo facts the decks quote.

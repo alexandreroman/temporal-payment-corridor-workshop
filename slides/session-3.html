@@ -377,7 +377,7 @@ await <span class="hl">handle.execute_update</span>(MemoryWorkflow.remember, pat
         <span class="kicker kicker--green">Step 10 · Hands-on</span>
         <h2>Find the singleton, then feed it</h2>
         <div class="body">
-          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=memory-workflow<br><span class="prompt">$</span> make simulator SCENARIO=memory-miss&nbsp;&nbsp;&nbsp;# needs a provider key<br># Temporal → memory namespace → the running corridor-memory workflow</div>
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=memory-workflow<br><span class="prompt">$</span> make simulator SCENARIO=memory-miss&nbsp;&nbsp;&nbsp;# needs an LLM provider API key<br># Temporal → memory namespace → the running corridor-memory workflow</div>
         </div>
         <p class="predict">Predict first: a lookup is a Query, a learned pattern is an Update.<br>
           After a memory-miss fix is applied, which one lands on <code>corridor-memory</code>?</p>
@@ -386,7 +386,7 @@ await <span class="hl">handle.execute_update</span>(MemoryWorkflow.remember, pat
           namespace — not payments — and find the corridor-memory workflow: it is
           Running, holding the seeded patterns as durable, in-workflow state, with no
           database behind it. Now exercise it: run the memory-miss scenario, which
-          needs a provider key, so the agents reason out a fix instead of hitting a
+          needs an LLM provider API key, so the agents reason out a fix instead of hitting a
           seeded pattern. When that fix clears the gate and is applied, an Update
           lands on corridor-memory — the write-back — and its state grows. Re-run the
           same corridor and it now resolves from memory via a Query: no model call,

@@ -39,6 +39,6 @@ is not running in dev mode, so the gateway 502'd).
 override. When verifying, confirm `docker compose exec gateway printenv
 PAYMENTS_API_UPSTREAM` is empty under `app-up` and
 `host.docker.internal:<port>` under `dev`. Both routes verified end-to-end
-(simulator through the gateway completes the correction) under podman on
-macOS. See [[Casper worktree port remap]] and
+(simulator through the gateway completes the correction). See
+[[Casper worktree port remap]] and
 [[Gateway is the single HTTP entry point; codec is always-on infra]].
