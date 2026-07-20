@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/alexandreroman/temporal-payment-corridor-workshop/actions/workflows/ci.yml/badge.svg)](https://github.com/alexandreroman/temporal-payment-corridor-workshop/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/alexandreroman/temporal-payment-corridor-workshop)
 
 Repairs cross-border payments that arrive with an anomaly — a wrong
 BIC/SWIFT code, a missing intermediary bank, a currency mismatch — by
@@ -70,6 +69,13 @@ No Kubernetes or cloud account is required.
 
 ## Getting Started
 
+The fastest way to try the workshop is in the browser — open it in
+GitHub Codespaces, which provisions a ready-to-run dev container:
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/alexandreroman/temporal-payment-corridor-workshop)
+
+To run it locally instead, clone the repository:
+
 ```bash
 git clone <repository-url>
 cd temporal-payment-corridor-workshop
@@ -77,20 +83,12 @@ uv sync
 cp .env.example .env   # optional: adjust configuration
 ```
 
-There are two ways to run the app. For development, `make dev` brings up
-the stack — the Temporal dev server, the payments worker and its HTTP API,
-and the corridor memory service — with hot reload, and prints the reachable
-URLs in a banner:
+For development, `make dev` brings up the stack — the Temporal dev server,
+the payments worker and its HTTP API, and the corridor memory service —
+with hot reload, and prints the reachable URLs in a banner:
 
 ```bash
 make dev       # Temporal dev server + gateway + payments worker & API & memory
-```
-
-For a fully containerized run, `make app-up` brings the whole stack up in
-containers (`make app-down` tears it down):
-
-```bash
-make app-up    # bring up the full stack in containers
 ```
 
 Payments and the corridor memory service run in two separate Temporal
@@ -168,10 +166,9 @@ NAME=search-attributes`) the coordinator tags each workflow execution with a
 carrying the correction lifecycle (`processing` → `awaiting-approval` →
 `applied`/`held`) so operators can filter corrections fleet-wide from the
 CLI and the Temporal Web UI. All three custom
-attributes are pre-registered by the dev server on startup (`make dev` /
-`make app-up`), so there is no manual registration step — filter executions
-in the Temporal Web UI or with
-`temporal workflow list --query "corridor = '...'"`.
+attributes are pre-registered by the dev server on startup (`make dev`), so
+there is no manual registration step — filter executions in the Temporal
+Web UI or with `temporal workflow list --query "corridor = '...'"`.
 
 Enabling a feature that changes workflow code — as `search-attributes` does
 by adding a Search Attribute upsert inside the coordinator — intentionally
