@@ -194,7 +194,7 @@ sequenceDiagram
         <span class="kicker kicker--green">Step 01 · Hands-on</span>
         <h2>Bring it up, correct your first payment</h2>
         <div class="body">
-          <div class="cmd"><span class="prompt">$</span> make dev<br><span class="prompt">$</span> make simulator</div>
+          <div class="cmd"><span class="prompt">$</span> make dev<br><span class="out">The stack is up.<br>Open:<br>  Web UI            http://localhost:8080<br>  Temporal Web UI   http://localhost:8080/temporal</span><br><span class="prompt">$</span> make simulator<br><span class="out">scenario: memory-hit<br>payment : pmt-3f9a2c1d<br>workflow: correction-pmt-3f9a2c1d<br>accepted: submitted to http://localhost:8080/api/payments/v1/anomalies</span></div>
           <p class="predict">Predict first: the default scenario is a seeded <code>US-&gt;IN</code>
             wrong-BIC anomaly.<br>Will either agent call the model — and what will the
             correction's <code>source</code> be?</p>

@@ -448,10 +448,16 @@
   color: var(--t-text);
   text-align: left;
   /* A terminal block spans the full content width (like a real terminal
-     window); commands stay left-aligned inside. */
+     window); commands stay left-aligned inside. pre-wrap preserves the
+     spacing in captured output (e.g. the aligned URL banner). */
   width: 100%;
   align-self: stretch;
+  white-space: pre-wrap;
   margin: 0;
+}
+/* Captured program output, muted to set it apart from typed commands. */
+.reveal .cmd .out {
+  color: var(--t-muted);
 }
 /* Shell prompt marker: a green "$" before each entered command line
  * (comments and continuation lines carry none). */
