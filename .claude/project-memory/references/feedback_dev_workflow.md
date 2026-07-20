@@ -1,6 +1,6 @@
 ---
 name: "Dev workflow: hot reload and HTML preview"
-description: "Run via hot-reload make targets; preview HTML pages with Casper Browser when available"
+description: "Run via hot-reload make targets; a browser preview tightens the feedback loop on the slides and the guide"
 type: feedback
 ---
 
@@ -14,17 +14,21 @@ The Web UI is static and served by the gateway, so a frontend edit is
 seen by simply refreshing the browser — there is no reload process for
 it.
 
-To render or preview HTML pages, prefer Casper Browser when available.
-Its own skill defines how to drive it — do not hard-code commands here.
+When working on a rendered artifact — the slides or the guide, as well as
+the Web UI — previewing it in a browser tightens the feedback loop: you
+see the actual result instead of reasoning about it. Use whatever
+browser-preview tool the environment offers; none is a prerequisite, and
+no specific tool's commands are hard-coded here.
 
 **Why:** hot reload keeps the edit→see loop tight without manual
-restarts; Casper Browser is the in-workspace way to actually render a
-page and confirm a UI change instead of asking the user to eyeball it.
+restarts; rendering the page and looking at it catches layout and content
+problems that are invisible in the source, so a change is confirmed rather
+than assumed.
 
 **How to apply:** when starting or iterating on the app, use the make
-targets; after a frontend edit, render the page in Casper Browser and
-confirm it before declaring the change done. Fall back to sharing the
-URL when Casper is not available.
+targets; after a change to a rendered page (slides, guide, Web UI), open
+it in a browser and confirm it before declaring the change done. Fall back
+to sharing the URL when no browser preview is available.
 
 **Operational specifics (bringing the stack up).** Ensure the container
 engine is running before `make infra-up` / `make dev` (the engine is
