@@ -26,10 +26,9 @@ targets; after a frontend edit, render the page in Casper Browser and
 confirm it before declaring the change done. Fall back to sharing the
 URL when Casper is not available.
 
-**Operational specifics (bringing the stack up).** The container runtime
-here is Podman — the `docker` / `docker compose` CLIs proxy to it, so a
-"Cannot connect to Podman" / connection-refused error means the machine is
-stopped: run `podman machine start` before `make infra-up` / `make dev`.
+**Operational specifics (bringing the stack up).** Ensure the container
+engine is running before `make infra-up` / `make dev` (the engine is
+machine-specific — do not assume which one).
 `make dev` runs the payments worker, HTTP API, and memory service in the
 foreground (via `make -j`), so it blocks; to drive it programmatically,
 launch `make dev` itself as one background process. Never start the host

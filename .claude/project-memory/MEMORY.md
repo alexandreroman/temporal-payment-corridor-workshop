@@ -8,7 +8,7 @@
 > before updating. **Do NOT take any action** —
 > no tool calls, no file writes — until confirmed.
 
-- [Dev workflow: hot reload and HTML preview](references/feedback_dev_workflow.md) — bring the stack up via `make dev` only (Podman runtime, `podman machine start`; it blocks—background it; never bare `uv run`; free stale ports); preview via `make slides` + Casper, never a bare http.server.
+- [Dev workflow: hot reload and HTML preview](references/feedback_dev_workflow.md) — bring the stack up via `make dev` only (it blocks—background it; never bare `uv run`; free stale ports); preview via `make slides` + Casper, never a bare http.server.
 - [Casper worktree port remap](references/project_casper_port_remap.md) — gateway + temporal gRPC honor CASPER_PORT via compose.override.yaml; run the simulator through make (bare uv run uses localhost:7233 and fails).
 - [Gateway payments-API upstream is mode-specific](references/project_gateway_payments_upstream.md) — container mode uses in-network payments-api:8020; dev mode uses host.docker.internal via dev-only compose.dev.yaml, never the auto-merged override.
 - [Docker images run modules from source](references/project_docker_build.md) — images install deps only and run `python -m payments.main_worker`/`memory.main`/`codec.main`; never build the wheel (readme field breaks the build).
