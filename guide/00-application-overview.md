@@ -19,6 +19,8 @@ workflows** to orchestrate specialized **Pydantic AI agents**, with a
 passive **corridor memory** so it stops paying for an LLM call once it
 has learned a corridor's fix.
 
+![The app homepage: an anomalous US→IN payment repaired from corridor memory and applied](images/00-app-homepage.png)
+
 > [!NOTE]
 > **Simplified domain — on purpose.** A real cross-border payment carries
 > far more than one field. Here, each anomaly targets *exactly one* field
