@@ -355,9 +355,33 @@
   margin-bottom: 0.8em;
 }
 .reveal .framing > div {
-  margin: 0.5em 0;
+  position: relative;
+  isolation: isolate;
+  counter-increment: framing;
+  padding: 0.8em 1.2em;
+  background: var(--t-bg-2);
+  border: 1px solid var(--t-border);
+  border-radius: 12px;
+  overflow: hidden;
   font-size: 1.5rem;
   line-height: 1.5;
+}
+/* Block number as a faint watermark, anchored top-left. Sits above the
+   card background but behind the text (negative z-index under a positioned
+   parent paints between the parent's bg and its in-flow content). */
+.reveal .framing > div::before {
+  content: counter(framing);
+  position: absolute;
+  top: -0.1em;
+  left: 0.12em;
+  z-index: -1;
+  font-family: var(--t-font-sans);
+  font-size: 4.4rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--t-green);
+  opacity: 0.15;
+  pointer-events: none;
 }
 .reveal .framing .problem {
   color: var(--t-text);
@@ -828,6 +852,8 @@ body.landing .session-card h2 {
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
+  counter-reset: framing;
+  gap: 0.7em;
   margin: 0;
 }
 
