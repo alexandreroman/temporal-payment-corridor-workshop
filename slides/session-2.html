@@ -370,17 +370,17 @@ flowchart LR
           <pre><code><span class="c"># an activity can see its own retry count — react when it climbs</span>
 attempt = <span class="hl">activity.info().attempt</span>
 if attempt &gt;= _RETRY_ALERT_THRESHOLD:
-    alerted.add(1, {…})            <span class="c"># climbing counter → dashboard / alert rule</span>
-if _SIMULATE_TRANSIENT_RAIL_OUTAGE and attempt &lt; _RETRY_ALERT_THRESHOLD + 1:
-    <span class="hl">raise RuntimeError("transient rail outage")</span>   <span class="c"># plain → retryable, still succeeds</span></code></pre>
+    <span class="c"># a transient failure keeps retrying — surface it before it recovers</span>
+    alerted.add(1, {…})            <span class="c"># climbing counter → dashboard / alert rule</span></code></pre>
         </div>
         <div class="diagram-caption">
-          The mirror image of Step 05: there a malformed input raised
-          <code>ApplicationError(non_retryable=True)</code> to fail on attempt 1.
-          Here a <em>plain</em> exception is retryable by default, so the bounded
-          transient outage still completes within <code>maximum_attempts=3</code> —
-          and <code>activity.info().attempt</code> lets the activity emit an alert
-          metric before it recovers.
+          The transient failure is a <em>plain</em> exception, retryable by
+          default — so Temporal's RetryPolicy absorbs it and the correction still
+          succeeds within <code>maximum_attempts=3</code> (the mirror image of
+          Step 05's <code>ApplicationError(non_retryable=True)</code>, which fails
+          permanently on attempt 1). <code>activity.info().attempt</code> lets the
+          activity notice it is <em>being</em> retried and emit an alert metric
+          before it recovers — turning silent retries into an operational signal.
         </div>
         <aside class="notes">
           This is the how, in a few lines, and it is the deliberate opposite of the
@@ -389,12 +389,19 @@ if _SIMULATE_TRANSIENT_RAIL_OUTAGE and attempt &lt; _RETRY_ALERT_THRESHOLD + 1:
           every retry. Once that crosses the alert threshold, we add one to a climbing
           counter, which is what feeds a dashboard or an alert rule. Then the key
           contrast: where Step 05 raised an ApplicationError with non-retryable set to
-          true to fail permanently on attempt one, here we raise a plain
-          RuntimeError. A plain exception is retryable by default, so Temporal retries
-          it per the coordinator's policy. And because we bound the simulated outage
-          to the first couple of attempts, the correction still succeeds within
-          maximum-attempts of three — after the alert has already fired. So the
-          business outcome is unchanged; you simply get told that a rail is degrading.
+          true to fail permanently on attempt one, here the failure is a plain
+          exception, which is retryable by default — so Temporal's RetryPolicy simply
+          retries it and the correction still completes within maximum-attempts of
+          three, after the alert has already fired. So the business outcome is
+          unchanged; you simply get told that a rail is degrading.
+          One important caveat: in this workshop the failure is fabricated. A
+          hand-operated fault switch — the simulate-transient-rail-outage switch —
+          raises a plain error on the first attempts so you can watch the counter
+          climb and then see the correction recover. That switch is workshop
+          scaffolding, not part of the production pattern. In real code you would not
+          raise anything of your own here; you would just let a genuine downstream
+          failure propagate, and the same activity-dot-info-dot-attempt read would
+          turn those retries into an operational signal.
         </aside>
       </section>
 
