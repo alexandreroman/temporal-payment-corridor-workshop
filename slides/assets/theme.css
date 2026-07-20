@@ -358,12 +358,14 @@
   position: relative;
   isolation: isolate;
   counter-increment: framing;
-  padding: 0.8em 1.2em;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 1.5em 1.3em 1em;
   background: var(--t-bg-2);
   border: 1px solid var(--t-border);
   border-radius: 12px;
   overflow: hidden;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   line-height: 1.5;
 }
 /* Block number as a faint watermark, anchored top-left. Sits above the
@@ -395,6 +397,10 @@
 .reveal .framing .observe {
   color: var(--t-muted);
   font-style: italic;
+}
+.reveal .framing > div strong {
+  display: block;
+  margin-bottom: 0.4em;
 }
 
 /* (D) Diagram — kicker, underlined title, centered mermaid, caption/legend. */
@@ -845,15 +851,15 @@ body.landing .session-card h2 {
  */
 /* Framing: distribute the 3 sentences evenly across the body. */
 .reveal .type-framing > .body {
-  justify-content: stretch;
+  justify-content: center;
 }
 .reveal .type-framing .framing {
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
+  flex-direction: row;
+  align-items: stretch;
   counter-reset: framing;
-  gap: 0.7em;
+  gap: 1em;
   margin: 0;
 }
 
