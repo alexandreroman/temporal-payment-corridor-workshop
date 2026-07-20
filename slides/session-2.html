@@ -371,7 +371,7 @@ flowchart LR
 attempt = <span class="hl">activity.info().attempt</span>
 if attempt &gt;= _RETRY_ALERT_THRESHOLD:
     alerted.add(1, {…})            <span class="c"># climbing counter → dashboard / alert rule</span>
-if _rail_outage and attempt &lt; _RETRY_ALERT_THRESHOLD + 1:
+if _SIMULATE_TRANSIENT_RAIL_OUTAGE and attempt &lt; _RETRY_ALERT_THRESHOLD + 1:
     <span class="hl">raise RuntimeError("transient rail outage")</span>   <span class="c"># plain → retryable, still succeeds</span></code></pre>
         </div>
         <div class="diagram-caption">
