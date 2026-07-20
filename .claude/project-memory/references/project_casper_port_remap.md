@@ -14,10 +14,16 @@ In a Casper worktree `CASPER_PORT` is set, and the Casper `setup` hook
 the remaining host-dev ports from `GATEWAY_PORT` with shell arithmetic —
 payments metrics at +2, memory at +4, payments API at +5, and the
 `make slides` preview server at +3
-— and exports the full set (`TEMPORAL_ADDRESS`, `PAYMENTS_METRICS_HOST`,
-`PAYMENTS_METRICS_PORT`, `MEMORY_PORT`, `PAYMENTS_API_PORT`,
-`GATEWAY_HOST`, `GATEWAY_PORT`) to the host-side `uv run` processes, so
-`make dev` binds the right ports. Those metrics/memory/payments-API
+— and exports the set (`TEMPORAL_ADDRESS`, `PAYMENTS_METRICS_PORT`,
+`MEMORY_PORT`, `PAYMENTS_API_PORT`, `SLIDES_PORT`, `GATEWAY_PORT`) to the
+host-side `uv run` processes, so `make dev` binds the right ports. The
+`*_HOST` values are not exported: the app code already defaults them to
+the same values (`0.0.0.0` for the bind hosts, `localhost` for the
+gateway), so restating them in the Makefile is redundant. In a plain
+checkout the `else` branch mirrors this set with the conventional
+defaults (`TEMPORAL_ADDRESS ?= localhost:7233`, etc.), so
+`capture-history` — which references `$(TEMPORAL_ADDRESS)` — works there
+too. Those metrics/memory/payments-API
 ports are host-only dev ports the Makefile computes, not values written
 into the override file. The simulator is in the same boat: run it
 through `make simulator` (optionally `SCENARIO=<name>` to pick a named

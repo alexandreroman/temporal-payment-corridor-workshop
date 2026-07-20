@@ -43,14 +43,11 @@ PAYMENTS_API_PORT     := $(shell echo $$(($(GATEWAY_PORT) + 5)))
 # the free +3 offset so parallel worktrees never fight over its port.
 SLIDES_PORT           := $(shell echo $$(($(GATEWAY_PORT) + 3)))
 # Point the host-side dev flow (uv run payments/payments-api) at the remapped
-# ports. Assign unconditionally (:=, not ?=): the override file is the source
-# of truth for published ports, so these must beat the .env baseline exported
-# above. Plain := (not `override`) still lets an explicit `make VAR=...` win.
+# gRPC port. Assign unconditionally (:=, not ?=): the override file is the
+# source of truth for published ports, so it must beat the .env baseline
+# exported above. Plain := (not `override`) still lets `make VAR=...` win.
 TEMPORAL_ADDRESS      := localhost:$(TEMPORAL_GRPC_PORT)
-PAYMENTS_METRICS_HOST := 0.0.0.0
-# The simulator reaches the payments API through the gateway.
-GATEWAY_HOST          := localhost
-export TEMPORAL_ADDRESS PAYMENTS_METRICS_HOST PAYMENTS_METRICS_PORT MEMORY_PORT PAYMENTS_API_PORT SLIDES_PORT GATEWAY_HOST GATEWAY_PORT
+export TEMPORAL_ADDRESS PAYMENTS_METRICS_PORT MEMORY_PORT PAYMENTS_API_PORT SLIDES_PORT GATEWAY_PORT
 else
 # Without an override the published ports equal the conventional defaults.
 # Use ?= for ports that have a matching app env var so a value set in .env
@@ -61,8 +58,10 @@ PAYMENTS_METRICS_PORT ?= 9464
 MEMORY_PORT           ?= 8010
 PAYMENTS_API_PORT     ?= 8020
 SLIDES_PORT           ?= 8000
-GATEWAY_HOST          := localhost
-export PAYMENTS_API_PORT SLIDES_PORT GATEWAY_HOST GATEWAY_PORT
+# Keep capture-history (references $(TEMPORAL_ADDRESS)) working in a plain
+# checkout, where Temporal gRPC listens on the conventional 7233.
+TEMPORAL_ADDRESS      ?= localhost:7233
+export TEMPORAL_ADDRESS PAYMENTS_API_PORT SLIDES_PORT GATEWAY_PORT
 endif
 
 # Banner listing where to reach the running components. Only the two
