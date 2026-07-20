@@ -104,18 +104,27 @@ flowchart LR
     GW[Gateway<br/>single HTTP entry] --> WEB[App · Web UI]
     GW --> API[Payments API]
     GW --> TUI[Temporal Web UI]
-    API -->|start · list · approve| Coord(("Coordinator<br/>+ agent children"))
-    Worker[Payments worker] --> Coord
-    Worker -->|HTTP| Mem[(Corridor memory)]
+
+    subgraph PNS[payments namespace]
+        Worker[Payments worker] --> Coord(("Coordinator<br/>+ agent children"))
+    end
+    subgraph MNS[memory namespace]
+        Mem[(Corridor memory)]
+    end
+
+    API -->|start · list · approve| Coord
+    Worker -->|HTTP| Mem
 
     classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
     classDef temporal fill:#0c2a26,stroke:#2dd4bf,color:#d6fff5,stroke-width:1.5px;
     classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
     classDef external fill:#241033,stroke:#c026d3,color:#f0ccff,stroke-width:1.5px;
+    classDef ns fill:none,stroke:#64748b,stroke-width:1.5px,stroke-dasharray:6 4,color:#94a3b8;
     class Sim,User,GW,WEB,API client;
     class Coord,Worker temporal;
     class Mem store;
     class TUI external;
+    class PNS,MNS ns;
         </div>
         <div class="legend">
           <span class="legend-item c-client">Client / entry</span>
