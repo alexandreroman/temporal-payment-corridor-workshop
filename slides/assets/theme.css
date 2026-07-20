@@ -904,32 +904,12 @@ body.landing .session-card h2 {
   align-content: stretch;  /* stretch the single grid row to full height */
   margin-top: 28px;
   gap: 28px;
-  counter-reset: card;
 }
 .reveal .type-content .card {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;  /* content sits at the top of the card */
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  counter-increment: card;
-  padding: 3.6em 36px 40px;
-}
-/* Numbered watermark, matching the framing blocks' template. */
-.reveal .type-content .card::before {
-  content: counter(card);
-  position: absolute;
-  top: 0.28em;
-  left: 0.38em;
-  z-index: -1;
-  font-family: var(--t-font-sans);
-  font-size: 3.2rem;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--t-muted);
-  opacity: 0.28;
-  pointer-events: none;
+  padding: 40px 36px;
 }
 .reveal .type-content .card .eyebrow {
   font-size: 1.2rem;       /* larger card title */
