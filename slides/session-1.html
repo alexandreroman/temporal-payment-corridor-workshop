@@ -482,7 +482,7 @@ flowchart LR
         <span class="kicker kicker--green">Step 02 · Live demo</span>
         <h2>Crash it. Watch it resume.</h2>
         <div class="body">
-          <div class="cmd"><span class="prompt">$</span> make simulator SCENARIO=memory-miss   # needs a provider key<br># … then Ctrl-C the terminal running `make dev`<br><span class="prompt">$</span> make dev</div>
+          <div class="cmd"><span class="prompt">$</span> make simulator SCENARIO=memory-miss   # needs an LLM provider API key<br># … then Ctrl-C the terminal running `make dev`<br><span class="prompt">$</span> make dev</div>
         </div>
         <p class="predict">Predict first: when the worker dies mid-model-call, what happens
           to the running correction — does it restart, fail, or wait?</p>
@@ -623,7 +623,7 @@ await workflow.<span class="hl">wait_condition</span>(lambda: self._decision is 
         <span class="kicker kicker--green">Step 03 · Hands-on</span>
         <h2>Approve it — from the app, or the CLI</h2>
         <div class="body">
-          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval   # needs a provider key<br># approve in the app — or send the raw Signal:<br><span class="prompt">$</span> temporal workflow signal \<br>&nbsp;&nbsp;--workflow-id correction-&lt;id&gt; --namespace payments \<br>&nbsp;&nbsp;--name approve_correction \<br>&nbsp;&nbsp;--input '{"approved": true, "approver": "ops@bank.example"}'</div>
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval   # needs an LLM provider API key<br># approve in the app — or send the raw Signal:<br><span class="prompt">$</span> temporal workflow signal \<br>&nbsp;&nbsp;--workflow-id correction-&lt;id&gt; --namespace payments \<br>&nbsp;&nbsp;--name approve_correction \<br>&nbsp;&nbsp;--input '{"approved": true, "approver": "ops@bank.example"}'</div>
         </div>
         <p class="predict">Predict first: before you approve, what will the
           <code>awaiting_approval</code> Query return —<br>and what happens to the
