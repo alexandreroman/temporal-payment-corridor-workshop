@@ -147,8 +147,9 @@
 flowchart LR
     App["Worker / API"] -->|"encode → ciphertext"| Hist[("Event History<br/>rests encrypted")]
     Hist -->|"decode → cleartext"| App
-    Hist -.->|"decrypt on demand"| Codec["codec server"]
-    Codec --> UI["Temporal Web UI<br/>cleartext"]
+    Hist -.->|"ciphertext"| UI["Temporal Web UI<br/>cleartext"]
+    UI -.->|"decode on demand"| Codec["codec server"]
+    Codec -.->|"cleartext"| UI
 
     classDef client fill:#0d1b33,stroke:#3b82f6,color:#cfe0ff,stroke-width:1.5px;
     classDef store fill:#10241c,stroke:#4ce0a0,color:#ccf7e4,stroke-width:1.5px;
