@@ -235,6 +235,12 @@ capture-history: ## Capture coordinator-history.json from a completed memory-hit
 	| jq --arg wf "$(WORKFLOW_ID)" '{workflow_id: $$wf, history: .}' \
 	> payments/testdata/coordinator-history.json
 
+##@ Slides
+
+.PHONY: slides
+slides: ## Serve the reveal.js decks (no-cache) at http://127.0.0.1:8000 (PORT=<n> to override)
+	uv run python -m tools.slides $(if $(PORT),--port $(PORT),)
+
 ##@ Helpers
 
 .PHONY: help
