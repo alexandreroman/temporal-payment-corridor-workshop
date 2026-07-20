@@ -46,6 +46,7 @@
 - [Mermaid nested-subgraph layout control](references/reference_slides_mermaid_layout.md) — fixed outer-title band; invisible-inner-subgraph spacer; subgraph direction; tune by measuring SVG geometry, not eyeballing.
 - [Slide layout & style conventions](references/feedback_slides_style_conventions.md) — title-top layout, list spacing, kickers, terminal blocks, type-code, bridge/deck-next/title/logo rules; apply verbatim to Sessions 2 & 3.
 - [Versioning is out of workshop scope](references/feedback_versioning_out_of_scope.md) — no workflow.patched/versioning in the slides; replay stays only as a light observation deferred to the Session 3 testing step.
+- [Slides never reference the feature-toggle tooling](references/feedback_slides_no_feature_tooling.md) — no REPLACE/FEATURE-ON/FEATURE-OFF vocabulary on slides; describe changes in plain language (make feature-enable command is fine; plain-English "replaced" is fine).
 - [How to author & preview the slides](references/reference_slides_authoring_workflow.md) — no-cache server, Casper preview + 16:9 crop, reveal timing, repo facts the decks quote.
 - [Implementation status](references/project_implementation_status.md) — reusable scaffold tracking pending workshop feature-set work; currently nothing pending.
 - [Memory service publishes no host port](references/reference_memory_port_unpublished.md) — memory is `expose`d only (memory:8010 in-network); MEMORY_PORT for dev is derived from GATEWAY_PORT+4, not read from the override.

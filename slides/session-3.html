@@ -188,7 +188,7 @@ flowchart LR
         <span class="kicker">The change, in one place</span>
         <h2>Encrypt at the boundary, in one converter</h2>
         <div class="body">
-          <pre><code><span class="c"># REPLACE in both processes: the worker and the API</span>
+          <pre><code><span class="c"># same change in both processes: the worker and the API</span>
 key = load_key()
 if not key:
     raise RuntimeError("set CODEC_ENCRYPTION_KEY to enable encryption")
@@ -355,7 +355,7 @@ pattern = await <span class="hl">handle.query</span>(
 await <span class="hl">handle.execute_update</span>(MemoryWorkflow.remember, pattern)</code></pre>
         </div>
         <div class="diagram-caption">
-          Both handlers are a <code>REPLACE</code> in <code>memory/app.py</code>:
+          Both handlers change in <code>memory/app.py</code>:
           the baseline called <code>store.lookup</code> / <code>store.remember</code>;
           enabled, they call a Query and an Update. Same routes, same responses — the
           interface boundary from Session 1 is what makes the swap invisible.
