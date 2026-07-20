@@ -402,7 +402,10 @@
 .reveal .framing > div strong {
   display: block;
   margin-bottom: 0.4em;
-  color: var(--t-text);
+  font-family: var(--t-font-mono);
+  font-size: 1.1rem;
+  font-weight: 400;
+  color: var(--t-green);
   font-style: normal;
 }
 
