@@ -407,6 +407,8 @@
   font-weight: 400;
   color: var(--t-green);
   font-style: normal;
+  text-transform: lowercase;
+  text-align: center;
 }
 
 /* (D) Diagram — kicker, underlined title, centered mermaid, caption/legend. */
