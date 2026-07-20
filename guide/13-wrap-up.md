@@ -52,8 +52,8 @@ make check
 Tear the stack down when you are finished:
 
 ```bash
-make app-down     # if you used containers
-# or just stop `make dev` / `make infra-down`
+# stop `make dev` (Ctrl-C), then:
+make infra-down
 ```
 
 ## Measure it against production-ready

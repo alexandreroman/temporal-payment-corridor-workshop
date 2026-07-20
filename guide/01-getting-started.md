@@ -74,10 +74,8 @@ labels it `Web UI`) and the Temporal Web UI:
 | <http://localhost:8080>          | The app         |
 | <http://localhost:8080/temporal> | Temporal Web UI |
 
-Prefer a fully containerized run instead? `make app-up` brings the whole
-stack up in containers and `make app-down` tears it down. For the
-workshop, `make dev` is recommended because hot reload picks up the code
-changes you make when you enable features.
+Keep `make dev` running throughout the workshop: its hot reload picks up
+the code changes you make when you enable features.
 
 ## Correct your first payment
 
