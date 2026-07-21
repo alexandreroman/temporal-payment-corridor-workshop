@@ -652,13 +652,12 @@ await workflow.<span class="hl">wait_condition</span>(lambda: self._decision is 
           worker — that is durable execution.</p>
         </div>
         <aside class="notes">
-          Let's consolidate. Four things, all the same underlying idea. Corrections fan
-          out to child-workflow agents and are gated fail-closed. Memory-first means the
-          seeded path never calls a model. An in-flight correction survives a worker
-          crash and resumes on its own. And a held correction waits durably until a
-          Signal resumes it, while a Query reads its state. Every one of these works
-          because the state lives in Temporal, not in the worker. That is durable
-          execution.
+          Let's consolidate. Three things, all the same underlying idea. Corrections fan
+          out to child-workflow agents and are gated fail-closed. An in-flight correction
+          survives a worker crash and resumes on its own. And a held correction waits
+          durably until a Signal resumes it, while a Query reads its state. Every one of
+          these works because the state lives in Temporal, not in the worker. That is
+          durable execution.
         </aside>
       </section>
 

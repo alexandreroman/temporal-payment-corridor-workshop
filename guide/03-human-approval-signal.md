@@ -124,14 +124,18 @@ make simulator SCENARIO=compliance
 > [10](10-memory-workflow.md).
 
 > [!NOTE]
-> **`needs-approval` and `low-confidence` are best-effort variants.** They
-> hold via *low confidence* rather than a violation, so they instead show
-> the panel with a **Compliant — no violations** verdict — a compliant
-> correction that still waits on a human, a nice variant to see. But they
-> are model-dependent: a decisive model may clear the threshold and
-> **auto-apply** the fix instead, so they don't reliably reach the panel.
-> Use `compliance` for the primary walkthrough; try `needs-approval` or
-> `low-confidence` when you want the compliant-but-held case.
+> **`needs-approval` is the compliant-but-held variant.** It holds via *low
+> confidence* rather than a violation, so it instead shows the panel with a
+> **Compliant — no violations** verdict — a compliant correction that still
+> waits on a human, a nice variant to see. It is model-dependent, though: a
+> decisive model may clear the threshold and **auto-apply** the fix instead,
+> so it doesn't reliably reach the panel. `low-confidence` is *not* this
+> case — it settles USD into a `US->GB` corridor, so it holds on the same
+> currency-mismatch **violation** as `compliance` (the gate checks the
+> violation before it ever looks at confidence), showing that violation on
+> the panel rather than "Compliant — no violations." Use `compliance` for the
+> primary walkthrough; reach for `needs-approval` when you want the
+> compliant-but-held case.
 
 Open **the app** at <http://localhost:8080>. The correction shows as
 **awaiting-approval**: an approval panel with the compliance violation that
