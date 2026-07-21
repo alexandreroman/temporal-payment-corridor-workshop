@@ -122,14 +122,15 @@ agents reason out a fix:
 make simulator SCENARIO=memory-miss   # needs an LLM provider API key
 ```
 
-When that fix clears the gate and is applied, an **Update** lands on
+`memory-miss` settles USD into a `US->GB` corridor, so the compliance agent
+flags a currency mismatch (GB expects GBP) and the fail-closed gate *holds*
+the correction — it is not applied, so no write-back happens on its own. The
+Update lands only once a fix is actually *applied*: enable
+`human-approval-signal` (step [03](03-human-approval-signal.md)) and approve
+the held correction. When it applies, an **Update** lands on
 `corridor-memory` (the write-back) in the `memory` namespace and its state
 grows; re-run the *same* corridor and it now resolves from memory via a
-**Query** — no model call, no new history event for the read. If the model
-lands the proposal below the confidence threshold, the correction is held
-rather than applied, so no Update arrives until the fix is applied — for
-example by approving it with `human-approval-signal` (step
-[03](03-human-approval-signal.md)), which then triggers the same write-back.
+**Query** — no model call, no new history event for the read.
 
 ## Step 5 — Checkpoint
 
