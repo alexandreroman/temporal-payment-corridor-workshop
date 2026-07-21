@@ -13,7 +13,7 @@
   `asyncio.TimeoutError`
 - **Docs:** [Timers](https://docs.temporal.io/develop/python/timers)
 - **Requires:** `human-approval-signal` (step [03](03-human-approval-signal.md))
-  enabled, plus a provider API key — `needs-approval` reaches the agents (see
+  enabled, plus a provider API key — `compliance` reaches the agents (see
   [`.env.example`](../.env.example) and step [01](01-getting-started.md))
 
 > [!IMPORTANT]
@@ -99,14 +99,23 @@ baseline cleanly.
 
 ## Step 4 — Run and observe
 
-Trigger a held correction and then *do nothing*. The `needs-approval`
-scenario reaches the agents, so it needs a provider API key (see step
+You need a **held** correction, then *do nothing*. The `compliance`
+scenario reliably produces one **on a memory miss** — the currency
+mismatch is an unambiguous violation the coordinator holds for review. It
+reaches the agents, so it needs a provider API key (see step
 [01](01-getting-started.md)); without one the correction can't reach the
 `REVIEW` branch and no timer is armed:
 
 ```bash
-make simulator SCENARIO=needs-approval   # needs an LLM provider API key
+make simulator SCENARIO=compliance   # needs an LLM provider API key
 ```
+
+> [!NOTE]
+> If you already applied this corridor (e.g. during step
+> [03](03-human-approval-signal.md)), **restart the stack first** to clear
+> corridor memory — otherwise the fix auto-applies from memory and no timer
+> is armed. See the memory note in step
+> [03](03-human-approval-signal.md).
 
 In the **Temporal Web UI**, open the coordinator. Its Event History now
 contains a **Timer** event started when it entered the `REVIEW` branch.
@@ -123,9 +132,11 @@ decision within the approval window; auto-rejected.":
 
 ![The app homepage: a correction held after the approval window elapsed](images/04-app-held.png)
 
-To see the *other* branch, run another `needs-approval` correction and
+To see the *other* branch, run another `compliance` correction and
 approve it **in the app** (step [03](03-human-approval-signal.md)) *before*
 the window elapses — the timer is cancelled and the correction is applied.
+This second run also needs a memory miss, so **restart the stack first**:
+the first run's approval learned the pattern.
 
 ## Step 5 — Checkpoint
 

@@ -34,6 +34,16 @@ awaiting-approval (`03-approval-panel`), applied-after-approval
 (`05-app-failed`). Every finished PNG is framed as a rounded dark card
 (pad `#0d1117` → cut transparent corners → stroke `#374151`, 24px, once each).
 
+Frame tight — **no wide empty space** in the final image. The app card is a
+wide, full-width container: its status pill is pinned to the card's right
+edge while row content stays left, so a screenshot taken at a wide viewport
+leaves a large empty right region. Render the app at a **narrower viewport**
+so content fills the frame: `casper browser screenshot --url <app> --width
+<W> --height <H>` renders off-screen at that CSS width independent of the
+panel. Roughly `--width ~1040` for the two-column approval panel (keeps both
+columns side by side and full) and `~720` for the single-row homepage; then
+crop to the card bounds. Read the crop back and confirm the subject fills it.
+
 **Why:** the guide teaches Temporal through the real Web UI, so fake or
 stale images mislead learners; a left-enabled feature or a half-finished
 running workflow pollutes the clean baseline every other step assumes; a

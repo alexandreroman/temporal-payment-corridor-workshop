@@ -101,12 +101,13 @@ upserts.
 ## Step 4 — Run and observe
 
 Start a few corrections (mix `memory-hit` and, if you have a key,
-`needs-approval` from step [03](03-human-approval-signal.md) so some are
-awaiting):
+`compliance` from step [03](03-human-approval-signal.md) so some are
+awaiting — on a memory miss; restart the stack to clear memory if it
+auto-applies):
 
 ```bash
 make simulator
-make simulator SCENARIO=needs-approval   # needs an LLM provider API key
+make simulator SCENARIO=compliance   # needs an LLM provider API key
 ```
 
 **From the CLI**, filter the fleet by any dimension:
