@@ -226,9 +226,11 @@ model activities — durable execution of an LLM call, offloaded from the
 agents. What happens next is decided by the gate. `memory-miss` settles USD
 into a `US->GB` corridor, so the compliance agent flags a currency mismatch
 (GB expects GBP) — the same unambiguous violation step
-[03](03-human-approval-signal.md) examines. The gate is fail-closed, so the
-correction is *held* (`applied=false`, no write-back) — regardless of how
-confident the instruction agent's proposal is.
+[03](03-human-approval-signal.md) examines. That verdict is model-produced,
+so it is not strictly guaranteed, but the mismatch is clear enough that the
+agent flags it reliably. The gate is fail-closed, so the correction is
+*held* (`applied=false`, no write-back) — regardless of how confident the
+instruction agent's proposal is.
 
 The applied branch is the mirror image: when a reasoned-out fix *clears* the
 gate (compliant *and* confidence ≥ `CONFIDENCE_THRESHOLD`), the coordinator

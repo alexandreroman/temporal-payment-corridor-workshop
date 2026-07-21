@@ -79,7 +79,7 @@ Scope from the argument, if any (e.g. `/walk-guide 05-non-retryable-validation`,
 the whole guide in order, starting at `00`. If the argument is `--static` (with
 or without a scope), run the **static mode** below instead.
 
-1. **Confirm a clean baseline.** `make feature-status` should show every
+1. **Confirm a clean baseline.** `make feature-list` should show every
    feature disabled and `git status` should be clean. If not, stop and tell
    me — you must start from the state a fresh learner has.
 
@@ -229,5 +229,5 @@ nothing, so this applies only when you ran empirically):
   scratch `.env` values) — but keep the guide/code *corrections*.
 - Tear down the stack (`make app-down` if you used it, and stop the
   backgrounded `make dev`).
-- End with `make feature-status` clean and a `git status` that shows only
+- End with `make feature-list` clean and a `git status` that shows only
   your intended corrections. Report what remains changed.

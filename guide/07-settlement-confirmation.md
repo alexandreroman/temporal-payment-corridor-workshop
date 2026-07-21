@@ -147,8 +147,17 @@ before completing, and the final `CorrectionOutcome` carries a
 
 To watch cancellation, start a correction and cancel the coordinator from
 Temporal (or `temporal workflow cancel`) while `confirm_settlement` is
-mid-poll — the activity receives the cancellation through its next
-heartbeat and unwinds cleanly.
+mid-poll — the activity receives the cancellation and unwinds cleanly
+through its `except asyncio.CancelledError` handler. With the defaults the
+poll lasts only about 1.5s (3 cycles × 0.5s), which is a tight window to
+hit by hand. To give yourself room, temporarily lengthen the activity: add
+`await asyncio.sleep(20)` just inside the `try` in `confirm_settlement`,
+and — because a silent 20s wait would otherwise look like a stalled poll —
+raise its `heartbeat_timeout` above that wait (`timedelta(seconds=30)` in
+the `execute_activity(confirm_settlement, …)` call). Hot reload picks both
+edits up; a workflow already running keeps its old settings, so start a
+*fresh* correction, then cancel it while the activity is sleeping. Undo
+both edits afterwards.
 
 ## Step 6 — Checkpoint
 
