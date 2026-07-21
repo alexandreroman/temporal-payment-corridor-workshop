@@ -172,20 +172,22 @@ except <span class="hl">asyncio.TimeoutError</span>:
         <span class="kicker kicker--green">Step 04 · Hands-on</span>
         <h2>Trigger a hold — then do nothing</h2>
         <div class="body">
-          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make feature-enable NAME=approval-timeout<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval   # needs an LLM provider API key<br># … then wait, and watch the coordinator in the Temporal Web UI</div>
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make feature-enable NAME=approval-timeout<br><span class="prompt">$</span> make simulator SCENARIO=compliance   # needs an LLM provider API key<br># … then wait, and watch the coordinator in the Temporal Web UI</div>
         </div>
         <p class="predict">Predict first: a <strong>Timer</strong> event appears in the Event History.<br>
           If you never approve, what state does the correction reach — and when?</p>
         <aside class="notes">
           Enable the approval signal first — it provides the wait — then the
-          approval-timeout, which bounds it. Fire a needs-approval correction and
+          approval-timeout, which bounds it. Fire a compliance correction and
           then, deliberately, do nothing. Open the coordinator in the Temporal Web
           UI: its Event History now carries a Timer event, started when it entered
           the REVIEW branch. For a live demo you can shorten the window to twenty
           seconds in the enabled block; hot reload picks it up. Let the window
           elapse and the coordinator fires the timer, catches the TimeoutError, and
           completes as auto-rejected. Then run one more and approve it in the app in
-          time — the timer is cancelled and the fix applies.
+          time — the timer is cancelled and the fix applies. The hold needs a memory
+          miss: if you already applied this corridor in step 03, restart the stack to
+          clear corridor memory, or the correction auto-applies and no timer is armed.
         </aside>
       </section>
 
@@ -643,7 +645,8 @@ _STATUS_SA   = SearchAttributeKey.for_keyword("status")
           Enable search-attributes. Note there is no manual registration step: the
           three custom attributes are pre-registered by the dev server on startup, so
           you do not run the operator create command. Start a few corrections, mixing
-          scenarios so some are awaiting approval, then filter from the CLI by any
+          scenarios so some are awaiting approval — a compliance run on a fresh, not-yet-learned
+          corridor gives you an awaiting-approval execution to filter on — then filter from the CLI by any
           dimension — corridor, anomaly-type, status — and try the same queries in the
           Web UI search box. The point to internalise: without Search Attributes you
           could only list every execution and sift by hand; now the Visibility store

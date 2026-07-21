@@ -1,8 +1,8 @@
 # 03 — Human-in-the-loop with Signals
 
 > [!NOTE]
-> **Goal of this step.** Turn a held, low-confidence correction into one
-> that *waits* — durably — for a human's approve/reject decision delivered
+> **Goal of this step.** Turn a held correction into one that *waits* —
+> durably — for a human's approve/reject decision delivered
 > as a Temporal **Signal**, and expose that waiting state through
 > **Queries**.
 
@@ -98,43 +98,48 @@ delivered; the coordinator resumes and finishes asynchronously.
 
 ## Step 4 — Run and observe
 
-You need a correction that the gate *holds*. The `needs-approval`
-scenario is designed for exactly that: a **compliant** correction whose
-instruction fix is meant to be ambiguous enough that the agent *should*
-land sub-threshold and hold for a human (it needs a provider key and is
-best-effort — see [`simulator/scenarios.py`](../simulator/scenarios.py)):
+You need a correction that the gate *holds*. The `compliance` scenario
+holds **reliably on a memory miss** — a corridor not yet learned, e.g. the
+first run on a freshly started stack: a US->GB payment settles in USD, but
+the GB corridor expects GBP — a currency mismatch the compliance agent
+cannot clear on its own. It flags the violation, so the coordinator holds
+the correction for a human decision instead of auto-applying it. Because
+the hold comes from an unambiguous **violation**, not a confidence
+threshold, it reliably routes to review — which is why it's the scenario
+to reach for when watching the approval flow. The agents still run, so
+like any agent scenario it needs a memory miss and a valid provider key
+(see [`simulator/scenarios.py`](../simulator/scenarios.py)):
 
 ```bash
-make simulator SCENARIO=needs-approval
+make simulator SCENARIO=compliance
 ```
 
-> [!IMPORTANT]
-> **`needs-approval` is best-effort — model-dependent.** It leans on the
-> instruction agent staying *unsure* which correspondent to pick. A
-> decisive model may instead choose one confidently, clearing the
-> threshold and **auto-applying** the fix (`applied`) — so you may not see
-> the approval panel on every run. To reach **awaiting-approval**
-> *reliably*, use the `compliance` scenario instead: a currency mismatch is
-> an unambiguous compliance violation, so the gate routes it to human
-> review regardless of the model's confidence.
->
-> ```bash
-> make simulator SCENARIO=compliance
-> ```
->
-> The only visible difference is the verdict: with `compliance` the panel
-> shows a **violation** rather than "Compliant — no violations". Everything
-> else in this step — the durable wait, the Query, the approve/reject
-> Signal — behaves identically.
+> [!NOTE]
+> **Corridor memory clears on restart.** Once you approve the held
+> correction it applies, and the corridor pattern (US->GB /
+> currency_mismatch) is **learned into memory**. Re-running the same
+> scenario then **auto-applies from memory** with no hold. To see the hold
+> again, **restart the stack (`make dev`)** to clear the in-memory store.
+> This passive corridor memory is the subject of step
+> [10](10-memory-workflow.md).
+
+> [!NOTE]
+> **`needs-approval` and `low-confidence` are best-effort variants.** They
+> hold via *low confidence* rather than a violation, so they instead show
+> the panel with a **Compliant — no violations** verdict — a compliant
+> correction that still waits on a human, a nice variant to see. But they
+> are model-dependent: a decisive model may clear the threshold and
+> **auto-apply** the fix instead, so they don't reliably reach the panel.
+> Use `compliance` for the primary walkthrough; try `needs-approval` or
+> `low-confidence` when you want the compliant-but-held case.
 
 Open **the app** at <http://localhost:8080>. The correction shows as
-**awaiting-approval**: an approval panel with the proposed fix beside the
-compliance verdict and Approve / Reject controls. With `needs-approval` the
-correction is *compliant*, so the verdict reads **Compliant — no
-violations** even though the fix still waits on a human decision (with
-`compliance` the same panel shows the violation that triggered the hold):
+**awaiting-approval**: an approval panel with the compliance violation that
+triggered the hold — the currency mismatch — beside the proposed fix and
+Approve / Reject controls (the `needs-approval` variant instead shows
+**Compliant — no violations**, a compliant correction that still waits):
 
-![The app's approval panel: a compliant correction awaiting a human decision](images/03-approval-panel.png)
+![The app's approval panel: a compliance violation awaiting a human decision](images/03-approval-panel.png)
 
 Behind that panel the coordinator is **durably waiting**. In the **Temporal
 Web UI**, open the coordinator: with the feature enabled it no longer
@@ -196,8 +201,8 @@ and completes. In the app the row flips from **awaiting-approval** to
 
 ## Step 5 — Checkpoint
 
-- [ ] A held correction (reliably via `compliance`) stays **Running**,
-      blocked on a human.
+- [ ] A held correction (via `compliance`) stays **Running**, blocked on a
+      human decision.
 - [ ] `awaiting_approval` query returns `true` while it waits.
 - [ ] Approving in the app *or* via the raw CLI Signal resumes and completes it.
 

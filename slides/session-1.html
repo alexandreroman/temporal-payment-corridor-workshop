@@ -623,11 +623,19 @@ await workflow.<span class="hl">wait_condition</span>(lambda: self._decision is 
         <span class="kicker kicker--green">Step 03 · Hands-on</span>
         <h2>Approve it — from the app, or the CLI</h2>
         <div class="body">
-          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make simulator SCENARIO=needs-approval   # needs an LLM provider API key<br># approve in the app — or send the raw Signal:<br><span class="prompt">$</span> temporal workflow signal \<br>&nbsp;&nbsp;--workflow-id correction-&lt;id&gt; --namespace payments \<br>&nbsp;&nbsp;--name approve_correction \<br>&nbsp;&nbsp;--input '{"approved": true, "approver": "ops@bank.example"}'</div>
+          <div class="cmd"><span class="prompt">$</span> make feature-enable NAME=human-approval-signal<br><span class="prompt">$</span> make simulator SCENARIO=compliance   # needs an LLM provider API key<br># approve in the app — or send the raw Signal:<br><span class="prompt">$</span> temporal workflow signal \<br>&nbsp;&nbsp;--workflow-id correction-&lt;id&gt; --namespace payments \<br>&nbsp;&nbsp;--name approve_correction \<br>&nbsp;&nbsp;--input '{"approved": true, "approver": "ops@bank.example"}'</div>
         </div>
         <p class="predict">Predict first: before you approve, what will the
           <code>awaiting_approval</code> Query return —<br>and what happens to the
           workflow the instant the Signal lands?</p>
+        <aside class="notes">
+          One caveat on reliability: compliance holds reliably on a memory miss —
+          the first run on a fresh stack, a corridor not yet learned. Once you
+          approve the held correction it applies, and the corridor pattern is
+          learned into memory, so a re-run auto-applies with no hold. To see the
+          hold again, restart the stack to clear the in-memory store. That is a
+          forward-link to the memory step.
+        </aside>
       </section>
 
       <!-- 17 · Checkpoint (F) -->

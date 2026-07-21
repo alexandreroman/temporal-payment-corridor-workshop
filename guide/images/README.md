@@ -14,7 +14,7 @@ resolve. Expected files, by step:
 | `01-webui-workflow-tree.png`      | [01](../01-getting-started.md)          | Coordinator + two agent child workflows in the Temporal Web UI             |
 | `02-event-history-memory-hit.png` | [02](../02-durable-agents.md)           | A memory-hit coordinator's Event History (compact)                         |
 | `03-awaiting-approval.png`        | [03](../03-human-approval-signal.md)    | A coordinator paused, its `awaiting_approval` query returning `true`       |
-| `03-approval-panel.png`           | [03](../03-human-approval-signal.md)    | The app's approval panel: a compliant correction awaiting a human decision |
+| `03-approval-panel.png`           | [03](../03-human-approval-signal.md)    | The app's approval panel: a compliance violation awaiting a human decision |
 | `03-app-applied.png`              | [03](../03-human-approval-signal.md)    | The app homepage: the correction applied after a human approved it         |
 | `04-durable-timer.png`            | [04](../04-approval-timeout.md)         | A durable Timer event in Event History                                     |
 | `04-app-held.png`                 | [04](../04-approval-timeout.md)         | The app homepage: a correction held after the approval window elapsed      |
