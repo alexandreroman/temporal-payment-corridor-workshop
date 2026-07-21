@@ -70,7 +70,7 @@ defines `EncryptionCodec`, a `PayloadCodec` that encrypts with **Fernet**
 - Fernet's crypto runs via `asyncio.to_thread` to keep the event loop
   responsive.
 
-**Wiring it in** — the feature is a `REPLACE` in *two* processes, the
+**Wiring it in** — the change touches *two* processes, the
 worker ([`payments/main_worker.py`](../payments/main_worker.py)) and the
 API ([`payments/api.py`](../payments/api.py)). Both swap their
 `Client.connect(...)` for one that passes an encrypting data converter:
