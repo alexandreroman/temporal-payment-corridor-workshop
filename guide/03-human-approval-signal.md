@@ -99,20 +99,40 @@ delivered; the coordinator resumes and finishes asynchronously.
 ## Step 4 — Run and observe
 
 You need a correction that the gate *holds*. The `needs-approval`
-scenario is built for exactly that: a **compliant** correction whose
-instruction fix is too ambiguous to auto-apply, so it lands sub-threshold
-and holds for a human (it needs a provider key and is best-effort — see
-[`simulator/scenarios.py`](../simulator/scenarios.py)):
+scenario is designed for exactly that: a **compliant** correction whose
+instruction fix is meant to be ambiguous enough that the agent *should*
+land sub-threshold and hold for a human (it needs a provider key and is
+best-effort — see [`simulator/scenarios.py`](../simulator/scenarios.py)):
 
 ```bash
 make simulator SCENARIO=needs-approval
 ```
 
+> [!IMPORTANT]
+> **`needs-approval` is best-effort — model-dependent.** It leans on the
+> instruction agent staying *unsure* which correspondent to pick. A
+> decisive model may instead choose one confidently, clearing the
+> threshold and **auto-applying** the fix (`applied`) — so you may not see
+> the approval panel on every run. To reach **awaiting-approval**
+> *reliably*, use the `compliance` scenario instead: a currency mismatch is
+> an unambiguous compliance violation, so the gate routes it to human
+> review regardless of the model's confidence.
+>
+> ```bash
+> make simulator SCENARIO=compliance
+> ```
+>
+> The only visible difference is the verdict: with `compliance` the panel
+> shows a **violation** rather than "Compliant — no violations". Everything
+> else in this step — the durable wait, the Query, the approve/reject
+> Signal — behaves identically.
+
 Open **the app** at <http://localhost:8080>. The correction shows as
 **awaiting-approval**: an approval panel with the proposed fix beside the
-compliance verdict and Approve / Reject controls. Because `needs-approval`
-produces a *compliant* correction, the verdict reads **Compliant — no
-violations** even though the fix still waits on a human decision:
+compliance verdict and Approve / Reject controls. With `needs-approval` the
+correction is *compliant*, so the verdict reads **Compliant — no
+violations** even though the fix still waits on a human decision (with
+`compliance` the same panel shows the violation that triggered the hold):
 
 ![The app's approval panel: a compliant correction awaiting a human decision](images/03-approval-panel.png)
 
@@ -154,6 +174,19 @@ and completes. In the app the row flips from **awaiting-approval** to
 
 ![The app homepage: the same correction now applied after a human approved it](images/03-app-applied.png)
 
+> [!TIP]
+> **Troubleshooting: the row shows `held` with "All correction agents
+> failed; no proposal to apply."** That is a different path from approval:
+> the instruction agent produced *no* proposal, so the gate holds before it
+> ever reaches the review branch. Almost always the cause is a missing or
+> invalid LLM provider key — the model call fails, the agent child workflow
+> errors out, and the coordinator has nothing to apply. Set a provider key
+> matching `CORRIDOR_MODEL` (see step [01](01-getting-started.md) and
+> `.env.example`). You can confirm it in the **Temporal Web UI**: open the
+> child workflow `correction-<payment_id>-instruction` in the `payments`
+> namespace — it will be **Failed** with an auth error on the model
+> activity.
+
 > [!NOTE]
 > **Who sends the approval?** Not the simulator — it only submits the
 > anomaly and returns. The decision arrives *out-of-band* from a separate
@@ -163,7 +196,8 @@ and completes. In the app the row flips from **awaiting-approval** to
 
 ## Step 5 — Checkpoint
 
-- [ ] A `needs-approval` correction stays **Running**, blocked on a human.
+- [ ] A held correction (reliably via `compliance`) stays **Running**,
+      blocked on a human.
 - [ ] `awaiting_approval` query returns `true` while it waits.
 - [ ] Approving in the app *or* via the raw CLI Signal resumes and completes it.
 
