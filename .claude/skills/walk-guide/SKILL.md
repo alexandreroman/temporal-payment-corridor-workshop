@@ -1,7 +1,6 @@
 ---
 name: walk-guide
-description: Empirically walk the learner guide (guide/) as a real attendee would — run every command, enable each feature, observe the outcome — to catch instructions, commands, code, or expected output that drift from reality, then review and correct in the same pass. Also runs a static, read-only semantic audit when the stack can't be run or when only a review is wanted. User-invoked only, via /walk-guide.
-disable-model-invocation: true
+description: Empirically walk the learner guide (guide/) as a real attendee would — run every command, enable each feature, observe the outcome — to catch instructions, commands, code, or expected output that drift from reality, then review and correct in the same pass. Also runs a static, read-only semantic audit when the stack can't be run or when only a review is wanted.
 argument-hint: "[optional: a guide step file, feature name, or arc to scope it; add --static for a read-only audit]"
 ---
 
