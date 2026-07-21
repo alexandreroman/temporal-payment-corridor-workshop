@@ -76,7 +76,7 @@ comes alive now. `MemoryWorkflow` is a singleton with a well-known id
   keeping history bounded while carrying state forward.
 
 **Swapping the backend** — in [`memory/app.py`](../memory/app.py), the two
-HTTP handlers are a `REPLACE`:
+HTTP handlers swap their backend calls:
 
 ```python
 # lookup: baseline -> store.lookup(...); enabled -> a Temporal query

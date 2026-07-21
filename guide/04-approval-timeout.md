@@ -93,10 +93,6 @@ except asyncio.TimeoutError:
 > there is no background thread to lose.
 > Docs: [Timers](https://docs.temporal.io/develop/python/timers).
 
-This is a `REPLACE`-style feature: it pairs a `FEATURE-ON` block with an
-inverse `FEATURE-OFF` block, so disabling restores the wait-forever
-baseline cleanly.
-
 ## Step 4 — Run and observe
 
 You need a **held** correction, then *do nothing*. The `compliance`
