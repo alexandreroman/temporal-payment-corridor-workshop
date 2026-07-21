@@ -100,8 +100,8 @@ infra-up: ## Bring up temporal + codec + gateway (gateway is the Web UI entry po
 	docker compose $(COMPOSE_DEV_FILES) up -d temporal codec gateway
 
 .PHONY: infra-down
-infra-down: ## Stop the Temporal dev server (keeps container around)
-	docker compose stop temporal
+infra-down: ## Tear down the dev infra containers (temporal + codec + gateway) and network
+	docker compose $(COMPOSE_DEV_FILES) down
 
 .PHONY: infra-logs
 infra-logs: ## Follow logs from the Temporal dev server
