@@ -113,7 +113,9 @@ it to:
 **Decoding encrypted payloads.** With `payload-encryption` on (step
 [09](09-payload-encryption.md)), Event History shows ciphertext until the
 UI calls the codec server — already wired up in dev, so decoded payloads
-appear with no manual configuration.
+appear with no manual configuration. (The `make feature-reset` above turns
+`payload-encryption` off, so re-enable it — `make feature-enable
+NAME=payload-encryption` — if you want to see this.)
 
 ## Logging discipline
 

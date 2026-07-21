@@ -223,16 +223,23 @@ make simulator SCENARIO=memory-miss
 
 This time the child workflows' Event History *does* include the Pydantic AI
 model activities — durable execution of an LLM call, offloaded from the
-agents. What happens next depends on the gate. When the reasoned-out fix
-clears it (compliant *and* confidence ≥ `CONFIDENCE_THRESHOLD`), the
-coordinator applies it and — because the fix was reasoned out, not recalled —
-runs a `write_corridor_memory` activity in the parent; submit the *same*
-corridor again and it resolves from memory. When the model is less sure (a
-conservative model often lands `memory-miss` just below the threshold), the
-correction is *held* instead — `applied=false`, no write-back — which is the
-human-in-the-loop path step [03](03-human-approval-signal.md) wires up.
-Approving a held correction there applies the fix and triggers the same
-write-back.
+agents. What happens next is decided by the gate. `memory-miss` settles USD
+into a `US->GB` corridor, so the compliance agent flags a currency mismatch
+(GB expects GBP) — the same unambiguous violation step
+[03](03-human-approval-signal.md) examines. That verdict is model-produced,
+so it is not strictly guaranteed, but the mismatch is clear enough that the
+agent flags it reliably. The gate is fail-closed, so the correction is
+*held* (`applied=false`, no write-back) — regardless of how confident the
+instruction agent's proposal is.
+
+The applied branch is the mirror image: when a reasoned-out fix *clears* the
+gate (compliant *and* confidence ≥ `CONFIDENCE_THRESHOLD`), the coordinator
+applies it and — because the fix was reasoned out, not recalled — runs a
+`write_corridor_memory` activity in the parent; submit the *same* corridor
+again and it resolves from memory. The reliable way to reach that path is to
+approve a held correction once `human-approval-signal` is on (step
+[03](03-human-approval-signal.md)): approving applies the fix and triggers
+the write-back.
 
 ## Live demo: crash & resume
 

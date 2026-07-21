@@ -64,9 +64,10 @@ make feature-enable NAME=search-attributes
 > **Enable `human-approval-signal` too.** The `status` attribute reaches
 > `awaiting-approval` only through the human-in-the-loop wait from step
 > [03](03-human-approval-signal.md). With just `search-attributes` on, a
-> correction never blocks and `status` stays `processing`, so the
-> `status = 'awaiting-approval'` and `awaiting_approval=true` filters below
-> would have nothing to match. Enable it as well:
+> correction never enters `awaiting-approval` — it runs straight from
+> `processing` to a terminal `applied`/`held` — so the
+> `status = 'awaiting-approval'` filter below would have nothing to match.
+> Enable it as well:
 >
 > ```bash
 > make feature-enable NAME=human-approval-signal
@@ -120,7 +121,7 @@ temporal workflow list --namespace payments \
   --query "status = 'awaiting-approval'"
 
 temporal workflow list --namespace payments \
-  --query "anomalyType = 'missing_intermediary_bank' AND status = 'awaiting-approval'"
+  --query "anomalyType = 'currency_mismatch' AND status = 'awaiting-approval'"
 ```
 
 **In the Temporal Web UI** (`/temporal`), the same queries work in the

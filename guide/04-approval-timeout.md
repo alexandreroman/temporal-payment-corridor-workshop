@@ -127,16 +127,22 @@ For a fast demo you can temporarily shorten the window in the enabled
 though a workflow already running keeps the timer it was started with.
 Once the window elapses without an approval, the coordinator fires the
 timer, catches `asyncio.TimeoutError`, and completes with the auto-reject
-message. In the app the row turns **held**, its summary reading "No
-decision within the approval window; auto-rejected.":
+message. In the app the row turns **held**. Because the `compliance`
+scenario is held on a compliance violation, the row's one-line summary
+shows that violation (`held · Settlement currency … expected GBP`); the
+auto-reject reason — "No decision within the approval window;
+auto-rejected." — is carried in the correction's full outcome `message`:
 
 ![The app homepage: a correction held after the approval window elapsed](images/04-app-held.png)
 
 To see the *other* branch, run another `compliance` correction and
 approve it **in the app** (step [03](03-human-approval-signal.md)) *before*
 the window elapses — the timer is cancelled and the correction is applied.
-This second run also needs a memory miss, so **restart the stack first**:
-the first run's approval learned the pattern.
+This second run also needs a memory miss. The timeout run above rejected
+without applying, so it wrote nothing to memory — but if you *applied* this
+corridor earlier (e.g. by approving during step
+[03](03-human-approval-signal.md)), **restart the stack first** to clear
+it, as the note above explains.
 
 ## Step 5 — Checkpoint
 
