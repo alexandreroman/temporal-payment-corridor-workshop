@@ -32,8 +32,9 @@
 - **[jq](https://jqlang.github.io/jq/)** — used by `make capture-history`
   when you regenerate the replay fixture (step [12](12-testing.md)).
 - *(Optional, for later steps)* an **LLM provider API key** matching
-  `CORRIDOR_MODEL`, e.g. `ANTHROPIC_API_KEY`. You only need it once a
-  scenario misses corridor memory and an agent actually calls a model.
+  `CORRIDOR_MODEL`, e.g. `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` if you set
+  `CORRIDOR_MODEL=openai:gpt-5-mini`. You only need it once a scenario misses
+  corridor memory and an agent actually calls a model.
 
 No Kubernetes and no cloud account are required.
 

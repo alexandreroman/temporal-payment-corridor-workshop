@@ -228,7 +228,10 @@ are the AI model the agents use and its matching provider key:
 | `ANTHROPIC_API_KEY` | Provider key matching `CORRIDOR_MODEL`  | (required to run the agents) |
 
 Swap `CORRIDOR_MODEL` and its provider key for any other Pydantic AI provider.
-See [.env.example](.env.example) for the remaining, rarely changed settings.
+For example, to run the agents on OpenAI's `gpt-5-mini`, set
+`CORRIDOR_MODEL=openai:gpt-5-mini` and provide `OPENAI_API_KEY` instead of
+`ANTHROPIC_API_KEY`. See [.env.example](.env.example) for the remaining,
+rarely changed settings.
 
 ## Architecture
 
