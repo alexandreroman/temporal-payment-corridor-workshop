@@ -20,20 +20,34 @@ from datetime import timedelta
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.durable_exec.temporal import TemporalAgent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.azure import AzureProvider
+from pydantic_ai.providers.openai import OpenAIProvider
 from temporalio.common import RetryPolicy
 from temporalio.workflow import ActivityConfig
 
 # Model is resolved at import time from the environment so attendees can
 # switch providers without touching code. Any Pydantic AI model string
-# works, e.g. 'anthropic:claude-sonnet-5', 'openai:gpt-5.2',
-# 'google-gla:gemini-2.5-pro'.
-MODEL = os.getenv("CORRIDOR_MODEL", "anthropic:claude-sonnet-5")
+# works whose SDK is installed, e.g. 'anthropic:claude-sonnet-5' or
+# 'openai:gpt-5-mini' (extras that ship with pydantic-ai[temporal]). Two
+# extra cases point the agents at a custom endpoint instead of a provider's
+# default:
+#   - 'azure:<deployment>' targets an Azure OpenAI deployment; the suffix is
+#     the Azure deployment name, wired via AZURE_OPENAI_ENDPOINT /
+#     AZURE_OPENAI_API_KEY / OPENAI_API_VERSION.
+#   - 'openai:<model>' with OPENAI_BASE_URL set targets any OpenAI-compatible
+#     endpoint (a proxy, LiteLLM, vLLM, a local server, ...).
+MODEL_STRING = os.getenv("CORRIDOR_MODEL", "anthropic:claude-sonnet-5")
 
 # NOTE: Pydantic AI resolves the provider (and validates its API key) when the
 # Agent is constructed. The seeded happy path never calls a model, so we set
-# a placeholder key when none is present to keep imports working offline. A
+# placeholder values when none are present to keep imports working offline. A
 # *real* key is only needed once an anomaly misses corridor memory and an
 # agent actually calls the LLM — set it then (e.g. `export ANTHROPIC_API_KEY=...`).
+_PLACEHOLDER_KEY = "set-a-real-key-to-run-the-agents"
+# The resolver handles the string form for every entry, but only anthropic,
+# openai, and google-gla have their SDK installed by default; groq/mistral
+# additionally need their extra (e.g. `pydantic-ai-slim[groq]`) + `uv sync`.
 _PROVIDER_ENV = {
     "anthropic": "ANTHROPIC_API_KEY",
     "openai": "OPENAI_API_KEY",
@@ -41,9 +55,54 @@ _PROVIDER_ENV = {
     "groq": "GROQ_API_KEY",
     "mistral": "MISTRAL_API_KEY",
 }
-_env_var = _PROVIDER_ENV.get(MODEL.split(":", 1)[0])
-if _env_var:
-    os.environ.setdefault(_env_var, "set-a-real-key-to-run-the-agents")
+
+
+def _resolve_model() -> str | OpenAIChatModel:
+    """Resolve CORRIDOR_MODEL into a Pydantic AI model.
+
+    Returns a plain model string for a provider's default endpoint, or an
+    OpenAIChatModel wired to a custom provider for the Azure OpenAI and
+    custom-OpenAI-endpoint cases. Agent accepts either form, so the two call
+    sites below stay identical.
+    """
+    provider, _, name = MODEL_STRING.partition(":")
+
+    # Azure OpenAI: 'azure:<deployment>'. Placeholder endpoint/key keep the
+    # import-time construction from raising when nothing is configured yet.
+    if provider == "azure":
+        os.environ.setdefault(
+            "AZURE_OPENAI_ENDPOINT",
+            "https://set-a-real-endpoint.openai.azure.com",
+        )
+        os.environ.setdefault("AZURE_OPENAI_API_KEY", _PLACEHOLDER_KEY)
+        return OpenAIChatModel(
+            name,
+            provider=AzureProvider(
+                azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+                api_version=os.getenv("OPENAI_API_VERSION", "2024-10-21"),
+                api_key=os.environ["AZURE_OPENAI_API_KEY"],
+            ),
+        )
+
+    env_var = _PROVIDER_ENV.get(provider)
+    if env_var:
+        os.environ.setdefault(env_var, _PLACEHOLDER_KEY)
+
+    # Custom OpenAI-compatible endpoint: 'openai:<model>' plus OPENAI_BASE_URL.
+    if provider == "openai" and os.getenv("OPENAI_BASE_URL"):
+        return OpenAIChatModel(
+            name,
+            provider=OpenAIProvider(
+                base_url=os.environ["OPENAI_BASE_URL"],
+                api_key=os.environ["OPENAI_API_KEY"],
+            ),
+        )
+
+    # Everything else: hand the plain string to Agent unchanged.
+    return MODEL_STRING
+
+
+MODEL = _resolve_model()
 
 
 class AgentCorrection(BaseModel):

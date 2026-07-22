@@ -227,11 +227,20 @@ are the AI model the agents use and its matching provider key:
 | `CORRIDOR_MODEL`    | Pydantic AI model string for the agents | `anthropic:claude-sonnet-5`  |
 | `ANTHROPIC_API_KEY` | Provider key matching `CORRIDOR_MODEL`  | (required to run the agents) |
 
-Swap `CORRIDOR_MODEL` and its provider key for any other Pydantic AI provider.
-For example, to run the agents on OpenAI's `gpt-5-mini`, set
-`CORRIDOR_MODEL=openai:gpt-5-mini` and provide `OPENAI_API_KEY` instead of
-`ANTHROPIC_API_KEY`. See [.env.example](.env.example) for the remaining,
-rarely changed settings.
+Swap `CORRIDOR_MODEL` and its provider key for any other Pydantic AI
+provider. Examples (see [.env.example](.env.example) for the exact key
+names and the remaining, rarely changed settings):
+
+| Provider | `CORRIDOR_MODEL` | Required env |
+| --- | --- | --- |
+| Anthropic | `anthropic:claude-sonnet-5` | `ANTHROPIC_API_KEY` |
+| OpenAI | `openai:gpt-5-mini` | `OPENAI_API_KEY` |
+| Azure OpenAI | `azure:<deployment>` | `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY` (+ optional `OPENAI_API_VERSION`) |
+| Custom OpenAI-compatible endpoint | `openai:<model>` | `OPENAI_BASE_URL`, `OPENAI_API_KEY` |
+
+Other Pydantic AI providers also work; some (e.g. Groq, Mistral) first
+need their extra added to `pyproject.toml` (e.g. `pydantic-ai-slim[groq]`)
+and `uv sync`.
 
 ## Architecture
 

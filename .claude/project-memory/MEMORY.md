@@ -14,6 +14,7 @@
 - [Docker images run modules from source](references/project_docker_build.md) — images install deps only and run `python -m payments.main_worker`/`memory.main`/`codec.main`; never build the wheel (readme field breaks the build).
 - [Module layout: packages per domain with thin main.py](references/project_module_layout.md) — package-per-domain, thin main.py + isolated definition; webui/ is now static assets served by the gateway, no Python module.
 - [Config conventions: host/port env pairs and local-only Logfire](references/project_config_conventions.md) — endpoints use split `*_HOST`+`*_PORT` env vars; Logfire runs local-only (`send_to_logfire=False`, no token).
+- [CORRIDOR_MODEL resolution and per-provider examples](references/project_corridor_model_resolution.md) — _resolve_model() maps CORRIDOR_MODEL to str/OpenAIChatModel (adds azure: and openai:+OPENAI_BASE_URL); example model ids kept identical across README, .env.example, agents.py.
 - [Generated text and code must be in English](references/feedback_english_only.md) — all output (code, comments, docs, commits, prose) is written in English, whatever the conversation language.
 - [Never reference company names](references/feedback_no_company_names.md) — no company/organization name may appear in code, docs, commits, memory, or prose; refer generically.
 - [Workshop content must be timeless](references/feedback_timeless_content.md) — no dates, times, headcounts, locations, or scheduling in any artifact; keep material reusable and undated.
